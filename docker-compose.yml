@@ -5,24 +5,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: base  # Use base stage for development
+      target: base  
     command: npm run dev
     environment:
-      - NODE_ENV=development
-    volumes:
-      - ./src:/app/src
-      - ./public:/app/public
-      - ./docs:/app/docs
-      - ./package.json:/app/package.json
-      - ./package-lock.json:/app/package-lock.json
-      - ./next.config.mjs:/app/next.config.mjs
-      - ./tailwind.config.ts:/app/tailwind.config.ts
-      - ./tsconfig.json:/app/tsconfig.json
-      - ./components.json:/app/components.json
-      - ./postcss.config.mjs:/app/postcss.config.mjs
-      # Exclude node_modules from volume mount
-      - /app/node_modules
-      - /app/.next
+      - NODE_ENV=production
     ports:
       - "3000:3000"
     restart: unless-stopped
