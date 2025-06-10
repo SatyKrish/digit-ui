@@ -1,30 +1,111 @@
-# New Project
+# DigitChat
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+A modern AI-powered chat application built with Next.js, featuring real-time conversations, data visualization, and Model Context Protocol (MCP) integration.
 
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/saty-krishs-projects/v0-new-project-prtwfaxcyjn)
 [![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/PrtwFAXCyjN)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+## Features
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+- 🤖 **AI-Powered Conversations**: Advanced chat capabilities with OpenAI integration
+- 📊 **Data Visualization**: Interactive charts, heatmaps, treemaps, and geospatial visualizations
+- 🔌 **MCP Integration**: Model Context Protocol support for enhanced AI capabilities
+- 🎨 **Modern UI**: Beautiful interface built with Tailwind CSS and Radix UI components
+- 📱 **Responsive Design**: Works seamlessly across desktop and mobile devices
+- 🔐 **Authentication**: Secure user authentication and session management
+- ⚡ **Real-time Updates**: Live chat updates and status indicators
+
+## Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Styling**: Tailwind CSS
+- **UI Components**: Radix UI
+- **AI Integration**: OpenAI SDK
+- **State Management**: React Hooks
+- **Package Manager**: pnpm
+- **Deployment**: Vercel
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ 
+- pnpm (recommended) or npm
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/your-username/digit-ui.git
+cd digit-ui
+```
+
+2. Install dependencies:
+```bash
+pnpm install
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
+
+4. Add your OpenAI API key to `.env.local`:
+```env
+OPENAI_API_KEY=your-openai-api-key-here
+```
+
+5. Run the development server:
+```bash
+pnpm dev
+```
+
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Project Structure
+
+```
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes
+│   ├── globals.css        # Global styles
+│   ├── layout.tsx         # Root layout
+│   └── page.tsx           # Home page
+├── components/            # React components
+│   ├── ui/               # Reusable UI components
+│   ├── chat-*.tsx        # Chat-related components
+│   └── *-artifact.tsx    # Visualization components
+├── hooks/                # Custom React hooks
+├── lib/                  # Utility functions and clients
+├── public/               # Static assets
+└── styles/               # Additional stylesheets
+```
+
+## Usage
+
+1. **Start a Conversation**: Click on "New Chat" to begin a conversation with the AI
+2. **Visualize Data**: Ask the AI to create charts, graphs, or other visualizations
+3. **MCP Tools**: Access enhanced AI capabilities through the MCP tools panel
+4. **Manage Chats**: Use the sidebar to navigate between different chat sessions
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Make your changes and commit them: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature/your-feature-name`
+5. Open a pull request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Deployment
 
-Your project is live at:
+The application is automatically deployed to Vercel. Any changes pushed to the main branch will trigger a new deployment.
 
-**[https://vercel.com/saty-krishs-projects/v0-new-project-prtwfaxcyjn](https://vercel.com/saty-krishs-projects/v0-new-project-prtwfaxcyjn)**
+**Live Demo**: [https://vercel.com/saty-krishs-projects/v0-new-project-prtwfaxcyjn](https://vercel.com/saty-krishs-projects/v0-new-project-prtwfaxcyjn)
 
-## Build your app
+## Support
 
-Continue building your app on:
-
-**[https://v0.dev/chat/projects/PrtwFAXCyjN](https://v0.dev/chat/projects/PrtwFAXCyjN)**
-
-## How It Works
-
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+If you encounter any issues or have questions, please open an issue on GitHub.
