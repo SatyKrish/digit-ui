@@ -48,7 +48,7 @@ export function rateLimitMiddleware(
   const {
     windowMs = 60 * 1000, // 1 minute
     maxRequests = 100,
-    keyGenerator = (req) => req.ip || 'anonymous'
+    keyGenerator = (req) => req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anonymous'
   } = options;
 
   return async (req: NextRequest) => {

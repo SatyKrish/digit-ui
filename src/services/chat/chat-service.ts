@@ -16,6 +16,7 @@ export class ChatService {
     const session: ChatSession = {
       id: sessionId,
       title: title || `Chat ${new Date().toLocaleDateString()}`,
+      timestamp: new Date().toISOString(),
       messages: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -64,6 +65,9 @@ export class ChatService {
       timestamp: new Date()
     };
 
+    if (!session.messages) {
+      session.messages = [];
+    }
     session.messages.push(newMessage);
     session.updatedAt = new Date();
     
@@ -75,7 +79,7 @@ export class ChatService {
    */
   getAllSessions(): ChatSession[] {
     return Array.from(this.sessions.values()).sort(
-      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+      (a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0)
     );
   }
 

@@ -45,3 +45,6 @@ export function generateInitials(name: string): string {
     .toUpperCase()
     .substring(0, 2)
 }
+
+// Alias for backward compatibility
+export const getInitials = generateInitials

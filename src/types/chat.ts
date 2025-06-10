@@ -1,9 +1,31 @@
 import type { Message } from "ai"
 
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  timestamp: Date
+  model: string
+  isError?: boolean
+}
+
 export interface ChatSession {
   id: string
   title: string
   timestamp: string
+  messages?: ChatMessage[]
+  isActive?: boolean
+  updatedAt?: Date
+  createdAt?: Date
+}
+
+export interface ChatContextType {
+  currentSession: ChatSession | null
+  sessions: ChatSession[]
+  createSession: (title: string) => ChatSession
+  addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => ChatMessage
+  getCurrentSession: () => ChatSession | null
+  clearHistory: () => void
 }
 
 export interface ChatSidebarProps {

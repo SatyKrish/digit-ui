@@ -8,7 +8,7 @@ import type { ChatSession } from "@/types/chat"
  * Hook for managing chat history
  */
 export function useChatHistory() {
-  const [chatHistory, setChatHistory] = useState<ChatSession[]>(MOCK_CHAT_HISTORY)
+  const [chatHistory, setChatHistory] = useState<ChatSession[]>([...MOCK_CHAT_HISTORY])
   const [isLoading, setIsLoading] = useState(false)
 
   const addChat = (chat: Omit<ChatSession, 'id'>) => {
