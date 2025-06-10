@@ -288,6 +288,124 @@
   .hover-lift-lg:hover {
     @apply -translate-y-1 shadow-elegant-lg;
   }
+
+  /* Interactive states with enhanced feedback */
+  .interactive-scale {
+    @apply transition-transform duration-200 ease-out hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .interactive-glow {
+    @apply transition-shadow duration-300 ease-out hover:shadow-glow;
+  }
+
+  /* Loading states */
+  .loading-dots {
+    @apply animate-pulse;
+  }
+
+  .loading-skeleton {
+    @apply animate-pulse bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:200%_100%];
+    animation: loading-shimmer 1.5s infinite;
+  }
+
+  /* Enhanced typography utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Status indicator utilities */
+  .status-dot {
+    @apply relative inline-block w-2 h-2 rounded-full;
+  }
+
+  .status-dot::before {
+    @apply absolute inset-0 rounded-full animate-ping;
+    content: '';
+  }
+
+  .status-online {
+    @apply bg-success;
+  }
+  
+  .status-online::before {
+    @apply bg-success;
+  }
+
+  .status-offline {
+    @apply bg-muted-foreground/50;
+  }
+
+  .status-error {
+    @apply bg-destructive;
+  }
+  
+  .status-error::before {
+    @apply bg-destructive;
+  }
+
+  /* Enhanced focus rings for different contexts */
+  .focus-ring-success {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .focus-ring-warning {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .focus-ring-error {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Enhanced button states */
+  .btn-loading {
+    @apply pointer-events-none opacity-60;
+  }
+
+  .btn-loading::after {
+    @apply absolute inset-0 flex items-center justify-center;
+    content: '';
+    background: inherit;
+    border-radius: inherit;
+  }
+}
+
+/* Loading shimmer animation */
+@keyframes loading-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Enhanced micro-interactions */
+@keyframes bounce-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes pulse-attention {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+  }
 }
 
 /* Enhanced keyboard navigation */
