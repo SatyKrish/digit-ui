@@ -20,7 +20,7 @@ export class MessageRepository {
       messageData.role,
       messageData.content,
       messageData.model,
-      messageData.is_error || false
+      messageData.is_error ? 1 : 0  // Convert boolean to integer for SQLite
     ) as ChatMessage;
   }
 
