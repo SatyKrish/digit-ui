@@ -15,5 +15,6 @@ export function useIsMobile() {
     return () => mql.removeEventListener("change", onChange)
   }, [])
 
-  return !!isMobile
+  // Return false during SSR to match initial server state
+  return isMobile ?? false
 }

@@ -6,11 +6,18 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { MainChatArea } from "@/components/main-chat-area"
 import { AuthScreen } from "@/components/auth-screen"
+import { ClientOnly } from "@/components/client-only"
+
+interface User {
+  name: string
+  email: string
+  avatar: string
+}
 
 // Mock authentication state - in real app this would come from your auth provider
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
 
   const login = () => {
     setIsAuthenticated(true)
@@ -33,22 +40,24 @@ export default function DigitChat() {
     setCurrentChatId(null)
   }
 
-  if (!isAuthenticated) {
-    return (
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <AuthScreen onLogin={login} />
-      </ThemeProvider>
-    )
-  }
-
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <SidebarProvider defaultOpen={false}>
-        <div className="flex h-screen w-full bg-background text-foreground">
-          <ChatSidebar currentChatId={currentChatId} onChatSelect={setCurrentChatId} onNewChat={handleNewChat} />
-          <MainChatArea user={user} currentChatId={currentChatId} onLogout={logout} onNewChat={handleNewChat} />
+      <ClientOnly fallback={
+        <div className="flex h-screen w-full bg-background text-foreground items-center justify-center">
+          <div className="animate-pulse">Loading...</div>
         </div>
-      </SidebarProvider>
+      }>
+        {!isAuthenticated || !user ? (
+          <AuthScreen onLogin={login} />
+        ) : (
+          <SidebarProvider defaultOpen={false}>
+            <div className="flex h-screen w-full bg-background text-foreground">
+              <ChatSidebar currentChatId={currentChatId} onChatSelect={setCurrentChatId} onNewChat={handleNewChat} />
+              <MainChatArea user={user} currentChatId={currentChatId} onLogout={logout} onNewChat={handleNewChat} />
+            </div>
+          </SidebarProvider>
+        )}
+      </ClientOnly>
     </ThemeProvider>
   )
 }
