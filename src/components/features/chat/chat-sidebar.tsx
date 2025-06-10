@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useRef } from "react"
 import { Plus, MessageSquare } from "lucide-react"
 import {
@@ -17,29 +15,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSidebar } from "@/components/ui/sidebar"
-
-interface ChatSession {
-  id: string
-  title: string
-  timestamp: string
-}
-
-interface ChatSidebarProps {
-  currentChatId: string | null
-  onChatSelect: (chatId: string) => void
-  onNewChat: () => void
-}
-
-// Mock chat history data
-const mockChatHistory: ChatSession[] = [
-  { id: "1", title: "Customer Onboarding Process", timestamp: "2024-01-15" },
-  { id: "2", title: "Customer Segmentation Analysis", timestamp: "2024-01-14" },
-  { id: "3", title: "Revenue Trends Q4 2023", timestamp: "2024-01-13" },
-  { id: "4", title: "Marketing Campaign Performance", timestamp: "2024-01-12" },
-  { id: "5", title: "User Engagement Metrics", timestamp: "2024-01-11" },
-  { id: "6", title: "Product Usage Analytics", timestamp: "2024-01-10" },
-  { id: "7", title: "Sales Pipeline Analysis", timestamp: "2024-01-09" },
-]
+import { MOCK_CHAT_HISTORY } from "@/constants/chat"
+import { formatRelativeTime } from "@/utils/format"
+import type { ChatSidebarProps } from "@/types/chat"
 
 export function ChatSidebar({ currentChatId, onChatSelect, onNewChat }: ChatSidebarProps) {
   const { setOpen, open } = useSidebar()
@@ -119,7 +97,7 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat }: ChatSide
           <SidebarGroupContent>
             <ScrollArea className="h-full">
               <SidebarMenu className="space-y-1 p-2">
-                {mockChatHistory.map((chat, index) => (
+                {MOCK_CHAT_HISTORY.map((chat, index) => (
                   <SidebarMenuItem
                     key={chat.id}
                     className={`
@@ -150,7 +128,7 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat }: ChatSide
                           {chat.title}
                         </span>
                         <span className="text-xs text-sidebar-foreground/60 transition-colors duration-200">
-                          {chat.timestamp}
+                          {formatRelativeTime(chat.timestamp)}
                         </span>
                       </div>
                     </SidebarMenuButton>

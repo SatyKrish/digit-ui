@@ -7,14 +7,8 @@ import { Send, Paperclip } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-
-interface ChatInputProps {
-  onSendMessage: (message: string, selectedHints?: string[]) => void
-  isLoading?: boolean
-}
-
-// Updated to use Domains as requested
-const domainHints = ["Account", "Party", "Holdings", "Transaction"]
+import { DOMAIN_HINTS } from "@/constants/chat"
+import type { ChatInputProps } from "@/types/chat"
 
 export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
   const [message, setMessage] = useState("")
@@ -60,7 +54,7 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
 
       {/* Quick Domain Hints */}
       <div className="flex flex-wrap gap-2">
-        {domainHints.map((hint, index) => (
+        {DOMAIN_HINTS.map((hint, index) => (
           <Badge
             key={hint}
             variant={selectedHints.includes(hint) ? "default" : "outline"}

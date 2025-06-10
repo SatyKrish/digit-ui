@@ -1,24 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { ArtifactRenderer } from "@/components/artifact-renderer"
+import { ArtifactRenderer } from "./artifact-renderer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-interface Artifact {
-  type: "markdown" | "code" | "mermaid" | "chart" | "table" | "visualization" | "heatmap" | "treemap" | "geospatial"
-  content: string
-  language?: string
-  title?: string
-  data?: any
-  chartType?: "bar" | "line" | "pie" | "area"
-  visualizationType?: "kpi" | "progress" | "custom"
-  mapType?: "basic" | "satellite" | "dark"
-}
-
-interface ArtifactPanelProps {
-  artifacts: Artifact[]
-}
+import type { Artifact, ArtifactPanelProps } from "@/types/artifacts"
 
 export function ArtifactPanel({ artifacts }: ArtifactPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState(0)

@@ -3,40 +3,17 @@
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "next-themes"
+import { hasArtifacts, countArtifacts } from "@/services/artifacts/artifact-extractor"
+import { getThemeAwareAvatar } from "@/utils/theme"
+import { generateInitials } from "@/utils/format"
 import type { Message } from "ai"
-
-interface ChatMessagesProps {
-  messages: Message[]
-  isLoading?: boolean
-  user?: {
-    name: string
-    avatar?: string
-  }
-}
-
-// Function to check if message has artifacts
-function hasArtifacts(content: string): boolean {
-  return /```[\s\S]*?```/.test(content)
-}
-
-// Function to count artifacts in content
-function countArtifacts(content: string): number {
-  const matches = content.match(/```[\s\S]*?```/g)
-  return matches ? matches.length : 0
-}
+import type { ChatMessagesProps } from "@/types/chat"
 
 export function ChatMessages({ messages, isLoading, user }: ChatMessagesProps) {
   const { theme } = useTheme()
 
   // Get user initials (first character of first name)
-  const userInitials = user?.name.charAt(0).toUpperCase() || "U"
-
-  // Generate theme-aware placeholder images
-  const getThemeAwareAvatar = (src?: string) => {
-    if (src) return src
-    const isDark = theme === "dark"
-    return `/placeholder.svg?height=32&width=32&text=${userInitials}&bg=${isDark ? "1f2937" : "f3f4f6"}&color=${isDark ? "ffffff" : "000000"}`
-  }
+  const userInitials = generateInitials(user?.name || "User")
 
   return (
     <ScrollArea className="flex-1 p-6">
@@ -76,7 +53,7 @@ export function ChatMessages({ messages, isLoading, user }: ChatMessagesProps) {
 
             {message.role === "user" && (
               <Avatar className="h-10 w-10 shrink-0 ring-2 ring-primary/20 shadow-soft hover:shadow-medium transition-all duration-200">
-                <AvatarImage src={getThemeAwareAvatar(user?.avatar) || "/placeholder.svg"} />
+                <AvatarImage src={getThemeAwareAvatar(user?.avatar, theme, userInitials) || "/placeholder.svg"} />
                 <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
                   {userInitials}
                 </AvatarFallback>

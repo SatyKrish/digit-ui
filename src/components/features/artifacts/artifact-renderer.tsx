@@ -4,28 +4,14 @@ import { useState } from "react"
 import { Copy, Check, Download, Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChartArtifact } from "@/components/chart-artifact"
-import { TableArtifact } from "@/components/table-artifact"
-import { VisualizationArtifact } from "@/components/visualization-artifact"
-import { HeatmapArtifact } from "@/components/heatmap-artifact"
-import { TreemapArtifact } from "@/components/treemap-artifact"
-import { GeospatialArtifact } from "@/components/geospatial-artifact"
+import { ChartArtifact } from "./visualizations/chart-artifact"
+import { TableArtifact } from "./visualizations/table-artifact"
+import { VisualizationArtifact } from "./visualizations/visualization-artifact"
+import { HeatmapArtifact } from "./visualizations/heatmap-artifact"
+import { TreemapArtifact } from "./visualizations/treemap-artifact"
+import { GeospatialArtifact } from "./visualizations/geospatial-artifact"
 import { useTheme } from "next-themes"
-
-interface Artifact {
-  type: "markdown" | "code" | "mermaid" | "chart" | "table" | "visualization" | "heatmap" | "treemap" | "geospatial"
-  content: string
-  language?: string
-  title?: string
-  data?: any
-  chartType?: "bar" | "line" | "pie" | "area"
-  visualizationType?: "kpi" | "progress" | "custom"
-  mapType?: "basic" | "satellite" | "dark"
-}
-
-interface ArtifactRendererProps {
-  artifact: Artifact
-}
+import type { Artifact, ArtifactRendererProps } from "@/types/artifacts"
 
 // Mermaid diagram component with dark mode support
 function MermaidDiagram({ content, title }: { content: string; title?: string }) {

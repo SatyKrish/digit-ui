@@ -3,11 +3,11 @@
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { Moon, Sun, Loader2 } from "lucide-react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/auth/use-auth"
 
 export function AuthScreen() {
   const { theme, setTheme } = useTheme()
-  const { login, loading } = useAuth()
+  const { signIn, isLoading } = useAuth()
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background transition-colors duration-300">
@@ -42,12 +42,12 @@ export function AuthScreen() {
         </div>
 
         <Button
-          onClick={login}
-          disabled={loading}
+          onClick={signIn}
+          disabled={isLoading}
           size="lg"
           className="flex items-center space-x-4 px-10 py-6 text-lg shadow-large hover:shadow-glow transition-all duration-300 hover:scale-105 animate-stagger-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? (
+          {isLoading ? (
             <Loader2 className="w-6 h-6 animate-spin" />
           ) : (
             /* Official Microsoft Logo */
@@ -58,7 +58,7 @@ export function AuthScreen() {
               <path fill="#ffb900" d="M12 12h10v10H12z" />
             </svg>
           )}
-          <span>{loading ? 'Signing in...' : 'Login with Microsoft'}</span>
+          <span>{isLoading ? 'Signing in...' : 'Login with Microsoft'}</span>
         </Button>
       </div>
     </div>

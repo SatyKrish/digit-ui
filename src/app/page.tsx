@@ -2,11 +2,11 @@
 
 import { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
-import { ChatSidebar } from "@/components/chat-sidebar"
-import { MainChatArea } from "@/components/main-chat-area"
-import { AuthScreen } from "@/components/auth-screen"
-import { ClientOnly } from "@/components/client-only"
-import { useAuth } from "@/hooks/use-auth"
+import { ChatSidebar } from "@/components/features/chat/chat-sidebar"
+import { MainChatArea } from "@/components/features/chat/main-chat-area"
+import { AuthScreen } from "@/components/features/auth/auth-screen"
+import { ClientOnly } from "@/components/shared/client-only"
+import { useAuth } from "@/hooks/auth/use-auth"
 
 export default function DigitChat() {
   const { isAuthenticated, user, logout } = useAuth()
