@@ -59,3 +59,40 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const { userId, sessionId, title } = await request.json()
+
+    if (!userId || !sessionId || !title) {
+      return NextResponse.json(
+        { error: 'User ID, session ID, and title are required' },
+        { status: 400 }
+      )
+    }
+
+    // Initialize chat service for user
+    await chatService.initializeForUser({
+      id: userId,
+      email: userId,
+      name: 'User'
+    })
+
+    const success = await chatService.updateSessionTitle(sessionId, title)
+    
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Failed to update session title' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Failed to update session title:', error)
+    return NextResponse.json(
+      { error: 'Failed to update session title' },
+      { status: 500 }
+    )
+  }
+}

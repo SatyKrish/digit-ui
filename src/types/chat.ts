@@ -21,6 +21,10 @@ export interface ChatSession {
   lastMessageAt?: Date
 }
 
+export type TimePeriod = 'today' | 'yesterday' | 'last-week' | 'last-month' | 'older'
+
+export type GroupedChatSessions = Partial<Record<TimePeriod, ChatSession[]>>
+
 export interface ChatContextType {
   currentSession: ChatSession | null
   sessions: ChatSession[]

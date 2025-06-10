@@ -1,6 +1,7 @@
 import { ChatSession, ChatMessage } from '@/types/chat';
 import { API_ROUTES } from '@/constants/routes';
 import { getUserRepository, getSessionRepository, getMessageRepository } from '@/database/repositories';
+import { generateTopicBasedTitle } from '@/utils/format';
 import type { CreateUser } from '@/database/types';
 
 /**
@@ -118,6 +119,18 @@ export class ChatService {
     };
 
     const dbMessage = this.messageRepository.createMessage(messageData);
+    
+    // If this is the first user message in the session, auto-generate a better title
+    if (message.role === 'user' && message.content.trim()) {
+      const existingMessages = this.messageRepository.getMessagesForSession(session.id);
+      const userMessages = existingMessages.filter(msg => msg.role === 'user');
+      
+      // Only update title if this is the first user message and session has default title
+      if (userMessages.length === 1 && session.title.startsWith('Chat ')) {
+        const newTitle = generateTopicBasedTitle(message.content);
+        await this.updateSessionTitle(session.id, newTitle);
+      }
+    }
     
     // Touch the session to update its timestamp
     this.sessionRepository.touchSession(session.id);

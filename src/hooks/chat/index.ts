@@ -1,7 +1,7 @@
 export { useMessageArtifacts } from './use-message-artifacts';
 
 // Directly export hook functions to avoid module resolution issues
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatSession, ChatMessage } from '@/types/chat';
 
 /**
@@ -11,16 +11,23 @@ export function useChatSessions(user?: { id: string; email: string; name: string
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const userRef = useRef(user);
+  
+  // Keep user ref updated
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   /**
    * Load sessions from API
    */
   const loadSessions = useCallback(async () => {
-    if (!user) return;
+    const currentUser = userRef.current;
+    if (!currentUser) return;
     
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/chat/sessions?userId=${encodeURIComponent(user.id)}`);
+      const response = await fetch(`/api/chat/sessions?userId=${encodeURIComponent(currentUser.id)}`);
       if (!response.ok) {
         throw new Error('Failed to load sessions');
       }
@@ -28,22 +35,26 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       const data = await response.json();
       setSessions(data.sessions || []);
       
-      // Set current session to the first one if none is set
-      if (!currentSession && data.sessions?.length > 0) {
-        setCurrentSession(data.sessions[0]);
-      }
+      // Set current session to the first one if none is set and no current session exists
+      setCurrentSession(prev => {
+        if (!prev && data.sessions?.length > 0) {
+          return data.sessions[0];
+        }
+        return prev;
+      });
     } catch (error) {
       console.error('Error loading chat sessions:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [user, currentSession]);
+  }, []); // No dependencies needed since we use ref
 
   /**
    * Create a new chat session
    */
   const createSession = useCallback(async (title?: string) => {
-    if (!user) throw new Error('User not available');
+    const currentUser = userRef.current;
+    if (!currentUser) throw new Error('User not available');
     
     try {
       const response = await fetch('/api/chat/sessions', {
@@ -52,7 +63,7 @@ export function useChatSessions(user?: { id: string; email: string; name: string
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id,
+          userId: currentUser.id,
           title: title
         }),
       });
@@ -73,7 +84,7 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       console.error('Error creating session:', error);
       throw error;
     }
-  }, [user, loadSessions]);
+  }, [loadSessions]);
 
   /**
    * Switch to a different session
@@ -99,9 +110,34 @@ export function useChatSessions(user?: { id: string; email: string; name: string
    * Update session title (placeholder - to be implemented)
    */
   const updateSessionTitle = useCallback(async (sessionId: string, title: string) => {
-    console.warn('Update session title not yet implemented');
-    return false;
-  }, []);
+    const currentUser = userRef.current;
+    if (!currentUser) return false
+
+    try {
+      const response = await fetch('/api/chat/sessions', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          title,
+          userId: currentUser.id
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update session title')
+      }
+
+      // Reload sessions to get updated list
+      await loadSessions()
+      return true
+    } catch (error) {
+      console.error('Error updating session title:', error)
+      return false
+    }
+  }, [loadSessions]);
 
   /**
    * Clear all chat history (placeholder - to be implemented)
@@ -115,7 +151,7 @@ export function useChatSessions(user?: { id: string; email: string; name: string
     if (user) {
       loadSessions();
     }
-  }, [user, loadSessions]);
+  }, [user?.id]); // Only depend on user.id instead of the whole user object and loadSessions
 
   return {
     sessions,
@@ -203,3 +239,5 @@ export function useChatMessages() {
     clearError: () => setError(null)
   };
 }
+
+export { useGroupedChatSessions } from './use-grouped-sessions'
