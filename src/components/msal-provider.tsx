@@ -3,13 +3,13 @@
 import { MsalProvider } from "@azure/msal-react";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { ReactNode, useEffect, useState } from "react";
-import { getMsalConfig } from "@/lib/msal-config";
+import { getMsalConfig } from "@/config/msal-config";
 
 interface MsalAuthProviderProps {
   children: ReactNode;
 }
 
-export function MsalAuthProviderServerSide({ children }: MsalAuthProviderProps) {
+export function MsalAuthProvider({ children }: MsalAuthProviderProps) {
   const [msalInstance, setMsalInstance] = useState<PublicClientApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,10 +17,10 @@ export function MsalAuthProviderServerSide({ children }: MsalAuthProviderProps) 
   useEffect(() => {
     const initializeMsal = async () => {
       try {
-        // Fetch configuration from server
+        // Fetch configuration from server (with fallback to client-side)
         const config = await getMsalConfig();
         
-        // Create MSAL instance with server-provided configuration
+        // Create MSAL instance with configuration
         const instance = new PublicClientApplication(config);
         
         // Initialize the instance

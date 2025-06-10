@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { mcpClient } from "@/lib/mcp-client"
+import { mcpClient } from "@/mcp/mcp-client"
 import { Database, BarChart3, FileText } from "lucide-react"
 
 export function MCPStatus() {

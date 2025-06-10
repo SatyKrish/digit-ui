@@ -174,6 +174,66 @@ data:
   AZURE_CLIENT_SECRET: "<base64-encoded-client-secret>"
 ```
 
+### Docker Deployment
+
+The application includes Docker support for both development and production environments.
+
+**Development with Docker:**
+```bash
+# Build and run in development mode
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+# Or use the development-specific compose file
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+**Production with Docker:**
+```bash
+# Copy environment variables
+cp .env.docker .env
+
+# Edit .env with your production values
+# Then run production build
+docker-compose up --build -d
+
+# With nginx reverse proxy (recommended for production)
+docker-compose --profile production up --build -d
+```
+
+**Docker Environment Setup:**
+1. Copy the docker environment template:
+   ```bash
+   cp .env.docker .env
+   ```
+
+2. Update the `.env` file with your Azure AD configuration:
+   ```env
+   NEXT_PUBLIC_AZURE_CLIENT_ID=your-azure-client-id
+   NEXT_PUBLIC_AZURE_TENANT_ID=your-azure-tenant-id
+   NEXT_PUBLIC_REDIRECT_URI=https://yourdomain.com
+   NEXT_PUBLIC_POST_LOGOUT_REDIRECT_URI=https://yourdomain.com
+   ```
+
+3. For production, ensure your Azure AD app registration includes the correct redirect URI
+
+**Docker Commands:**
+```bash
+# Build only
+docker-compose build
+
+# Run in background
+docker-compose up -d
+
+# View logs
+docker-compose logs -f digit-ui
+
+# Stop services
+docker-compose down
+
+# Remove containers and volumes
+docker-compose down -v
+```
+
 ### Troubleshooting Authentication
 
 **Common Issues & Solutions:**
@@ -199,19 +259,29 @@ data:
 ## Project Structure
 
 ```
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page
-├── components/            # React components
-│   ├── ui/               # Reusable UI components
-│   ├── chat-*.tsx        # Chat-related components
-│   └── *-artifact.tsx    # Visualization components
-├── hooks/                # Custom React hooks
-├── lib/                  # Utility functions and clients
-├── public/               # Static assets
-└── styles/               # Additional stylesheets
+├── src/                   # Application source code
+│   ├── app/              # Next.js app directory
+│   │   ├── api/          # API routes
+│   │   ├── globals.css   # Global styles
+│   │   ├── layout.tsx    # Root layout
+│   │   └── page.tsx      # Home page
+│   ├── components/       # React components
+│   │   ├── ui/          # Reusable UI components
+│   │   ├── chat-*.tsx   # Chat-related components
+│   │   └── *-artifact.tsx # Visualization components
+│   ├── config/          # Configuration files
+│   │   ├── msal-config.ts # Azure AD configuration
+│   │   └── theme-config.ts # Theme configuration
+│   ├── hooks/           # Custom React hooks
+│   ├── lib/             # Utility functions
+│   ├── mcp/             # MCP client and related files
+│   └── styles/          # Additional stylesheets
+├── k8s/                 # Kubernetes deployment files
+├── public/              # Static assets
+├── docker-compose.yml   # Docker deployment configuration
+├── docker-compose.dev.yml # Docker development configuration
+├── nginx.conf           # Nginx configuration for production
+└── Dockerfile           # Docker build configuration
 ```
 
 ## Usage

@@ -1,7 +1,7 @@
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { AccountInfo } from "@azure/msal-browser";
 import { useEffect, useState } from "react";
-import { loginRequest } from "@/lib/msal-config";
+import { loginRequest } from "@/config/msal-config";
 
 export interface User {
   id: string;
