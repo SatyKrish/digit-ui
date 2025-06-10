@@ -161,4 +161,3 @@ export const clearConfigCache = () => {
   configCache = null;
   configPromise = null;
 };
-};
