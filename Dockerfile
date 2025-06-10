@@ -42,8 +42,7 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node healthcheck.js || exit 1
+# Note: Health checks are handled by Kubernetes probes in K8s deployments
+# Docker HEALTHCHECK removed to avoid conflicts with K8s liveness/readiness probes
 
 CMD ["node", "server.js"]

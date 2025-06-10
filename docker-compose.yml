@@ -5,8 +5,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: base  
-    command: npm run dev
+      target: runner 
+    env_file:
+      - .env.local
     environment:
       - NODE_ENV=production
     ports:
