@@ -54,7 +54,7 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
         {/* Welcome Message */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Welcome back, {firstName}!</h1>
-          <p className="text-xl text-muted-foreground">How can I help you discover data today?</p>
+          <p className="text-xl text-muted-foreground">How can I help you today?</p>
         </div>
 
         {/* Centered Input */}
