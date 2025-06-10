@@ -12,7 +12,7 @@ A modern AI-powered chat application built with Next.js, featuring real-time con
 - 🔌 **MCP Integration**: Model Context Protocol support for enhanced AI capabilities
 - 🎨 **Modern UI**: Beautiful interface built with Tailwind CSS and Radix UI components
 - 📱 **Responsive Design**: Works seamlessly across desktop and mobile devices
-- 🔐 **Authentication**: Secure user authentication and session management
+- 🔐 **Authentication**: Secure Microsoft SSO authentication and session management
 - ⚡ **Real-time Updates**: Live chat updates and status indicators
 
 ## Tech Stack
@@ -21,6 +21,7 @@ A modern AI-powered chat application built with Next.js, featuring real-time con
 - **Styling**: Tailwind CSS
 - **UI Components**: Radix UI
 - **AI Integration**: OpenAI SDK
+- **Authentication**: Microsoft Authentication Library (MSAL)
 - **State Management**: React Hooks
 - **Package Manager**: npm
 
@@ -49,8 +50,25 @@ npm install
 cp .env.example .env.local
 ```
 
-4. Add your OpenAI API key to `.env.local`:
+4. Configure Azure AD and add environment variables to `.env.local`:
+
+#### Azure AD Setup
+1. Go to the [Azure Portal](https://portal.azure.com)
+2. Navigate to Azure Active Directory > App registrations
+3. Click "New registration" and create a new app
+4. Set the redirect URI to `http://localhost:3000` (for development)
+5. Note down the Application (client) ID and Directory (tenant) ID
+6. Under "Authentication", enable "Access tokens" and "ID tokens"
+
+#### Environment Variables
 ```env
+# Azure AD Configuration
+NEXT_PUBLIC_AZURE_CLIENT_ID=your-azure-client-id-here
+NEXT_PUBLIC_AZURE_TENANT_ID=your-azure-tenant-id-here
+NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000
+NEXT_PUBLIC_POST_LOGOUT_REDIRECT_URI=http://localhost:3000
+
+# OpenAI API Key
 OPENAI_API_KEY=your-openai-api-key-here
 ```
 

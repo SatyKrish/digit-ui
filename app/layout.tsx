@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeScript } from '@/components/theme-script'
+import { MsalAuthProvider } from '@/components/msal-provider'
+import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
   title: 'Digit',
@@ -17,7 +19,18 @@ export default function RootLayout({
       <head>
         <ThemeScript />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <MsalAuthProvider>
+            {children}
+          </MsalAuthProvider>
+        </ThemeProvider>
+      </body>
     </html>
   )
 }
