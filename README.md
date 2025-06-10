@@ -53,20 +53,71 @@ cp .env.example .env.local
 4. Configure Azure AD and add environment variables to `.env.local`:
 
 #### Azure AD Setup
-1. Go to the [Azure Portal](https://portal.azure.com)
-2. Navigate to Azure Active Directory > App registrations
-3. Click "New registration" and create a new app
-4. Set the redirect URI to `http://localhost:3000` (for development)
-5. Note down the Application (client) ID and Directory (tenant) ID
-6. Under "Authentication", enable "Access tokens" and "ID tokens"
+
+> **📋 Quick Setup Guide**  
+> For a complete step-by-step guide with screenshots, see the [Azure AD App Registration documentation](https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app).
+
+**1. Create Azure AD App Registration**
+1. Navigate to [Azure Portal](https://portal.azure.com) → **Azure Active Directory** → **App registrations**
+2. Click **"New registration"** and configure:
+   - **Name**: `DigitChat` (or your preferred app name)
+   - **Supported account types**: `Accounts in this organizational directory only` (Single tenant)
+   - **Redirect URI**: Select `Single-page application (SPA)` and enter `http://localhost:3000` (for development)
+
+**2. Configure Authentication Settings**
+1. Go to **Authentication** blade
+2. Under **Implicit grant and hybrid flows**, enable:
+   - ✅ **Access tokens** (used for calling APIs)
+   - ✅ **ID tokens** (used for user sign-in)
+3. Under **Advanced settings**, set:
+   - **Allow public client flows**: `No`
+   - **Live SDK support**: `No`
+
+**3. Gather Required Information**
+1. Go to **Overview** blade and copy:
+   - **Application (client) ID** - This is your `AZURE_CLIENT_ID`
+   - **Directory (tenant) ID** - This is your `AZURE_TENANT_ID`
+
+**4. Optional: Configure API Permissions**
+1. Go to **API permissions** blade
+2. Default permissions include `User.Read` - this is sufficient for basic authentication
+3. For enhanced features, you may add: `email`, `profile`, `openid`
 
 #### Environment Variables
+
+> **🔐 Security Architecture**  
+> This application uses **server-side configuration** for enhanced security:
+> - Configuration is fetched from `/api/auth/config` endpoint
+> - Azure AD credentials are never exposed to the client browser
+> 
+> See the [Azure MSAL documentation](https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-overview) for more details on authentication flows.
+
+**Development Configuration**:
 ```env
-# Azure AD Configuration
-NEXT_PUBLIC_AZURE_CLIENT_ID=your-azure-client-id-here
-NEXT_PUBLIC_AZURE_TENANT_ID=your-azure-tenant-id-here
-NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000
-NEXT_PUBLIC_POST_LOGOUT_REDIRECT_URI=http://localhost:3000
+# Azure AD Configuration (Server-side)
+AZURE_CLIENT_ID=your-azure-client-id-here
+AZURE_CLIENT_SECRET=your-azure-client-secret-here 
+AZURE_TENANT_ID=your-azure-tenant-id-here
+AZURE_REDIRECT_URI=http://localhost:3000
+AZURE_POST_LOGOUT_REDIRECT_URI=http://localhost:3000
+
+# Environment
+NODE_ENV=development
+```
+
+**Production Configuration**:
+```env
+# Azure AD Configuration (Server-side for security)
+AZURE_CLIENT_ID=your-azure-client-id-here
+AZURE_CLIENT_SECRET=your-azure-client-secret-here 
+AZURE_TENANT_ID=your-azure-tenant-id-here
+AZURE_REDIRECT_URI=https://yourdomain.com
+AZURE_POST_LOGOUT_REDIRECT_URI=https://yourdomain.com
+NEXTAUTH_URL=https://yourdomain.com
+
+# Environment
+NODE_ENV=production
+```
 
 5. Run the development server:
 ```bash
@@ -74,6 +125,76 @@ npm run dev
 ```
 
 6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Production Deployment
+
+### Azure AD Production Configuration
+
+For production deployments, additional Azure AD configuration is required for enhanced security:
+
+**1. Create Client Secret** (Required for server-side authentication):
+1. In your Azure AD app registration, go to **Certificates & secrets**
+2. Click **"New client secret"**
+3. Set description: `DigitChat Production Secret`
+4. Set expiration: `24 months` (recommended)
+5. Copy the **Value** immediately - this is your `AZURE_CLIENT_SECRET`
+
+**2. Update Redirect URIs**:
+1. Go to **Authentication** blade
+2. Add your production URL to **Redirect URIs**: `https://yourdomain.com`
+3. Update **Logout URL** if needed: `https://yourdomain.com`
+
+**3. Container/Kubernetes Deployment**:
+
+The application includes Kubernetes configuration in `/k8s/deployment.yaml`. Update the ConfigMap and Secret with your values:
+
+```yaml
+# ConfigMap for non-sensitive configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: digit-auth-config
+data:
+  AZURE_TENANT_ID: "your-tenant-id-here"
+  AZURE_REDIRECT_URI: "https://digit.yourdomain.com"
+  AZURE_POST_LOGOUT_REDIRECT_URI: "https://digit.yourdomain.com"
+  NODE_ENV: "production"
+```
+
+```yaml
+# Secret for sensitive configuration
+apiVersion: v1
+kind: Secret
+metadata:
+  name: digit-auth-secrets
+type: Opaque
+data:
+  # Base64 encoded values
+  AZURE_CLIENT_ID: "<base64-encoded-client-id>"
+  AZURE_CLIENT_SECRET: "<base64-encoded-client-secret>"
+```
+
+### Troubleshooting Authentication
+
+**Common Issues & Solutions:**
+
+| Issue | Solution |
+|-------|----------|
+| **"AADSTS50011: The reply URL specified in the request does not match"** | Verify redirect URI in Azure AD matches your domain exactly |
+| **"Failed to initialize authentication system"** | Check that all required environment variables are set correctly |
+| **"AADSTS700016: Application not found"** | Verify `AZURE_CLIENT_ID` is correct and app exists in the tenant |
+| **Login succeeds but user info missing** | Ensure `User.Read` permission is granted and admin consented |
+
+**Debug Steps:**
+1. Check browser console for detailed MSAL errors
+2. Verify environment variables are loaded: `/api/auth/config`
+3. Test authentication flow in Azure AD logs
+4. Review server logs for configuration errors
+
+**Useful Links:**
+- [Azure AD Error Codes](https://learn.microsoft.com/en-us/azure/active-directory/develop/reference-aadsts-error-codes)
+- [MSAL.js Troubleshooting](https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-js-troubleshooting)
+- [Azure AD App Registration Best Practices](https://learn.microsoft.com/en-us/azure/active-directory/develop/security-best-practices-for-app-registration)
 
 ## Project Structure
 
