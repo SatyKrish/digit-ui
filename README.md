@@ -23,7 +23,6 @@ A modern AI-powered chat application built with Next.js, featuring real-time con
 - **AI Integration**: OpenAI SDK
 - **State Management**: React Hooks
 - **Package Manager**: npm
-- **Deployment**: Vercel
 
 ## Getting Started
 
@@ -98,12 +97,6 @@ npm run dev
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Deployment
-
-The application is automatically deployed to Vercel. Any changes pushed to the main branch will trigger a new deployment.
-
-**Live Demo**: [https://vercel.com/saty-krishs-projects/v0-new-project-prtwfaxcyjn](https://vercel.com/saty-krishs-projects/v0-new-project-prtwfaxcyjn)
 
 ## Support
 
