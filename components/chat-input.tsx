@@ -41,12 +41,17 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
   }
 
   return (
-    <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 space-y-3">
+    <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-6 space-y-4 shadow-elegant">
       {/* Selected Hints */}
       {selectedHints.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {selectedHints.map((hint) => (
-            <Badge key={hint} variant="default" className="cursor-pointer text-xs" onClick={() => toggleHint(hint)}>
+        <div className="flex flex-wrap gap-2 animate-fade-in">
+          {selectedHints.map((hint, index) => (
+            <Badge 
+              key={hint} 
+              variant="default" 
+              className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
+              onClick={() => toggleHint(hint)}
+            >
               {hint} ×
             </Badge>
           ))}
@@ -54,12 +59,16 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
       )}
 
       {/* Quick Domain Hints */}
-      <div className="flex flex-wrap gap-1">
-        {domainHints.map((hint) => (
+      <div className="flex flex-wrap gap-2">
+        {domainHints.map((hint, index) => (
           <Badge
             key={hint}
             variant={selectedHints.includes(hint) ? "default" : "outline"}
-            className="cursor-pointer text-xs hover:bg-primary hover:text-primary-foreground transition-colors"
+            className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)} ${
+              selectedHints.includes(hint) 
+                ? "hover:bg-primary/80" 
+                : "hover:bg-primary hover:text-primary-foreground"
+            }`}
             onClick={() => toggleHint(hint)}
           >
             {hint}
@@ -77,11 +86,11 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
             placeholder="Ask me anything about your data..."
             disabled={isLoading}
             className="
-              min-h-[44px] max-h-32 resize-none pr-12 
-              border-border/50 bg-background/50 
-              focus:border-primary focus:ring-1 focus:ring-primary 
-              focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0
-              transition-all duration-200
+              min-h-[48px] max-h-32 resize-none pr-16 
+              border-border/50 bg-background/50 shadow-soft
+              focus:border-primary focus:ring-2 focus:ring-primary/20 focus:shadow-medium
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0
+              transition-all duration-200 ease-out hover:shadow-medium
               placeholder:text-muted-foreground/60
             "
             rows={1}
@@ -90,7 +99,7 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute right-2 top-2 h-6 w-6 hover:bg-muted/50 transition-colors"
+            className="absolute right-2 top-2 h-8 w-8 hover:bg-muted/50 transition-all duration-200 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Paperclip className="h-4 w-4" />
           </Button>
@@ -98,7 +107,11 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
         <Button
           type="submit"
           disabled={!message.trim() || isLoading}
-          className="h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200"
+          className={`h-12 px-6 shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105 ${
+            !message.trim() || isLoading 
+              ? "opacity-50 cursor-not-allowed" 
+              : "hover:-translate-y-0.5"
+          }`}
         >
           <Send className="h-4 w-4" />
         </Button>

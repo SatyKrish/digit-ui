@@ -39,40 +39,61 @@ export function MCPStatus() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "connected":
-        return "bg-green-500"
+        return "success"
       case "disconnected":
-        return "bg-yellow-500"
+        return "warning"
       case "error":
-        return "bg-red-500"
+        return "destructive"
       default:
-        return "bg-gray-500"
+        return "secondary"
+    }
+  }
+
+  const getStatusIndicator = (status: string) => {
+    switch (status) {
+      case "connected":
+        return "bg-success shadow-glow"
+      case "disconnected":
+        return "bg-warning animate-pulse"
+      case "error":
+        return "bg-destructive animate-pulse"
+      default:
+        return "bg-muted"
     }
   }
 
   return (
-    <div className="flex items-center space-x-2">
-      <span className="text-xs text-muted-foreground mr-1">MCP:</span>
-      {servers.map((server) => (
+    <div className="flex items-center space-x-3">
+      <span className="text-xs text-muted-foreground font-medium">MCP:</span>
+      {servers.map((server, index) => (
         <TooltipProvider key={server.id}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="flex items-center gap-1.5 py-0 h-5 px-2 border-muted">
+              <Badge 
+                variant={getStatusColor(server.status)} 
+                className={`flex items-center gap-2 py-1 h-7 px-3 transition-all duration-200 hover:scale-105 animate-slide-in-left animate-stagger-${Math.min(index + 1, 4)}`}
+              >
                 {getServerIcon(server.id)}
-                <span className="text-xs">{server.name}</span>
-                <span className={`h-1.5 w-1.5 rounded-full ${getStatusColor(server.status)}`} />
+                <span className="text-xs font-medium">{server.name}</span>
+                <span className={`h-2 w-2 rounded-full ${getStatusIndicator(server.status)}`} />
               </Badge>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <div className="text-xs">
-                <p className="font-medium">{server.name}</p>
-                <p className="text-muted-foreground">{server.description}</p>
-                <p className="capitalize mt-1">
-                  Status:{" "}
-                  <span className={server.status === "connected" ? "text-green-500" : "text-red-500"}>
+            <TooltipContent side="bottom" className="shadow-elegant">
+              <div className="text-xs space-y-2">
+                <p className="font-semibold">{server.name}</p>
+                <p className="text-muted-foreground leading-relaxed">{server.description}</p>
+                <div className="flex items-center gap-2">
+                  <span>Status:</span>
+                  <Badge 
+                    variant={getStatusColor(server.status)} 
+                    className="capitalize text-xs"
+                  >
                     {server.status}
-                  </span>
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground">
+                  <span className="font-medium">{server.tools.length}</span> tools available
                 </p>
-                <p className="text-muted-foreground mt-1">{server.tools.length} tools available</p>
               </div>
             </TooltipContent>
           </Tooltip>

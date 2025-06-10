@@ -98,7 +98,7 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat }: ChatSide
         border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out
         ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0"}
         ${isClosing ? "animate-out slide-out-to-left-1/2 duration-200" : "animate-in slide-in-from-left-1/2 duration-300"}
-        shadow-lg dark:shadow-2xl
+        shadow-elegant-lg dark:shadow-2xl backdrop-blur-sm
       `}
       onMouseLeave={handleMouseLeave}
       onMouseEnter={handleMouseEnter}
@@ -106,7 +106,7 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat }: ChatSide
       <SidebarHeader className="p-4 transform transition-all duration-200 ease-out border-b border-sidebar-border/50">
         <Button
           onClick={handleNewChat}
-          className="w-full justify-start gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-accent-foreground shadow-sm"
+          className="w-full justify-start gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-accent-foreground shadow-soft hover:shadow-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           size="lg"
         >
           <Plus className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
@@ -136,11 +136,12 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat }: ChatSide
                       className="
                         w-full justify-start gap-3 p-3 h-auto rounded-md
                         transition-all duration-200 ease-out
-                        hover:scale-[1.02] hover:shadow-sm hover:bg-sidebar-accent/50
+                        hover:scale-[1.02] hover:shadow-soft hover:bg-sidebar-accent/50
                         active:scale-[0.98]
                         data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground
                         data-[active=true]:border-l-2 data-[active=true]:border-sidebar-primary
-                        data-[active=true]:shadow-sm
+                        data-[active=true]:shadow-soft
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2
                       "
                     >
                       <MessageSquare className="h-4 w-4 shrink-0 transition-colors duration-200" />

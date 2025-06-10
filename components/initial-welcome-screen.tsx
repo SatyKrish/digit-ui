@@ -79,7 +79,11 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
               type="submit"
               disabled={!message.trim()}
               size="icon"
-              className="absolute right-3 bottom-3 h-8 w-8 shadow-sm hover:shadow-md transition-all duration-200"
+              className={`absolute right-3 bottom-3 h-10 w-10 shadow-soft hover:shadow-medium transition-all duration-200 ${
+                !message.trim() 
+                  ? "opacity-50 cursor-not-allowed" 
+                  : "hover:scale-105 hover:-translate-y-0.5"
+              }`}
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -90,8 +94,13 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Selected domains:</p>
               <div className="flex flex-wrap gap-2">
-                {selectedHints.map((hint) => (
-                  <Badge key={hint} variant="default" className="cursor-pointer" onClick={() => toggleHint(hint)}>
+                {selectedHints.map((hint, index) => (
+                  <Badge 
+                    key={hint} 
+                    variant="default" 
+                    className={`cursor-pointer transition-all duration-200 hover:scale-105 animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
+                    onClick={() => toggleHint(hint)}
+                  >
                     {hint} ×
                   </Badge>
                 ))}
@@ -103,11 +112,15 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">Domains</h3>
             <div className="flex flex-wrap gap-2">
-              {domainHints.map((hint) => (
+              {domainHints.map((hint, index) => (
                 <Badge
                   key={hint}
                   variant={selectedHints.includes(hint) ? "default" : "secondary"}
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-3 py-1"
+                  className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-soft px-3 py-1 animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)} ${
+                    selectedHints.includes(hint) 
+                      ? "hover:bg-primary/80" 
+                      : "hover:bg-primary hover:text-primary-foreground"
+                  }`}
                   onClick={() => toggleHint(hint)}
                 >
                   {hint}

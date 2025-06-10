@@ -38,16 +38,25 @@ export function MCPToolsPanel() {
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-lg">MCP Tools</CardTitle>
-        <CardDescription>Available Model Context Protocol tools</CardDescription>
+    <Card className="w-full shadow-elegant hover:shadow-elegant-lg transition-all duration-200">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg flex items-center gap-3">
+          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+            <Database className="h-4 w-4 text-primary" />
+          </div>
+          MCP Tools
+        </CardTitle>
+        <CardDescription>Available Model Context Protocol tools and servers</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         <Tabs defaultValue={servers[0]?.id || "database-server"}>
-          <TabsList className="w-full">
-            {servers.map((server) => (
-              <TabsTrigger key={server.id} value={server.id} className="flex items-center gap-2">
+          <TabsList className="w-full bg-muted/50 p-1 shadow-inner-soft">
+            {servers.map((server, index) => (
+              <TabsTrigger 
+                key={server.id} 
+                value={server.id} 
+                className={`flex items-center gap-2 transition-all duration-200 hover:scale-105 animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
+              >
                 {getServerIcon(server.id)}
                 <span>{server.name}</span>
               </TabsTrigger>
@@ -55,27 +64,30 @@ export function MCPToolsPanel() {
           </TabsList>
 
           {servers.map((server) => (
-            <TabsContent key={server.id} value={server.id}>
+            <TabsContent key={server.id} value={server.id} className="mt-6">
               <ScrollArea className="h-[300px] pr-4">
                 <div className="space-y-4">
-                  {getToolsByServer(server.id).map((tool) => (
-                    <div key={tool.name} className="border rounded-md p-3">
-                      <h4 className="font-medium">{tool.name}</h4>
-                      <p className="text-sm text-muted-foreground mt-1">{tool.description}</p>
+                  {getToolsByServer(server.id).map((tool, index) => (
+                    <div 
+                      key={tool.name} 
+                      className={`border border-border/50 rounded-lg p-4 shadow-soft hover:shadow-medium hover:border-border transition-all duration-200 hover:scale-[1.02] animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
+                    >
+                      <h4 className="font-semibold text-foreground">{tool.name}</h4>
+                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{tool.description}</p>
 
                       {tool.inputSchema.properties && (
-                        <div className="mt-2">
-                          <h5 className="text-xs font-medium text-muted-foreground">Parameters:</h5>
-                          <div className="grid grid-cols-2 gap-2 mt-1">
+                        <div className="mt-4">
+                          <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Parameters:</h5>
+                          <div className="grid grid-cols-1 gap-2">
                             {Object.entries(tool.inputSchema.properties).map(([key, schema]: [string, any]) => (
-                              <div key={key} className="text-xs">
-                                <span className="font-mono bg-muted px-1 py-0.5 rounded">{key}</span>
-                                <span className="text-muted-foreground ml-1">
-                                  ({schema.type})
+                              <div key={key} className="flex items-center justify-between text-xs bg-muted/30 rounded-md px-3 py-2">
+                                <span className="font-mono bg-background px-2 py-1 rounded text-foreground shadow-inner-soft">{key}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground">({schema.type})</span>
                                   {tool.inputSchema.required?.includes(key) && (
-                                    <span className="text-red-500 ml-1">*</span>
+                                    <span className="text-destructive font-semibold">*</span>
                                   )}
-                                </span>
+                                </div>
                               </div>
                             ))}
                           </div>

@@ -30,22 +30,22 @@ export function ChatHeader({ user, onLogout }: ChatHeaderProps) {
   const userInitials = user.name.charAt(0).toUpperCase()
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
-      <div className="flex-1 flex items-center gap-3">
+    <header className="flex h-18 shrink-0 items-center gap-6 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 shadow-elegant">
+      <div className="flex-1 flex items-center gap-4">
         {/* Company Logo with theme-aware styling */}
-        <div className="w-8 h-8 bg-primary rounded flex items-center justify-center shadow-sm">
-          <svg className="w-5 h-5 text-primary-foreground" fill="currentColor" viewBox="0 0 24 24">
+        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105">
+          <svg className="w-6 h-6 text-primary-foreground" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
         </div>
-        <h1 className="text-xl font-bold text-primary">DIGIT</h1>
+        <h1 className="text-2xl font-bold text-primary tracking-tight">DIGIT</h1>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {/* Theme Toggle Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9">
+            <Button variant="ghost" size="icon" className="h-10 w-10 shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
@@ -70,8 +70,8 @@ export function ChatHeader({ user, onLogout }: ChatHeaderProps) {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Avatar className="h-10 w-10 ring-2 ring-primary/20">
                 <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
                 <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
                   {userInitials}
