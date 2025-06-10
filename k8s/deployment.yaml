@@ -1,0 +1,127 @@
+# Kubernetes ConfigMap for Azure AD configuration
+# This approach keeps sensitive configuration server-side
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: digit-auth-config
+  namespace: default
+data:
+  # Azure AD Configuration (Non-sensitive)
+  AZURE_TENANT_ID: "your-tenant-id-here"
+  AZURE_REDIRECT_URI: "https://digit.yourdomain.com"
+  AZURE_POST_LOGOUT_REDIRECT_URI: "https://digit.yourdomain.com"
+  NODE_ENV: "production"
+  NEXTAUTH_URL: "https://digit.yourdomain.com"
+
+---
+# Kubernetes Secret for sensitive Azure AD configuration
+apiVersion: v1
+kind: Secret
+metadata:
+  name: digit-auth-secrets
+  namespace: default
+type: Opaque
+data:
+  # Base64 encoded values
+  # Use: echo -n "your-client-id" | base64
+  AZURE_CLIENT_ID: "eW91ci1jbGllbnQtaWQtaGVyZQ=="
+  # Use: echo -n "your-client-secret" | base64
+  AZURE_CLIENT_SECRET: "eW91ci1jbGllbnQtc2VjcmV0LWhlcmU="
+
+---
+# Kubernetes Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: digit
+  namespace: default
+  labels:
+    app: digit
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: digit
+  template:
+    metadata:
+      labels:
+        app: digit
+    spec:
+      containers:
+      - name: digit
+        image: digit:latest
+        ports:
+        - containerPort: 3000
+        env:
+        # Non-sensitive configuration from ConfigMap
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: digit-auth-config
+              key: AZURE_TENANT_ID
+        - name: AZURE_REDIRECT_URI
+          valueFrom:
+            configMapKeyRef:
+              name: digit-auth-config
+              key: AZURE_REDIRECT_URI
+        - name: AZURE_POST_LOGOUT_REDIRECT_URI
+          valueFrom:
+            configMapKeyRef:
+              name: digit-auth-config
+              key: AZURE_POST_LOGOUT_REDIRECT_URI
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: digit-auth-config
+              key: NODE_ENV
+        - name: NEXTAUTH_URL
+          valueFrom:
+            configMapKeyRef:
+              name: digit-auth-config
+              key: NEXTAUTH_URL
+        # Sensitive configuration from Secret
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: digit-auth-secrets
+              key: AZURE_CLIENT_ID
+        - name: AZURE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: digit-auth-secrets
+              key: AZURE_CLIENT_SECRET
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/auth/config
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+# Kubernetes Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: digit-service
+  namespace: default
+spec:
+  selector:
+    app: digit
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: LoadBalancer

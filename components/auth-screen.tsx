@@ -2,14 +2,12 @@
 
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
-import { Moon, Sun } from "lucide-react"
+import { Moon, Sun, Loader2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
-interface AuthScreenProps {
-  onLogin: () => void
-}
-
-export function AuthScreen({ onLogin }: AuthScreenProps) {
+export function AuthScreen() {
   const { theme, setTheme } = useTheme()
+  const { login, loading } = useAuth()
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background transition-colors duration-300">
@@ -44,18 +42,23 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
         </div>
 
         <Button
-          onClick={onLogin}
+          onClick={login}
+          disabled={loading}
           size="lg"
-          className="flex items-center space-x-4 px-10 py-6 text-lg shadow-large hover:shadow-glow transition-all duration-300 hover:scale-105 animate-stagger-2"
+          className="flex items-center space-x-4 px-10 py-6 text-lg shadow-large hover:shadow-glow transition-all duration-300 hover:scale-105 animate-stagger-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {/* Official Microsoft Logo */}
-          <svg className="w-6 h-6" viewBox="0 0 23 23" fill="none">
-            <path fill="#f25022" d="M1 1h10v10H1z" />
-            <path fill="#00a4ef" d="M12 1h10v10H12z" />
-            <path fill="#7fba00" d="M1 12h10v10H1z" />
-            <path fill="#ffb900" d="M12 12h10v10H12z" />
-          </svg>
-          <span>Login with Microsoft</span>
+          {loading ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            /* Official Microsoft Logo */
+            <svg className="w-6 h-6" viewBox="0 0 23 23" fill="none">
+              <path fill="#f25022" d="M1 1h10v10H1z" />
+              <path fill="#00a4ef" d="M12 1h10v10H12z" />
+              <path fill="#7fba00" d="M1 12h10v10H1z" />
+              <path fill="#ffb900" d="M12 12h10v10H12z" />
+            </svg>
+          )}
+          <span>{loading ? 'Signing in...' : 'Login with Microsoft'}</span>
         </Button>
       </div>
     </div>
