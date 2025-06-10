@@ -22,6 +22,11 @@ export const env = {
   NODE_ENV: getEnvVar('NODE_ENV', 'development'),
   NEXTAUTH_URL: getEnvVar('NEXTAUTH_URL', 'http://localhost:3000'),
 
+  // Database Configuration
+  DATABASE_PATH: getEnvVar('DATABASE_PATH', './data/chat.db'),
+  DATABASE_TIMEOUT: parseInt(getEnvVar('DATABASE_TIMEOUT', '30000')),
+  DATABASE_VERBOSE: getEnvVar('DATABASE_VERBOSE', 'false') === 'true',
+
   // Feature Flags
   ENABLE_MCP: getEnvVar('ENABLE_MCP', 'true') === 'true',
   ENABLE_ANALYTICS: getEnvVar('ENABLE_ANALYTICS', 'false') === 'true',

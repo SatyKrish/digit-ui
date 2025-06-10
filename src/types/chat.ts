@@ -17,15 +17,19 @@ export interface ChatSession {
   isActive?: boolean
   updatedAt?: Date
   createdAt?: Date
+  messageCount?: number
+  lastMessageAt?: Date
 }
 
 export interface ChatContextType {
   currentSession: ChatSession | null
   sessions: ChatSession[]
-  createSession: (title: string) => ChatSession
-  addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => ChatMessage
-  getCurrentSession: () => ChatSession | null
-  clearHistory: () => void
+  createSession: (title: string) => Promise<ChatSession>
+  addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<ChatMessage>
+  getCurrentSession: () => Promise<ChatSession | null>
+  clearHistory: () => Promise<void>
+  switchToSession: (sessionId: string) => Promise<ChatSession | null>
+  deleteSession: (sessionId: string) => Promise<boolean>
 }
 
 export interface ChatSidebarProps {
@@ -35,7 +39,7 @@ export interface ChatSidebarProps {
 }
 
 export interface ChatMessagesProps {
-  messages: Message[]
+  messages: ChatMessage[]
   isLoading?: boolean
   user?: {
     name: string

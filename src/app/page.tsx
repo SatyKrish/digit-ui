@@ -27,7 +27,12 @@ export default function DigitChat() {
       ) : (
         <SidebarProvider defaultOpen={false}>
           <div className="flex h-screen w-full bg-background text-foreground">
-            <ChatSidebar currentChatId={currentChatId} onChatSelect={setCurrentChatId} onNewChat={handleNewChat} />
+            <ChatSidebar 
+              currentChatId={currentChatId} 
+              onChatSelect={setCurrentChatId} 
+              onNewChat={handleNewChat}
+              user={{ id: user.email, email: user.email, name: user.name }}
+            />
             <MainChatArea user={user} currentChatId={currentChatId} onLogout={signOut} onNewChat={handleNewChat} />
           </div>
         </SidebarProvider>

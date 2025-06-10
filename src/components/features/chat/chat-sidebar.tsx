@@ -15,23 +15,33 @@ import {
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSidebar } from "@/components/ui/sidebar"
-import { MOCK_CHAT_HISTORY } from "@/constants/chat"
+import { useChatSessions } from "@/hooks/chat"
 import { formatRelativeTime } from "@/utils/format"
-import type { ChatSidebarProps } from "@/types/chat"
+import type { ChatSidebarProps, ChatSession } from "@/types/chat"
 
-export function ChatSidebar({ currentChatId, onChatSelect, onNewChat }: ChatSidebarProps) {
+export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: ChatSidebarProps & { user?: { id: string; email: string; name: string } }) {
   const { setOpen, open } = useSidebar()
   const [isClosing, setIsClosing] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Use real session data
+  const { sessions, createSession, isLoading } = useChatSessions(user)
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     setIsClosing(true)
-    // Smooth close animation before action
-    setTimeout(() => {
-      onNewChat()
-      setOpen(false)
+    try {
+      // Create new session
+      await createSession()
+      // Smooth close animation before action
+      setTimeout(() => {
+        onNewChat()
+        setOpen(false)
+        setIsClosing(false)
+      }, 150)
+    } catch (error) {
+      console.error('Failed to create new chat:', error)
       setIsClosing(false)
-    }, 150)
+    }
   }
 
   const handleChatSelect = (chatId: string) => {
@@ -97,43 +107,54 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat }: ChatSide
           <SidebarGroupContent>
             <ScrollArea className="h-full">
               <SidebarMenu className="space-y-1 p-2">
-                {MOCK_CHAT_HISTORY.map((chat, index) => (
-                  <SidebarMenuItem
-                    key={chat.id}
-                    className={`
-                      transform transition-all duration-200 ease-out
-                      ${open ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0"}
-                    `}
-                    style={{
-                      transitionDelay: open ? `${index * 30}ms` : "0ms",
-                    }}
-                  >
-                    <SidebarMenuButton
-                      onClick={() => handleChatSelect(chat.id)}
-                      isActive={currentChatId === chat.id}
-                      className="
-                        w-full justify-start gap-3 p-3 h-auto rounded-md
-                        transition-all duration-200 ease-out
-                        hover:scale-[1.02] hover:shadow-soft hover:bg-sidebar-accent/50
-                        active:scale-[0.98]
-                        data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground
-                        data-[active=true]:border-l-2 data-[active=true]:border-sidebar-primary
-                        data-[active=true]:shadow-soft
-                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2
-                      "
+                {isLoading ? (
+                  <div className="p-4 text-center text-sm text-sidebar-foreground/60">
+                    Loading chats...
+                  </div>
+                ) : sessions.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-sidebar-foreground/60">
+                    No chat history yet
+                  </div>
+                ) : (
+                  sessions.map((session: ChatSession, index: number) => (
+                    <SidebarMenuItem
+                      key={session.id}
+                      className={`
+                        transform transition-all duration-200 ease-out
+                        ${open ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0"}
+                      `}
+                      style={{
+                        transitionDelay: open ? `${index * 30}ms` : "0ms",
+                      }}
                     >
-                      <MessageSquare className="h-4 w-4 shrink-0 transition-colors duration-200" />
-                      <div className="flex flex-col items-start gap-1 overflow-hidden">
-                        <span className="text-sm font-medium truncate w-full text-left transition-colors duration-200">
-                          {chat.title}
-                        </span>
-                        <span className="text-xs text-sidebar-foreground/60 transition-colors duration-200">
-                          {formatRelativeTime(chat.timestamp)}
-                        </span>
-                      </div>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                      <SidebarMenuButton
+                        onClick={() => handleChatSelect(session.id)}
+                        isActive={currentChatId === session.id}
+                        className="
+                          w-full justify-start gap-3 p-3 h-auto rounded-md
+                          transition-all duration-200 ease-out
+                          hover:scale-[1.02] hover:shadow-soft hover:bg-sidebar-accent/50
+                          active:scale-[0.98]
+                          data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground
+                          data-[active=true]:border-l-2 data-[active=true]:border-sidebar-primary
+                          data-[active=true]:shadow-soft
+                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2
+                        "
+                      >
+                        <MessageSquare className="h-4 w-4 shrink-0 transition-colors duration-200" />
+                        <div className="flex flex-col items-start gap-1 overflow-hidden">
+                          <span className="text-sm font-medium truncate w-full text-left transition-colors duration-200">
+                            {session.title}
+                          </span>
+                          <span className="text-xs text-sidebar-foreground/60 transition-colors duration-200">
+                            {formatRelativeTime(session.timestamp)}
+                            {session.messageCount !== undefined && ` • ${session.messageCount} messages`}
+                          </span>
+                        </div>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))
+                )}
               </SidebarMenu>
             </ScrollArea>
           </SidebarGroupContent>

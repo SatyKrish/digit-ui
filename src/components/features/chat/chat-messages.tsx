@@ -6,7 +6,7 @@ import { useTheme } from "next-themes"
 import { hasArtifacts, countArtifacts } from "@/services/artifacts/artifact-extractor"
 import { getThemeAwareAvatar } from "@/utils/theme"
 import { generateInitials } from "@/utils/format"
-import type { Message } from "ai"
+import type { ChatMessage } from "@/types/chat"
 import type { ChatMessagesProps } from "@/types/chat"
 
 export function ChatMessages({ messages, isLoading, user }: ChatMessagesProps) {
