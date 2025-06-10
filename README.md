@@ -23,7 +23,7 @@ A modern AI-powered chat application built with Next.js, featuring real-time con
 - **UI Components**: Radix UI
 - **AI Integration**: OpenAI SDK
 - **State Management**: React Hooks
-- **Package Manager**: pnpm
+- **Package Manager**: npm
 - **Deployment**: Vercel
 
 ## Getting Started
@@ -31,7 +31,7 @@ A modern AI-powered chat application built with Next.js, featuring real-time con
 ### Prerequisites
 
 - Node.js 18+ 
-- pnpm (recommended) or npm
+- npm
 
 ### Installation
 
@@ -43,7 +43,7 @@ cd digit-ui
 
 2. Install dependencies:
 ```bash
-pnpm install
+npm install
 ```
 
 3. Set up environment variables:
@@ -58,7 +58,7 @@ OPENAI_API_KEY=your-openai-api-key-here
 
 5. Run the development server:
 ```bash
-pnpm dev
+npm run dev
 ```
 
 6. Open [http://localhost:3000](http://localhost:3000) in your browser.
