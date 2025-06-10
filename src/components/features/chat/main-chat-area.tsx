@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useChat } from "ai/react"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { ChatHeader } from "./chat-header"
 import { ChatMessages } from "./chat-messages"
@@ -11,39 +10,92 @@ import { ArtifactPanel } from "../artifacts/artifact-panel"
 import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { useSidebar } from "@/components/ui/sidebar"
 import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
-import type { MainChatAreaProps, Artifact } from "@/types"
+import { useChatSessions, useChatMessages } from "@/hooks/chat"
+import type { MainChatAreaProps, Artifact, ChatMessage } from "@/types"
 
 export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainChatAreaProps) {
   const [isInitialState, setIsInitialState] = useState(!currentChatId)
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const { open: sidebarOpen } = useSidebar()
+  
+  // Use our API-based session and messaging hooks
+  const userData = { id: user.email, email: user.email, name: user.name }
+  const { currentSession, switchToSession, createSession } = useChatSessions(userData)
+  const { sendMessage, getSessionMessages, isTyping: isLoading, error: messageError } = useChatMessages()
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages, append } = useChat({
-    api: "/api/chat",
-    onFinish: (message) => {
-      // Extract artifacts from the assistant's response
-      const artifacts = extractArtifacts(message.content)
-      setCurrentArtifacts(artifacts)
-    },
-  })
+  // Load messages for current session
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (currentSession) {
+        try {
+          const sessionMessages = await getSessionMessages(currentSession.id, user.email)
+          setMessages(sessionMessages)
+          setIsInitialState(sessionMessages.length === 0)
+        } catch (error) {
+          console.error('Failed to load messages:', error)
+          setMessages([])
+        }
+      } else {
+        setMessages([])
+        setIsInitialState(true)
+      }
+    }
+
+    loadMessages()
+  }, [currentSession, getSessionMessages, user.email])
+
+  // Handle session switching from parent
+  useEffect(() => {
+    if (currentChatId && currentSession?.id !== currentChatId) {
+      switchToSession(currentChatId)
+    }
+  }, [currentChatId, currentSession?.id, switchToSession])
 
   // Handle sending message with domain context
   const handleSendMessage = async (content: string, selectedHints: string[] = []) => {
+    if (isLoading) return
+
     const fullContent = selectedHints.length > 0 ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` : content
 
     setIsInitialState(false)
 
-    await append({
-      role: "user",
-      content: fullContent,
-    })
+    try {
+      // Send message through API
+      await sendMessage(fullContent, user.email)
+      
+      // Reload messages to get the latest
+      if (currentSession) {
+        const sessionMessages = await getSessionMessages(currentSession.id, user.email)
+        setMessages(sessionMessages)
+        
+        // Extract artifacts from the last assistant message
+        const lastAssistantMessage = sessionMessages.filter((m: ChatMessage) => m.role === "assistant").pop()
+        if (lastAssistantMessage) {
+          const artifacts = extractArtifacts(lastAssistantMessage.content)
+          setCurrentArtifacts(artifacts)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      // Reload messages in case there was a partial update
+      if (currentSession) {
+        const sessionMessages = await getSessionMessages(currentSession.id, user.email)
+        setMessages(sessionMessages)
+      }
+    }
   }
 
-  const handleNewChat = () => {
-    setMessages([])
-    setIsInitialState(true)
-    setCurrentArtifacts([])
-    onNewChat?.()
+  const handleNewChat = async () => {
+    try {
+      await createSession()
+      setMessages([])
+      setIsInitialState(true)
+      setCurrentArtifacts([])
+      onNewChat?.()
+    } catch (error) {
+      console.error('Failed to create new chat:', error)
+    }
   }
 
   // Update artifacts when messages change

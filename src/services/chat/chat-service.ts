@@ -1,123 +1,209 @@
-import { ChatSession, ChatMessage, ChatContextType } from '@/types/chat';
+import { ChatSession, ChatMessage } from '@/types/chat';
 import { API_ROUTES } from '@/constants/routes';
+import { getUserRepository, getSessionRepository, getMessageRepository } from '@/database/repositories';
+import { generateTopicBasedTitle } from '@/utils/format';
+import type { CreateUser } from '@/database/types';
 
 /**
- * Chat service for handling chat operations and state management
+ * Chat service for handling chat operations and state management with database
  */
 export class ChatService {
-  private sessions: Map<string, ChatSession> = new Map();
+  private userRepository = getUserRepository();
+  private sessionRepository = getSessionRepository();
+  private messageRepository = getMessageRepository();
+  private currentUserId: string | null = null;
   private currentSessionId: string | null = null;
+
+  /**
+   * Initialize service for a user
+   */
+  async initializeForUser(userData: { id: string; email: string; name: string }): Promise<void> {
+    this.currentUserId = userData.id;
+    
+    // Ensure user exists in database
+    const createUserData: CreateUser = {
+      id: userData.id,
+      email: userData.email,
+      name: userData.name
+    };
+    
+    this.userRepository.upsertUser(createUserData);
+    
+    // Get or create a session for the user
+    const sessions = this.sessionRepository.getSessionsForUser(userData.id, 1);
+    if (sessions.length === 0) {
+      await this.createSession();
+    } else {
+      this.currentSessionId = sessions[0].id;
+    }
+  }
 
   /**
    * Create a new chat session
    */
-  createSession(title?: string): ChatSession {
+  async createSession(title?: string): Promise<ChatSession> {
+    if (!this.currentUserId) {
+      throw new Error('User not initialized. Call initializeForUser first.');
+    }
+
     const sessionId = this.generateSessionId();
-    const session: ChatSession = {
+    const sessionData = {
       id: sessionId,
-      title: title || `Chat ${new Date().toLocaleDateString()}`,
-      timestamp: new Date().toISOString(),
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      isActive: true
+      user_id: this.currentUserId,
+      title: title || `Chat ${new Date().toLocaleDateString()}`
     };
 
-    this.sessions.set(sessionId, session);
+    const dbSession = this.sessionRepository.createSession(sessionData);
     this.currentSessionId = sessionId;
     
-    return session;
+    return this.mapDbSessionToSession(dbSession);
   }
 
   /**
    * Get current active session
    */
-  getCurrentSession(): ChatSession | null {
-    if (!this.currentSessionId || !this.sessions.has(this.currentSessionId)) {
-      return this.createSession();
+  async getCurrentSession(): Promise<ChatSession | null> {
+    if (!this.currentSessionId) {
+      return await this.createSession();
     }
-    return this.sessions.get(this.currentSessionId) || null;
+
+    const dbSession = this.sessionRepository.getSessionById(this.currentSessionId);
+    if (!dbSession) {
+      return await this.createSession();
+    }
+
+    const session = this.mapDbSessionToSession(dbSession);
+    
+    // Load messages for the session
+    const dbMessages = this.messageRepository.getMessagesForSession(this.currentSessionId);
+    session.messages = dbMessages.map(this.mapDbMessageToMessage);
+    
+    return session;
   }
 
   /**
    * Switch to a different session
    */
-  switchToSession(sessionId: string): ChatSession | null {
-    if (this.sessions.has(sessionId)) {
-      this.currentSessionId = sessionId;
-      return this.sessions.get(sessionId) || null;
+  async switchToSession(sessionId: string): Promise<ChatSession | null> {
+    if (!this.currentUserId) {
+      throw new Error('User not initialized');
     }
-    return null;
+
+    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    if (!dbSession || dbSession.user_id !== this.currentUserId) {
+      return null;
+    }
+
+    this.currentSessionId = sessionId;
+    this.sessionRepository.touchSession(sessionId);
+    
+    return this.mapDbSessionToSession(dbSession);
   }
 
   /**
    * Add message to current session
    */
-  addMessage(message: Omit<ChatMessage, 'id' | 'timestamp'>): ChatMessage {
-    const session = this.getCurrentSession();
+  async addMessage(message: Omit<ChatMessage, 'id' | 'timestamp'>): Promise<ChatMessage> {
+    const session = await this.getCurrentSession();
     if (!session) {
       throw new Error('No active session');
     }
 
-    const newMessage: ChatMessage = {
-      ...message,
+    const messageData = {
       id: this.generateMessageId(),
-      timestamp: new Date()
+      session_id: session.id,
+      role: message.role,
+      content: message.content,
+      model: message.model,
+      is_error: message.isError || false
     };
 
-    if (!session.messages) {
-      session.messages = [];
-    }
-    session.messages.push(newMessage);
-    session.updatedAt = new Date();
+    const dbMessage = this.messageRepository.createMessage(messageData);
     
-    return newMessage;
+    // If this is the first user message in the session, auto-generate a better title
+    if (message.role === 'user' && message.content.trim()) {
+      const existingMessages = this.messageRepository.getMessagesForSession(session.id);
+      const userMessages = existingMessages.filter(msg => msg.role === 'user');
+      
+      // Only update title if this is the first user message and session has default title
+      if (userMessages.length === 1 && session.title.startsWith('Chat ')) {
+        const newTitle = generateTopicBasedTitle(message.content);
+        await this.updateSessionTitle(session.id, newTitle);
+      }
+    }
+    
+    // Touch the session to update its timestamp
+    this.sessionRepository.touchSession(session.id);
+    
+    return this.mapDbMessageToMessage(dbMessage);
   }
 
   /**
-   * Get all sessions
+   * Get all sessions for current user
    */
-  getAllSessions(): ChatSession[] {
-    return Array.from(this.sessions.values()).sort(
-      (a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0)
-    );
+  async getAllSessions(): Promise<ChatSession[]> {
+    if (!this.currentUserId) {
+      return [];
+    }
+
+    const dbSessions = this.sessionRepository.getSessionsForUser(this.currentUserId);
+    return dbSessions.map((dbSession: import('@/database/types').SessionWithMessageCount) => {
+      const session = this.mapDbSessionToSession(dbSession);
+      session.messageCount = dbSession.message_count;
+      if (dbSession.last_message_at) {
+        session.lastMessageAt = new Date(dbSession.last_message_at);
+      }
+      return session;
+    });
   }
 
   /**
    * Delete a session
    */
-  deleteSession(sessionId: string): boolean {
-    if (this.sessions.has(sessionId)) {
-      this.sessions.delete(sessionId);
-      
-      // If we deleted the current session, create a new one
-      if (this.currentSessionId === sessionId) {
-        this.createSession();
-      }
-      
-      return true;
+  async deleteSession(sessionId: string): Promise<boolean> {
+    if (!this.currentUserId) {
+      return false;
     }
-    return false;
+
+    // Verify session belongs to current user
+    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    if (!dbSession || dbSession.user_id !== this.currentUserId) {
+      return false;
+    }
+
+    const success = this.sessionRepository.deleteSession(sessionId);
+    
+    // If we deleted the current session, create a new one
+    if (success && this.currentSessionId === sessionId) {
+      await this.createSession();
+    }
+    
+    return success;
   }
 
   /**
    * Update session title
    */
-  updateSessionTitle(sessionId: string, title: string): boolean {
-    const session = this.sessions.get(sessionId);
-    if (session) {
-      session.title = title;
-      session.updatedAt = new Date();
-      return true;
+  async updateSessionTitle(sessionId: string, title: string): Promise<boolean> {
+    if (!this.currentUserId) {
+      return false;
     }
-    return false;
+
+    // Verify session belongs to current user
+    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    if (!dbSession || dbSession.user_id !== this.currentUserId) {
+      return false;
+    }
+
+    const updated = this.sessionRepository.updateSession(sessionId, { title });
+    return !!updated;
   }
 
   /**
    * Send message to chat API
    */
   async sendMessage(content: string, model?: string): Promise<ChatMessage> {
-    const userMessage = this.addMessage({
+    const userMessage = await this.addMessage({
       role: 'user',
       content,
       model: model || 'gpt-4'
@@ -142,7 +228,7 @@ export class ChatService {
 
       const data = await response.json();
       
-      const assistantMessage = this.addMessage({
+      const assistantMessage = await this.addMessage({
         role: 'assistant',
         content: data.message || data.content,
         model: model || 'gpt-4'
@@ -153,7 +239,7 @@ export class ChatService {
       console.error('Error sending message:', error);
       
       // Add error message to chat
-      const errorMessage = this.addMessage({
+      const errorMessage = await this.addMessage({
         role: 'assistant',
         content: 'Sorry, I encountered an error processing your request. Please try again.',
         model: model || 'gpt-4',
@@ -165,66 +251,56 @@ export class ChatService {
   }
 
   /**
-   * Load chat history from storage
+   * Clear all chat history for current user
    */
-  loadFromStorage(): void {
-    try {
-      const stored = localStorage.getItem('digit-chat-sessions');
-      if (stored) {
-        const data = JSON.parse(stored);
-        this.sessions.clear();
-        
-        for (const [id, sessionData] of Object.entries(data.sessions || {})) {
-          const session = sessionData as any;
-          this.sessions.set(id, {
-            ...session,
-            createdAt: new Date(session.createdAt),
-            updatedAt: new Date(session.updatedAt),
-            messages: session.messages.map((msg: any) => ({
-              ...msg,
-              timestamp: new Date(msg.timestamp)
-            }))
-          });
-        }
-        
-        this.currentSessionId = data.currentSessionId;
-        
-        // Ensure we have at least one session
-        if (this.sessions.size === 0) {
-          this.createSession();
-        }
-      } else {
-        this.createSession();
-      }
-    } catch (error) {
-      console.error('Error loading chat history:', error);
-      this.createSession();
+  async clearHistory(): Promise<void> {
+    if (!this.currentUserId) {
+      return;
     }
+
+    this.sessionRepository.deleteAllSessionsForUser(this.currentUserId);
+    await this.createSession();
   }
 
   /**
-   * Save chat history to storage
+   * Get messages for a specific session
    */
-  saveToStorage(): void {
-    try {
-      const data = {
-        sessions: Object.fromEntries(this.sessions),
-        currentSessionId: this.currentSessionId
-      };
-      localStorage.setItem('digit-chat-sessions', JSON.stringify(data));
-    } catch (error) {
-      console.error('Error saving chat history:', error);
+  async getSessionMessages(sessionId: string): Promise<ChatMessage[]> {
+    if (!this.currentUserId) {
+      return [];
     }
+
+    // Verify session belongs to current user
+    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    if (!dbSession || dbSession.user_id !== this.currentUserId) {
+      return [];
+    }
+
+    const dbMessages = this.messageRepository.getMessagesForSession(sessionId);
+    return dbMessages.map(this.mapDbMessageToMessage);
   }
 
-  /**
-   * Clear all chat history
-   */
-  clearHistory(): void {
-    this.sessions.clear();
-    this.currentSessionId = null;
-    this.createSession();
-    this.saveToStorage();
+  // Helper methods for mapping database types to application types
+  private mapDbSessionToSession(dbSession: import('@/database/types').ChatSession): ChatSession {
+    return {
+      id: dbSession.id,
+      title: dbSession.title,
+      timestamp: dbSession.created_at,
+      createdAt: new Date(dbSession.created_at),
+      updatedAt: new Date(dbSession.updated_at),
+      isActive: dbSession.id === this.currentSessionId
+    };
+  }
+
+  private mapDbMessageToMessage(dbMessage: import('@/database/types').ChatMessage): ChatMessage {
+    return {
+      id: dbMessage.id,
+      role: dbMessage.role,
+      content: dbMessage.content,
+      model: dbMessage.model,
+      timestamp: new Date(dbMessage.created_at),
+      isError: dbMessage.is_error
+    };
   }
 
   private generateSessionId(): string {

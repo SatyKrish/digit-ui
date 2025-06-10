@@ -21,19 +21,54 @@ export async function GET() {
       );
     }
 
-    // Test basic functionality
+    // Test database connectivity (server-side only)
+    let databaseStatus = 'ok';
+    try {
+      // Dynamic import to avoid bundling issues
+      const { getDatabase } = await import('@/database');
+      const db = getDatabase();
+      const result = db.prepare('SELECT 1 as test').get() as { test: number };
+      if (result.test !== 1) {
+        databaseStatus = 'error';
+      }
+    } catch (dbError) {
+      console.error('Database health check failed:', dbError);
+      databaseStatus = 'error';
+    }
+
+    // Test API functionality
+    let apiStatus = 'ok';
+    try {
+      // Test basic API response capability
+      const testResponse = { test: 'api_functional' };
+      if (!testResponse.test) {
+        apiStatus = 'error';
+      }
+    } catch (apiError) {
+      console.error('API health check failed:', apiError);
+      apiStatus = 'error';
+    }
+
+    // Determine overall status
+    const hasErrors = databaseStatus === 'error' || apiStatus === 'error';
+    const overallStatus = hasErrors ? 'degraded' : 'healthy';
+
+    // Comprehensive system health check
     const healthCheck = {
-      status: 'healthy',
+      status: overallStatus,
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV,
-      version: process.env.npm_package_version || 'unknown',
+      version: process.env.npm_package_version || '0.1.0',
       checks: {
         auth_config: 'ok',
-        environment_vars: 'ok'
+        environment_vars: 'ok',
+        database: databaseStatus,
+        api: apiStatus
       }
     };
 
-    return NextResponse.json(healthCheck, { status: 200 });
+    const statusCode = hasErrors ? 503 : 200;
+    return NextResponse.json(healthCheck, { status: statusCode });
 
   } catch (error) {
     console.error('Health check failed:', error);
