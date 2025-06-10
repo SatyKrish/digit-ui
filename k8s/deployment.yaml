@@ -4,7 +4,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: digit-auth-config
-  namespace: default
+  namespace: digit
 data:
   # Azure AD Configuration (Non-sensitive)
   AZURE_TENANT_ID: "your-tenant-id-here"
@@ -19,7 +19,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: digit-auth-secrets
-  namespace: default
+  namespace: digit
 type: Opaque
 data:
   # Base64 encoded values
@@ -34,11 +34,16 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: digit
-  namespace: default
+  namespace: digit
   labels:
     app: digit
 spec:
   replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app: digit
@@ -47,11 +52,24 @@ spec:
       labels:
         app: digit
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
       containers:
       - name: digit
         image: digit:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 3000
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
         env:
         # Non-sensitive configuration from ConfigMap
         - name: AZURE_TENANT_ID
@@ -103,12 +121,24 @@ spec:
             port: 3000
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /api/auth/config
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        startupProbe:
+          httpGet:
+            path: /api/health
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 10
 
 ---
 # Kubernetes Service
@@ -116,7 +146,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: digit-service
-  namespace: default
+  namespace: digit
 spec:
   selector:
     app: digit
@@ -125,3 +155,48 @@ spec:
     port: 80
     targetPort: 3000
   type: LoadBalancer
+
+---
+# Horizontal Pod Autoscaler for automatic scaling
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: digit-hpa
+  namespace: digit
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: digit
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Max
