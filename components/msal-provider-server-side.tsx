@@ -3,7 +3,7 @@
 import { MsalProvider } from "@azure/msal-react";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { ReactNode, useEffect, useState } from "react";
-import { getMsalConfig } from "@/lib/msal-config-server-side";
+import { getMsalConfig } from "@/lib/msal-config";
 
 interface MsalAuthProviderProps {
   children: ReactNode;

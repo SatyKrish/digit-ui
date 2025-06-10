@@ -1,4 +1,4 @@
-import { Configuration, PopupRequest } from "@azure/msal-browser";
+import { Configuration, PopupRequest, LogLevel } from "@azure/msal-browser";
 
 // Interface for the server-provided configuration
 interface ServerMsalConfig {
@@ -68,16 +68,16 @@ async function fetchConfigFromServer(): Promise<Configuration> {
             // Only log in development
             if (environment === 'development') {
               switch (level) {
-                case 'Error':
+                case LogLevel.Error:
                   console.error('MSAL Error:', message);
                   break;
-                case 'Warning':
+                case LogLevel.Warning:
                   console.warn('MSAL Warning:', message);
                   break;
-                case 'Info':
+                case LogLevel.Info:
                   console.info('MSAL Info:', message);
                   break;
-                case 'Verbose':
+                case LogLevel.Verbose:
                   console.debug('MSAL Verbose:', message);
                   break;
               }
@@ -117,28 +117,27 @@ function getFallbackConfig(): Configuration {
       cacheLocation: "sessionStorage",
       storeAuthStateInCookie: false,
     },
-    system: {
-      loggerOptions: {
-        loggerCallback: (level, message, containsPii) => {
-          if (containsPii) return;
-          
-          switch (level) {
-            case 'Error':
-              console.error('MSAL Error:', message);
-              break;
-            case 'Warning':
-              console.warn('MSAL Warning:', message);
-              break;
-            case 'Info':
-              console.info('MSAL Info:', message);
-              break;
-            case 'Verbose':
-              console.debug('MSAL Verbose:', message);
-              break;
-          }
-        },
-        piiLoggingEnabled: false
-      }
+    system: {        loggerOptions: {
+          loggerCallback: (level, message, containsPii) => {
+            if (containsPii) return;
+            
+            switch (level) {
+              case LogLevel.Error:
+                console.error('MSAL Error:', message);
+                break;
+              case LogLevel.Warning:
+                console.warn('MSAL Warning:', message);
+                break;
+              case LogLevel.Info:
+                console.info('MSAL Info:', message);
+                break;
+              case LogLevel.Verbose:
+                console.debug('MSAL Verbose:', message);
+                break;
+            }
+          },
+          piiLoggingEnabled: false
+        }
     }
   };
 }

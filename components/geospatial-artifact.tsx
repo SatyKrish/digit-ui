@@ -136,8 +136,8 @@ export function GeospatialArtifact({
                 const y = ((90 - point.lat) / 180) * 100
 
                 // Calculate point size based on value
-                const minValue = Math.min(...data.points.map((p) => p.value || 1))
-                const maxValue = Math.max(...data.points.map((p) => p.value || 1))
+                const minValue = Math.min(...(data.points?.map((p) => p.value || 1) || [1]))
+                const maxValue = Math.max(...(data.points?.map((p) => p.value || 1) || [1]))
                 const valueRange = maxValue - minValue
                 const normalizedValue = valueRange === 0 ? 1 : ((point.value || 1) - minValue) / valueRange
                 const size = 8 + normalizedValue * 16 * (pointSize / 100)

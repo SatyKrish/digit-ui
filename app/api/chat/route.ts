@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       },
       required: ["query"],
     },
-    execute: async ({ query, database }) => {
+    execute: async ({ query, database }: { query: string; database?: string }) => {
       const result = await mcpClient.callTool("database-server", "query_database", { query, database })
       return result
     },
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         table: { type: "string", description: "Specific table name (optional)" },
       },
     },
-    execute: async ({ table }) => {
+    execute: async ({ table }: { table?: string }) => {
       const result = await mcpClient.callTool("database-server", "get_schema", { table })
       return result
     },
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       },
       required: ["table"],
     },
-    execute: async ({ table, limit }) => {
+    execute: async ({ table, limit }: { table: string; limit?: number }) => {
       const result = await mcpClient.callTool("database-server", "get_table_data", { table, limit })
       return result
     },
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       },
       required: ["reportType"],
     },
-    execute: async ({ reportType, dateRange, filters }) => {
+    execute: async ({ reportType, dateRange, filters }: { reportType: string; dateRange?: string; filters?: any }) => {
       const result = await mcpClient.callTool("analytics-server", "generate_report", {
         reportType,
         dateRange,
@@ -102,7 +102,12 @@ export async function POST(req: Request) {
       },
       required: ["chartType", "dataSource"],
     },
-    execute: async ({ chartType, dataSource, metrics, dimensions }) => {
+    execute: async ({ chartType, dataSource, metrics, dimensions }: { 
+      chartType: string; 
+      dataSource: string; 
+      metrics?: string[]; 
+      dimensions?: string[] 
+    }) => {
       const result = await mcpClient.callTool("analytics-server", "create_visualization", {
         chartType,
         dataSource,
@@ -123,7 +128,7 @@ export async function POST(req: Request) {
       },
       required: ["kpiType"],
     },
-    execute: async ({ kpiType, period }) => {
+    execute: async ({ kpiType, period }: { kpiType: string; period?: string }) => {
       const result = await mcpClient.callTool("analytics-server", "calculate_kpis", { kpiType, period })
       return result
     },
@@ -140,7 +145,7 @@ export async function POST(req: Request) {
       },
       required: ["path"],
     },
-    execute: async ({ path, encoding }) => {
+    execute: async ({ path, encoding }: { path: string; encoding?: string }) => {
       const result = await mcpClient.callTool("file-server", "read_file", { path, encoding })
       return result
     },
@@ -156,7 +161,7 @@ export async function POST(req: Request) {
       },
       required: ["path"],
     },
-    execute: async ({ path, pattern }) => {
+    execute: async ({ path, pattern }: { path: string; pattern?: string }) => {
       const result = await mcpClient.callTool("file-server", "list_files", { path, pattern })
       return result
     },
@@ -173,7 +178,7 @@ export async function POST(req: Request) {
       },
       required: ["query"],
     },
-    execute: async ({ query, path, fileTypes }) => {
+    execute: async ({ query, path, fileTypes }: { query: string; path?: string; fileTypes?: string[] }) => {
       const result = await mcpClient.callTool("file-server", "search_files", { query, path, fileTypes })
       return result
     },
@@ -228,7 +233,7 @@ Available domains: Account, Party, Holdings, Transaction, Customer, Product, Ord
     system: systemPrompt,
     messages: convertToCoreMessages(messages),
     tools,
-    maxToolRoundtrips: 5,
+    maxSteps: 5,
   })
 
   return result.toDataStreamResponse()
