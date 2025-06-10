@@ -3,9 +3,8 @@ import './globals.css'
 import { ThemeScript } from '@/components/theme-script'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'Digit',
+  description: 'AI-powered Enterprise Data Intelligence Platform',
 }
 
 export default function RootLayout({

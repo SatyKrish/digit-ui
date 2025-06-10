@@ -86,6 +86,17 @@ npm run dev
 3. **MCP Tools**: Access enhanced AI capabilities through the MCP tools panel
 4. **Manage Chats**: Use the sidebar to navigate between different chat sessions
 
+## Screenshots
+
+### Login Screen
+![Login Screen](docs/login-screen.png)
+
+### Welcome Screen
+![Welcome Screen](docs/welcome-screen.png)
+
+### Chat Screen
+![Chat Screen](docs/chat-screen.png)
+
 ## Contributing
 
 1. Fork the repository
