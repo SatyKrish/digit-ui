@@ -68,10 +68,6 @@ NEXT_PUBLIC_AZURE_TENANT_ID=your-azure-tenant-id-here
 NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000
 NEXT_PUBLIC_POST_LOGOUT_REDIRECT_URI=http://localhost:3000
 
-# OpenAI API Key
-OPENAI_API_KEY=your-openai-api-key-here
-```
-
 5. Run the development server:
 ```bash
 npm run dev
