@@ -136,6 +136,15 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     }
   }
 
+  const handleNavigateHome = () => {
+    // Navigate to welcome screen by resetting state
+    setMessages([])
+    setIsInitialState(true)
+    setCurrentArtifacts([])
+    // Call onNewChat to update the parent's currentChatId to null
+    onNewChat?.()
+  }
+
   // Update artifacts when messages change
   useEffect(() => {
     const lastAssistantMessage = messages.filter((m) => m.role === "assistant").pop()
@@ -151,7 +160,7 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
   return (
     <SidebarInset className="flex flex-col relative transition-all duration-300 ease-in-out">
       <SidebarHoverTrigger />
-      <ChatHeader user={user} onLogout={onLogout} />
+      <ChatHeader user={user} onLogout={onLogout} onNavigateHome={handleNavigateHome} />
 
       <div className="flex-1 flex min-h-0 transition-all duration-300 ease-in-out">
         <div
