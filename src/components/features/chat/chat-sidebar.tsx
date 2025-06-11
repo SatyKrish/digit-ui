@@ -38,7 +38,8 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
       const newSession = await createSession()
       // Smooth close animation before action
       setTimeout(() => {
-        onNewChat()
+        // Switch to the new session instead of just calling onNewChat
+        onChatSelect(newSession.id)
         setOpen(false)
         setIsClosing(false)
       }, 150)

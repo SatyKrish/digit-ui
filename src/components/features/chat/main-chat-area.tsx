@@ -55,14 +55,14 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
           const sessionMessages = await getSessionMessages(currentSession.id, user.email)
           if (isMounted) {
             setMessages(sessionMessages)
-            setIsInitialState(false) // Only hide welcome screen when explicitly viewing a chat
+            setIsInitialState(false) // Hide welcome screen when viewing a specific chat (even if empty)
             setPendingMessages([]) // Clear any pending messages when switching sessions
           }
         } catch (error) {
           console.error('Failed to load messages:', error)
           if (isMounted) {
             setMessages([])
-            setIsInitialState(true) // Show welcome screen on error
+            setIsInitialState(false) // Still show chat interface for the selected session, even on error
           }
         }
       } else if (!currentChatId && isMounted) {
