@@ -10,11 +10,16 @@ function getEnvVar(name: string, defaultValue?: string): string {
   return value || defaultValue!
 }
 
+function getOptionalEnvVar(name: string, defaultValue?: string): string | undefined {
+  const value = process.env[name]
+  return value || defaultValue || undefined
+}
+
 export const env = {
-  // Azure AD Configuration
-  AZURE_CLIENT_ID: getEnvVar('AZURE_CLIENT_ID'),
-  AZURE_CLIENT_SECRET: getEnvVar('AZURE_CLIENT_SECRET'),
-  AZURE_TENANT_ID: getEnvVar('AZURE_TENANT_ID'),
+  // Azure AD Configuration - Optional in development for easier setup
+  AZURE_CLIENT_ID: getOptionalEnvVar('AZURE_CLIENT_ID'),
+  AZURE_CLIENT_SECRET: getOptionalEnvVar('AZURE_CLIENT_SECRET'),
+  AZURE_TENANT_ID: getOptionalEnvVar('AZURE_TENANT_ID'),
   AZURE_REDIRECT_URI: getEnvVar('AZURE_REDIRECT_URI', 'http://localhost:3000'),
   AZURE_POST_LOGOUT_REDIRECT_URI: getEnvVar('AZURE_POST_LOGOUT_REDIRECT_URI', 'http://localhost:3000'),
 
@@ -27,10 +32,10 @@ export const env = {
   DATABASE_TIMEOUT: parseInt(getEnvVar('DATABASE_TIMEOUT', '30000')),
   DATABASE_VERBOSE: getEnvVar('DATABASE_VERBOSE', 'false') === 'true',
 
-  // MCP Server Configuration
-  MCP_DATABASE_SERVER_URL: getEnvVar('MCP_DATABASE_SERVER_URL', ''),
-  MCP_ANALYTICS_SERVER_URL: getEnvVar('MCP_ANALYTICS_SERVER_URL', ''),
-  MCP_FILE_SERVER_URL: getEnvVar('MCP_FILE_SERVER_URL', ''),
+  // MCP Server Configuration - Optional URLs for fallback mode
+  MCP_DATABASE_SERVER_URL: getOptionalEnvVar('MCP_DATABASE_SERVER_URL'),
+  MCP_ANALYTICS_SERVER_URL: getOptionalEnvVar('MCP_ANALYTICS_SERVER_URL'),
+  MCP_FILE_SERVER_URL: getOptionalEnvVar('MCP_FILE_SERVER_URL'),
 
   // Feature Flags
   ENABLE_MCP: getEnvVar('ENABLE_MCP', 'true') === 'true',

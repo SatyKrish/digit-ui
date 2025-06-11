@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { MCPStatus } from "@/components/shared/mcp-status"
 
 interface User {
   name: string
@@ -39,6 +40,11 @@ export function ChatHeader({ user, onLogout }: ChatHeaderProps) {
           </svg>
         </div>
         <h1 className="text-2xl font-bold text-primary tracking-tight">DIGIT</h1>
+        
+        {/* MCP Status Display */}
+        <div className="ml-8">
+          <MCPStatus />
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

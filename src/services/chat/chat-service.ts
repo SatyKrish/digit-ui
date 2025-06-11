@@ -201,53 +201,25 @@ export class ChatService {
 
   /**
    * Send message to chat API
+   * @deprecated Use the /api/chat/messages endpoint directly instead
    */
   async sendMessage(content: string, model?: string): Promise<ChatMessage> {
+    console.warn('chatService.sendMessage is deprecated. Use /api/chat/messages endpoint directly.')
+    
     const userMessage = await this.addMessage({
       role: 'user',
       content,
       model: model || 'gpt-4'
     });
 
-    try {
-      const response = await fetch(API_ROUTES.CHAT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: content,
-          model: model || 'gpt-4',
-          sessionId: this.currentSessionId
-        })
-      });
+    // For backward compatibility, return a simple response
+    const assistantMessage = await this.addMessage({
+      role: 'assistant',
+      content: 'Please use the updated chat API for proper MCP integration.',
+      model: model || 'gpt-4'
+    });
 
-      if (!response.ok) {
-        throw new Error(`Chat API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      const assistantMessage = await this.addMessage({
-        role: 'assistant',
-        content: data.message || data.content,
-        model: model || 'gpt-4'
-      });
-
-      return assistantMessage;
-    } catch (error) {
-      console.error('Error sending message:', error);
-      
-      // Add error message to chat
-      const errorMessage = await this.addMessage({
-        role: 'assistant',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
-        model: model || 'gpt-4',
-        isError: true
-      });
-
-      throw error;
-    }
+    return assistantMessage;
   }
 
   /**
