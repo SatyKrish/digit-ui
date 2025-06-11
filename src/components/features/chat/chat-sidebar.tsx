@@ -120,11 +120,6 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
 
       <SidebarContent className="transform transition-all duration-200 ease-out">
         <ScrollArea className="h-full">
-          {/* MCP Tools Section */}
-          <div className="p-4 border-b border-sidebar-border/30">
-            <MCPToolsPanel />
-          </div>
-
           {isLoading ? (
             <div className="p-4 text-center text-sm text-sidebar-foreground/60">
               Loading chats...
