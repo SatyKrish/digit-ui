@@ -27,12 +27,8 @@ export function useChatSessions(user?: { id: string; email: string; name: string
     const cachedSessions = sessionCache.get(currentUser.id);
     if (cachedSessions) {
       setSessions(cachedSessions);
-      setCurrentSession(prev => {
-        if (!prev && cachedSessions.length > 0) {
-          return cachedSessions[0];
-        }
-        return prev;
-      });
+      // Don't automatically set current session from cache either
+      // This ensures welcome screen is shown after login
       setIsLoading(false);
       return;
     }
@@ -52,13 +48,9 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       
       setSessions(fetchedSessions);
       
-      // Set current session to the first one if none is set and no current session exists
-      setCurrentSession(prev => {
-        if (!prev && fetchedSessions.length > 0) {
-          return fetchedSessions[0];
-        }
-        return prev;
-      });
+      // Don't automatically set a current session after login
+      // Let the user explicitly choose or start a new chat to show welcome screen
+      // setCurrentSession will only be called when user explicitly selects a session
     } catch (error) {
       console.error('Error loading chat sessions:', error);
     } finally {

@@ -15,7 +15,8 @@ import { useAutoSave } from "@/hooks/chat/use-auto-save"
 import type { MainChatAreaProps, Artifact, ChatMessage } from "@/types"
 
 export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainChatAreaProps) {
-  const [isInitialState, setIsInitialState] = useState(!currentChatId)
+  // Always start with welcome screen when no specific chat is selected
+  const [isInitialState, setIsInitialState] = useState(true)
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [pendingMessages, setPendingMessages] = useState<ChatMessage[]>([])
@@ -49,21 +50,23 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     let isMounted = true;
     
     const loadMessages = async () => {
-      if (currentSession && isMounted) {
+      if (currentSession && currentChatId && isMounted) {
         try {
           const sessionMessages = await getSessionMessages(currentSession.id, user.email)
           if (isMounted) {
             setMessages(sessionMessages)
-            setIsInitialState(sessionMessages.length === 0)
+            setIsInitialState(false) // Only hide welcome screen when explicitly viewing a chat
             setPendingMessages([]) // Clear any pending messages when switching sessions
           }
         } catch (error) {
           console.error('Failed to load messages:', error)
           if (isMounted) {
             setMessages([])
+            setIsInitialState(true) // Show welcome screen on error
           }
         }
-      } else if (!currentSession && isMounted) {
+      } else if (!currentChatId && isMounted) {
+        // No chat ID selected - always show welcome screen
         setMessages([])
         setIsInitialState(true)
         setPendingMessages([])
@@ -74,13 +77,14 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     return () => {
       isMounted = false;
     }
-  }, [currentSession?.id, getSessionMessages, user.email]) // Only reload when session ID changes
+  }, [currentSession?.id, currentChatId, getSessionMessages, user.email]) // Key dependency on currentChatId
 
   // Handle session switching from parent
   useEffect(() => {
     if (currentChatId && currentSession?.id !== currentChatId) {
       switchToSession(currentChatId)
     }
+    // Note: When currentChatId is null, we let the component naturally show welcome screen
   }, [currentChatId, currentSession?.id, switchToSession])
 
   // Handle sending message with optimistic updates
