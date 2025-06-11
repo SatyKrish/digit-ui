@@ -3,27 +3,36 @@
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { mcpClient } from "@/client/mcp-client"
 import { Database, BarChart3, FileText } from "lucide-react"
 
+interface MCPServer {
+  id: string
+  name: string
+  description: string
+  status: "connected" | "disconnected" | "error" | "connecting"
+  tools: string[]
+  error?: string
+  url?: string
+}
+
 export function MCPStatus() {
-  const [servers, setServers] = useState<any[]>([])
+  const [servers, setServers] = useState<MCPServer[]>([])
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
 
   useEffect(() => {
     // Initial load
     const loadServers = async () => {
       try {
-        // Ensure MCP client is initialized
-        if (!mcpClient.isReady()) {
-          console.log('MCP client not ready, initializing...')
-          await mcpClient.initialize()
+        // Fetch status from server-side API instead of client-side MCP client
+        const response = await fetch('/api/mcp')
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
+        const data = await response.json()
         
-        const availableServers = mcpClient.getAvailableServers()
-        setServers(availableServers)
+        setServers(data.servers || [])
         setLastUpdate(Date.now())
-        console.log('MCP servers loaded:', availableServers.map(s => `${s.name}: ${s.status}`))
+        console.log('MCP servers loaded:', data.servers?.map((s: MCPServer) => `${s.name}: ${s.status}`))
       } catch (error) {
         console.error('Failed to load MCP servers:', error)
       }
@@ -34,14 +43,19 @@ export function MCPStatus() {
     // Refresh every 10 seconds for more responsive UI
     const interval = setInterval(async () => {
       try {
-        const updatedServers = mcpClient.getAvailableServers()
+        const response = await fetch('/api/mcp')
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        const data = await response.json()
+        const updatedServers = data.servers || []
         
         // Only update if there are actual changes
-        const currentServerStates = servers.map(s => `${s.id}:${s.status}`).join(',')
-        const newServerStates = updatedServers.map(s => `${s.id}:${s.status}`).join(',')
+        const currentServerStates = servers.map((s: MCPServer) => `${s.id}:${s.status}`).join(',')
+        const newServerStates = updatedServers.map((s: MCPServer) => `${s.id}:${s.status}`).join(',')
         
         if (currentServerStates !== newServerStates) {
-          console.log('MCP server status changed:', updatedServers.map(s => `${s.name}: ${s.status}`))
+          console.log('MCP server status changed:', updatedServers.map((s: MCPServer) => `${s.name}: ${s.status}`))
           setServers(updatedServers)
           setLastUpdate(Date.now())
         }
