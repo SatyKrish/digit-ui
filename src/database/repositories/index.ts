@@ -10,6 +10,11 @@ let sessionRepositoryInstance: SessionRepository | null = null;
 let messageRepositoryInstance: MessageRepository | null = null;
 
 export function getUserRepository(): UserRepository {
+  // Check if we're in a browser environment
+  if (typeof window !== 'undefined') {
+    throw new Error('Repository cannot be accessed in browser environment');
+  }
+  
   if (!userRepositoryInstance) {
     userRepositoryInstance = new UserRepository();
   }
@@ -17,6 +22,11 @@ export function getUserRepository(): UserRepository {
 }
 
 export function getSessionRepository(): SessionRepository {
+  // Check if we're in a browser environment
+  if (typeof window !== 'undefined') {
+    throw new Error('Repository cannot be accessed in browser environment');
+  }
+  
   if (!sessionRepositoryInstance) {
     sessionRepositoryInstance = new SessionRepository();
   }

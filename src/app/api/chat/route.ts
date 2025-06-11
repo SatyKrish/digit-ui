@@ -5,7 +5,7 @@ import { env } from "@/config/env"
 import { getOpenAIModel, openaiConfig } from "@/config/openai"
 
 export async function POST(req: Request) {
-  const { messages, userId } = await req.json()
+  const { messages, id, userId } = await req.json()
 
   // Initialize chat service for user if userId is provided
   if (userId) {
@@ -253,8 +253,18 @@ Available domains: Account, Party, Holdings, Transaction, Customer, Product, Ord
     maxSteps: 5,
     onFinish: async ({ response, finishReason, usage, text }) => {
       // Save messages to database if userId is provided
-      if (userId) {
+      if (userId && id) {
         try {
+          // Initialize user and get or create session
+          await chatService.initializeForUser({
+            id: userId,
+            email: userId,
+            name: 'User'
+          })
+
+          // Use the getOrCreateSession method which handles both cases
+          await chatService.getOrCreateSession(id)
+
           // Save the user message (last message in the input)
           const userMessage = messages[messages.length - 1]
           if (userMessage && userMessage.role === 'user') {

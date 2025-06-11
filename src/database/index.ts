@@ -38,13 +38,13 @@ function getDatabaseConfig(): DatabaseConfig {
  * Initialize database connection
  */
 export function initializeDatabase(): Database.Database {
-  if (dbInstance) {
-    return dbInstance;
+  // Prevent database initialization in browser environment
+  if (typeof window !== 'undefined') {
+    throw new Error('Database cannot be initialized in browser environment');
   }
 
-  // Skip database initialization during build time
-  if (process.env.BUILDING === 'true') {
-    throw new Error('Database not available during build time');
+  if (dbInstance) {
+    return dbInstance;
   }
 
   const config = getDatabaseConfig();
@@ -75,6 +75,11 @@ export function initializeDatabase(): Database.Database {
  * Get database instance
  */
 export function getDatabase(): Database.Database {
+  // Prevent database access in browser environment
+  if (typeof window !== 'undefined') {
+    throw new Error('Database cannot be accessed in browser environment');
+  }
+
   if (!dbInstance) {
     return initializeDatabase();
   }

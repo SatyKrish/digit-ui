@@ -11,29 +11,37 @@ import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { useSidebar } from "@/components/ui/sidebar"
 import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
 import { useChat } from "@ai-sdk/react"
-import { useChatSessions } from "@/hooks/chat"
 import type { MainChatAreaProps, Artifact } from "@/types"
 import type { Message } from "ai"
 
 export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainChatAreaProps) {
-  // Always start with welcome screen when no specific chat is selected
-  const [isInitialState, setIsInitialState] = useState(true)
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
-  const [isUserDataReady, setIsUserDataReady] = useState(false)
   const { open: sidebarOpen } = useSidebar()
   
-  // Use simplified session management
-  const userData = { id: user.email, email: user.email, name: user.name }
-  const { currentSession, switchToSession, createSession } = useChatSessions(userData)
-
-  // Wait for user data to be properly loaded before proceeding
+  // Initialize user in chat service via API
   useEffect(() => {
-    if (user && user.email && user.name) {
-      setIsUserDataReady(true)
+    const initializeUser = async () => {
+      if (user?.email) {
+        try {
+          await fetch('/api/chat/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.email,
+              name: user.name,
+              email: user.email
+            })
+          })
+        } catch (error) {
+          console.error('Failed to initialize user:', error)
+        }
+      }
     }
-  }, [user])
-  
-  // Use Vercel AI SDK's useChat hook with current session ID
+    
+    initializeUser()
+  }, [user?.email, user?.name])
+
+  // Use Vercel AI SDK's useChat hook - this handles everything!
   const { 
     messages, 
     input, 
@@ -43,120 +51,63 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     error,
     setMessages,
     reload,
-    setInput
+    setInput,
+    append
   } = useChat({
-    id: currentChatId || undefined,
+    id: currentChatId || undefined, // Let AI SDK handle session creation when undefined
     api: '/api/chat',
     body: {
-      userId: user.email
+      userId: user?.email,
+      id: currentChatId || undefined
     },
-    onFinish: async (message) => {
-      // Auto-save session on completion
-      if (currentSession?.id) {
-        try {
-          await fetch('/api/chat/sessions/touch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId: currentSession.id, userId: user.email })
-          });
-        } catch (error) {
-          console.error('Failed to auto-save session:', error);
-        }
+    onFinish: (message) => {
+      // Session and message saving is handled automatically in the API route
+      console.log('Message finished:', message.id)
+      
+      // Update artifacts from the completed message
+      if (message.role === 'assistant') {
+        const artifacts = extractArtifacts(message.content)
+        setCurrentArtifacts(artifacts)
       }
     },
     onError: (error) => {
-      console.error('Chat error:', error);
+      console.error('Chat error:', error)
     }
   })
 
-  // Load messages for current session when it changes
-  useEffect(() => {
-    const loadMessages = async () => {
-      // Only load messages if user data is ready
-      if (!isUserDataReady) return
-
-      if (currentChatId && currentSession?.id === currentChatId) {
-        try {
-          const response = await fetch(`/api/chat/messages?sessionId=${currentChatId}&userId=${user.email}`);
-          if (response.ok) {
-            const data = await response.json();
-            const sessionMessages: Message[] = data.messages.map((msg: any) => ({
-              id: msg.id,
-              role: msg.role,
-              content: msg.content,
-              createdAt: new Date(msg.timestamp)
-            }));
-            setMessages(sessionMessages);
-            setIsInitialState(false);
-          }
-        } catch (error) {
-          console.error('Failed to load messages:', error);
-        }
-      } else if (!currentChatId) {
-        // No chat ID selected - show welcome screen (only if user data is ready)
-        setMessages([]);
-        setIsInitialState(true);
-      }
-    };
-
-    loadMessages();
-  }, [currentChatId, currentSession?.id, setMessages, user.email, isUserDataReady])
-
-  // Handle session switching from parent
-  useEffect(() => {
-    if (currentChatId && currentSession?.id !== currentChatId) {
-      switchToSession(currentChatId)
-    }
-  }, [currentChatId, currentSession?.id, switchToSession])
+  // Check if we're on the initial welcome screen
+  const isInitialState = !currentChatId && messages.length === 0
 
   // Handle sending message with domain hints
   const handleSendMessage = async (content: string, selectedHints: string[] = []) => {
     if (isLoading) return
 
-    const fullContent = selectedHints.length > 0 ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` : content
+    const fullContent = selectedHints.length > 0 
+      ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` 
+      : content
 
-    // Create a form event to use with handleSubmit
-    const fakeEvent = {
-      preventDefault: () => {},
-      target: {
-        elements: {
-          prompt: { value: fullContent }
-        }
-      }
-    } as any;
-
-    // Set the input and submit
-    setInput(fullContent);
-    setIsInitialState(false);
-    
-    // Use a slight delay to ensure input is set
-    setTimeout(() => {
-      handleSubmit(fakeEvent);
-    }, 0);
-  }
-
-  const handleNewChat = async () => {
-    try {
-      const newSession = await createSession()
-      setMessages([])
-      setIsInitialState(true)
-      setCurrentArtifacts([])
-      onNewChat?.()
-    } catch (error) {
-      console.error('Failed to create new chat:', error)
+    // If no current chat ID, this will be a new chat - AI SDK will handle the session creation
+    if (!currentChatId && onNewChat) {
+      // Notify parent that we're starting a new chat
+      onNewChat()
     }
+
+    // Use AI SDK's append function - much simpler!
+    await append({
+      role: 'user',
+      content: fullContent
+    })
   }
 
   const handleNavigateHome = () => {
-    // Navigate to welcome screen by resetting state
+    // Navigate to welcome screen by clearing messages and artifacts
     setMessages([])
-    setIsInitialState(true)
     setCurrentArtifacts([])
     // Call onNewChat to update the parent's currentChatId to null
     onNewChat?.()
   }
 
-  // Update artifacts when messages change
+  // Update artifacts when messages change (for existing messages loaded from history)
   useEffect(() => {
     const lastAssistantMessage = messages.filter((m) => m.role === "assistant").pop()
     if (lastAssistantMessage) {
@@ -179,7 +130,7 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
             showArtifactPanel ? "mr-2" : ""
           }`}
         >
-          {isInitialState && !currentChatId ? (
+          {isInitialState ? (
             <InitialWelcomeScreen user={user} onSendMessage={handleSendMessage} />
           ) : (
             <>

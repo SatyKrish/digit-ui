@@ -42,6 +42,9 @@ export class ChatService {
       return;
     }
 
+    // Ensure repositories are initialized
+    const { userRepository, sessionRepository } = this.getRepositories();
+
     this.currentUserId = userData.id;
     
     // Only upsert user if not already initialized
@@ -53,12 +56,12 @@ export class ChatService {
         name: userData.name
       };
       
-      this.userRepository.upsertUser(createUserData);
+      userRepository.upsertUser(createUserData);
       this.initializedUsers.add(userData.id);
     }
     
     // Get or create a session for the user
-    const sessions = this.sessionRepository.getSessionsForUser(userData.id, 1);
+    const sessions = sessionRepository.getSessionsForUser(userData.id, 1);
     if (sessions.length === 0) {
       await this.createSession();
     } else {
@@ -74,6 +77,8 @@ export class ChatService {
       throw new Error('User not initialized. Call initializeForUser first.');
     }
 
+    const { sessionRepository } = this.getRepositories();
+
     const sessionId = this.generateSessionId();
     const sessionData = {
       id: sessionId,
@@ -81,7 +86,7 @@ export class ChatService {
       title: title || `Chat ${new Date().toLocaleDateString()}`
     };
 
-    const dbSession = this.sessionRepository.createSession(sessionData);
+    const dbSession = sessionRepository.createSession(sessionData);
     this.currentSessionId = sessionId;
     
     return this.mapDbSessionToSession(dbSession);
@@ -95,7 +100,9 @@ export class ChatService {
       return await this.createSession();
     }
 
-    const dbSession = this.sessionRepository.getSessionById(this.currentSessionId);
+    const { sessionRepository, messageRepository } = this.getRepositories();
+
+    const dbSession = sessionRepository.getSessionById(this.currentSessionId);
     if (!dbSession) {
       return await this.createSession();
     }
@@ -103,29 +110,69 @@ export class ChatService {
     const session = this.mapDbSessionToSession(dbSession);
     
     // Load messages for the session
-    const dbMessages = this.messageRepository.getMessagesForSession(this.currentSessionId);
+    const dbMessages = messageRepository.getMessagesForSession(this.currentSessionId);
     session.messages = dbMessages.map(this.mapDbMessageToMessage);
     
     return session;
   }
 
   /**
-   * Switch to a different session
+   * Switch to a different session or create it if it doesn't exist
    */
   async switchToSession(sessionId: string): Promise<ChatSession | null> {
     if (!this.currentUserId) {
       throw new Error('User not initialized');
     }
 
-    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    const { sessionRepository } = this.getRepositories();
+
+    const dbSession = sessionRepository.getSessionById(sessionId);
     if (!dbSession || dbSession.user_id !== this.currentUserId) {
       return null;
     }
 
     this.currentSessionId = sessionId;
-    this.sessionRepository.touchSession(sessionId);
+    sessionRepository.touchSession(sessionId);
     
     return this.mapDbSessionToSession(dbSession);
+  }
+
+  /**
+   * Get or create a session by ID
+   */
+  async getOrCreateSession(sessionId?: string): Promise<ChatSession> {
+    if (!this.currentUserId) {
+      throw new Error('User not initialized. Call initializeForUser first.');
+    }
+
+    if (sessionId) {
+      // Try to get existing session first
+      const existingSession = await this.switchToSession(sessionId);
+      if (existingSession) {
+        return existingSession;
+      }
+      
+      // If session doesn't exist, create it with the provided ID
+      const { sessionRepository } = this.getRepositories();
+      const sessionData = {
+        id: sessionId,
+        user_id: this.currentUserId,
+        title: `Chat ${new Date().toLocaleDateString()}`
+      };
+
+      const dbSession = sessionRepository.createSession(sessionData);
+      this.currentSessionId = sessionId;
+      
+      return this.mapDbSessionToSession(dbSession);
+    } else {
+      // No session ID provided, get or create current session
+      const session = await this.getCurrentSession();
+      if (!session) {
+        // This should not happen since getCurrentSession creates one if none exists
+        return await this.createSession();
+      }
+      return session;
+    }
   }
 
   /**
@@ -137,6 +184,8 @@ export class ChatService {
       throw new Error('No active session');
     }
 
+    const { messageRepository, sessionRepository } = this.getRepositories();
+
     const messageData = {
       id: this.generateMessageId(),
       session_id: session.id,
@@ -146,11 +195,11 @@ export class ChatService {
       is_error: message.isError || false
     };
 
-    const dbMessage = this.messageRepository.createMessage(messageData);
+    const dbMessage = messageRepository.createMessage(messageData);
     
     // If this is the first user message in the session, auto-generate a better title
     if (message.role === 'user' && message.content.trim()) {
-      const existingMessages = this.messageRepository.getMessagesForSession(session.id);
+      const existingMessages = messageRepository.getMessagesForSession(session.id);
       const userMessages = existingMessages.filter(msg => msg.role === 'user');
       
       // Only update title if this is the first user message and session has default title
@@ -161,7 +210,7 @@ export class ChatService {
     }
     
     // Touch the session to update its timestamp
-    this.sessionRepository.touchSession(session.id);
+    sessionRepository.touchSession(session.id);
     
     return this.mapDbMessageToMessage(dbMessage);
   }
@@ -174,7 +223,9 @@ export class ChatService {
       return [];
     }
 
-    const dbSessions = this.sessionRepository.getSessionsForUser(this.currentUserId);
+    const { sessionRepository } = this.getRepositories();
+
+    const dbSessions = sessionRepository.getSessionsForUser(this.currentUserId);
     return dbSessions.map((dbSession: import('@/database/types').SessionWithMessageCount) => {
       const session = this.mapDbSessionToSession(dbSession);
       session.messageCount = dbSession.message_count;
@@ -193,13 +244,15 @@ export class ChatService {
       return false;
     }
 
+    const { sessionRepository } = this.getRepositories();
+
     // Verify session belongs to current user
-    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    const dbSession = sessionRepository.getSessionById(sessionId);
     if (!dbSession || dbSession.user_id !== this.currentUserId) {
       return false;
     }
 
-    const success = this.sessionRepository.deleteSession(sessionId);
+    const success = sessionRepository.deleteSession(sessionId);
     
     // If we deleted the current session, create a new one
     if (success && this.currentSessionId === sessionId) {
@@ -217,13 +270,15 @@ export class ChatService {
       return false;
     }
 
+    const { sessionRepository } = this.getRepositories();
+
     // Verify session belongs to current user
-    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    const dbSession = sessionRepository.getSessionById(sessionId);
     if (!dbSession || dbSession.user_id !== this.currentUserId) {
       return false;
     }
 
-    const updated = this.sessionRepository.updateSession(sessionId, { title });
+    const updated = sessionRepository.updateSession(sessionId, { title });
     return !!updated;
   }
 
@@ -235,13 +290,15 @@ export class ChatService {
       return false;
     }
 
+    const { sessionRepository } = this.getRepositories();
+
     // Verify session belongs to current user
-    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    const dbSession = sessionRepository.getSessionById(sessionId);
     if (!dbSession || dbSession.user_id !== this.currentUserId) {
       return false;
     }
 
-    this.sessionRepository.touchSession(sessionId);
+    sessionRepository.touchSession(sessionId);
     return true;
   }
 
@@ -276,7 +333,9 @@ export class ChatService {
       return;
     }
 
-    this.sessionRepository.deleteAllSessionsForUser(this.currentUserId);
+    const { sessionRepository } = this.getRepositories();
+
+    sessionRepository.deleteAllSessionsForUser(this.currentUserId);
     await this.createSession();
   }
 
@@ -288,13 +347,15 @@ export class ChatService {
       return [];
     }
 
+    const { sessionRepository, messageRepository } = this.getRepositories();
+
     // Verify session belongs to current user
-    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    const dbSession = sessionRepository.getSessionById(sessionId);
     if (!dbSession || dbSession.user_id !== this.currentUserId) {
       return [];
     }
 
-    const dbMessages = this.messageRepository.getMessagesForSession(sessionId);
+    const dbMessages = messageRepository.getMessagesForSession(sessionId);
     return dbMessages.map(this.mapDbMessageToMessage);
   }
 
