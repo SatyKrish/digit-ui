@@ -83,6 +83,17 @@ cp .env.example .env.local
 2. Default permissions include `User.Read` - this is sufficient for basic authentication
 3. For enhanced features, you may add: `email`, `profile`, `openid`
 
+#### OpenAI Setup
+
+**Get your OpenAI API Key**:
+1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Sign in or create an account
+3. Click **"Create new secret key"**
+4. Copy the API key - this is your `OPENAI_API_KEY`
+5. **Important**: Store this securely - you won't be able to see it again!
+
+> **💡 Note**: You'll need OpenAI credits in your account for the LLM to work. Check your [usage and billing](https://platform.openai.com/usage) in the OpenAI dashboard.
+
 #### Environment Variables
 
 > **🔐 Security Architecture**  
@@ -101,6 +112,9 @@ AZURE_TENANT_ID=your-azure-tenant-id-here
 AZURE_REDIRECT_URI=http://localhost:3000
 AZURE_POST_LOGOUT_REDIRECT_URI=http://localhost:3000
 
+# OpenAI Configuration (Required for LLM integration)
+OPENAI_API_KEY=your-openai-api-key-here
+
 # Environment
 NODE_ENV=development
 ```
@@ -114,6 +128,9 @@ AZURE_TENANT_ID=your-azure-tenant-id-here
 AZURE_REDIRECT_URI=https://yourdomain.com
 AZURE_POST_LOGOUT_REDIRECT_URI=https://yourdomain.com
 NEXTAUTH_URL=https://yourdomain.com
+
+# OpenAI Configuration (Required for LLM integration)
+OPENAI_API_KEY=your-openai-api-key-here
 
 # Environment
 NODE_ENV=production

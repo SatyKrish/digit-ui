@@ -1,5 +1,3 @@
-import { env } from "./env"
-
 export interface MCPServerConfig {
   id: string
   name: string
@@ -20,7 +18,7 @@ export const defaultMCPServers: MCPServerConfig[] = [
     id: "database-server",
     name: "Database Server",
     description: "Provides database query capabilities and schema introspection",
-    url: env.MCP_DATABASE_SERVER_URL || undefined,
+    url: process.env.MCP_DATABASE_SERVER_URL || undefined,
     transport: "http",
     enabled: true
   },
@@ -28,7 +26,7 @@ export const defaultMCPServers: MCPServerConfig[] = [
     id: "analytics-server", 
     name: "Analytics Server",
     description: "Generates reports, visualizations, and analytical insights",
-    url: env.MCP_ANALYTICS_SERVER_URL || undefined,
+    url: process.env.MCP_ANALYTICS_SERVER_URL || undefined,
     transport: "http",
     enabled: true
   },
@@ -36,7 +34,7 @@ export const defaultMCPServers: MCPServerConfig[] = [
     id: "file-server",
     name: "File Server", 
     description: "File system operations, reading, writing, and searching files",
-    url: env.MCP_FILE_SERVER_URL || undefined,
+    url: process.env.MCP_FILE_SERVER_URL || undefined,
     transport: "http",
     enabled: true
   }
@@ -44,9 +42,10 @@ export const defaultMCPServers: MCPServerConfig[] = [
 
 /**
  * Get active MCP server configurations
+ * SERVER-SIDE ONLY - Do not import this in client-side code
  */
 export const getActiveMCPServers = (): MCPServerConfig[] => {
-  if (!env.ENABLE_MCP) {
+  if (!process.env.ENABLE_MCP) {
     return []
   }
 

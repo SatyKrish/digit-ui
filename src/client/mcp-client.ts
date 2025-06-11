@@ -1,7 +1,58 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
-import { getActiveMCPServers, mcpTransportConfig, type MCPServerConfig } from "../config/mcp-config"
+
+// Client-safe transport configuration
+const mcpTransportConfig = {
+  retryAttempts: 3,
+  retryDelay: 1000,
+  connectionTimeout: 10000,
+  requestTimeout: 30000,
+  keepAliveInterval: 30000
+} as const
+
+interface MCPServerConfig {
+  id: string
+  name: string
+  description: string
+  url?: string
+  transport: 'stdio' | 'http' | 'sse' | 'websocket'
+  command?: string
+  args?: string[]
+  enabled: boolean
+}
+
+// Client-safe MCP server configuration - no server-side env imports
+const getActiveMCPServers = (): MCPServerConfig[] => {
+  // Default server configurations for client-side use
+  // URLs will be empty if not configured, servers will show as disconnected
+  return [
+    {
+      id: "database-server",
+      name: "Database Server",
+      description: "Provides database query capabilities and schema introspection",
+      url: undefined, // Will be populated by server if available
+      transport: "http",
+      enabled: true
+    },
+    {
+      id: "analytics-server", 
+      name: "Analytics Server",
+      description: "Generates reports, visualizations, and analytical insights",
+      url: undefined, // Will be populated by server if available
+      transport: "http",
+      enabled: false
+    },
+    {
+      id: "file-server",
+      name: "File Server", 
+      description: "File system operations, reading, writing, and searching files",
+      url: undefined, // Will be populated by server if available
+      transport: "http",
+      enabled: false
+    }
+  ]
+}
 
 // MCP Server types
 export interface MCPServer {

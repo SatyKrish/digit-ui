@@ -1,7 +1,8 @@
-import { openai } from "@ai-sdk/openai"
 import { streamText, convertToCoreMessages } from "ai"
 import { mcpClient } from "@/client/mcp-client"
 import { chatService } from "@/services/chat/chat-service"
+import { env } from "@/config/env"
+import { getOpenAIModel, openaiConfig } from "@/config/openai"
 
 export async function POST(req: Request) {
   const { messages, userId } = await req.json()
@@ -245,7 +246,7 @@ Always provide clear, professional responses suitable for enterprise use.
 Available domains: Account, Party, Holdings, Transaction, Customer, Product, Order, Payment`
 
   const result = await streamText({
-    model: openai("gpt-4o"),
+    model: getOpenAIModel(openaiConfig.model),
     system: systemPrompt,
     messages: convertToCoreMessages(messages),
     tools,

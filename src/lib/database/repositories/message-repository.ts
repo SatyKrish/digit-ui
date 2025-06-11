@@ -1,5 +1,5 @@
-import { getDatabase } from '../index';
-import type { ChatMessage, CreateChatMessage } from '../types';
+import { getDatabase } from '../../../database/index';
+import type { ChatMessage, CreateChatMessage } from '../../../database/types';
 
 export class MessageRepository {
   private db = getDatabase();

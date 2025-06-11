@@ -27,6 +27,9 @@ export const env = {
   NODE_ENV: getEnvVar('NODE_ENV', 'development'),
   NEXTAUTH_URL: getEnvVar('NEXTAUTH_URL', 'http://localhost:3000'),
 
+  // OpenAI Configuration (Required for LLM integration)
+  OPENAI_API_KEY: getEnvVar('OPENAI_API_KEY'),
+
   // Database Configuration
   DATABASE_PATH: getEnvVar('DATABASE_PATH', './data/chat.db'),
   DATABASE_TIMEOUT: parseInt(getEnvVar('DATABASE_TIMEOUT', '30000')),
