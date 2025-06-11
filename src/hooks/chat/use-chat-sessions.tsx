@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatSession, ChatMessage } from '@/types/chat';
+import { sessionCache } from '@/services/chat/session-cache';
 
 /**
  * Enhanced chat session management hook using API calls
@@ -16,11 +17,25 @@ export function useChatSessions(user?: { id: string; email: string; name: string
   }, [user]);
 
   /**
-   * Load sessions from API
+   * Load sessions from API (only when needed, with caching)
    */
   const loadSessions = useCallback(async () => {
     const currentUser = userRef.current;
     if (!currentUser) return;
+
+    // Check cache first
+    const cachedSessions = sessionCache.get(currentUser.id);
+    if (cachedSessions) {
+      setSessions(cachedSessions);
+      setCurrentSession(prev => {
+        if (!prev && cachedSessions.length > 0) {
+          return cachedSessions[0];
+        }
+        return prev;
+      });
+      setIsLoading(false);
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -30,12 +45,17 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       }
       
       const data = await response.json();
-      setSessions(data.sessions || []);
+      const fetchedSessions = data.sessions || [];
+      
+      // Update cache
+      sessionCache.set(currentUser.id, fetchedSessions);
+      
+      setSessions(fetchedSessions);
       
       // Set current session to the first one if none is set and no current session exists
       setCurrentSession(prev => {
-        if (!prev && data.sessions?.length > 0) {
-          return data.sessions[0];
+        if (!prev && fetchedSessions.length > 0) {
+          return fetchedSessions[0];
         }
         return prev;
       });
@@ -47,7 +67,7 @@ export function useChatSessions(user?: { id: string; email: string; name: string
   }, []); // No dependencies needed since we use ref
 
   /**
-   * Create a new chat session
+   * Create a new chat session (optimistically with cache update)
    */
   const createSession = useCallback(async (title?: string) => {
     const currentUser = userRef.current;
@@ -72,8 +92,11 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       const data = await response.json();
       const newSession = data.session;
       
-      // Reload sessions to get updated list
-      await loadSessions();
+      // Update cache
+      sessionCache.addSession(currentUser.id, newSession);
+      
+      // Optimistically update sessions list without refetching all
+      setSessions(prev => [newSession, ...prev]);
       setCurrentSession(newSession);
       
       return newSession;
@@ -81,7 +104,7 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       console.error('Error creating session:', error);
       throw error;
     }
-  }, [loadSessions]);
+  }, []); // Removed dependency on loadSessions
 
   /**
    * Switch to a different session
@@ -104,13 +127,21 @@ export function useChatSessions(user?: { id: string; email: string; name: string
   }, []);
 
   /**
-   * Update session title (placeholder - to be implemented)
+   * Update session title (optimistically with cache update)
    */
   const updateSessionTitle = useCallback(async (sessionId: string, title: string) => {
     const currentUser = userRef.current;
     if (!currentUser) return false
 
     try {
+      // Optimistically update the title in local state and cache
+      setSessions(prev => prev.map(session => 
+        session.id === sessionId 
+          ? { ...session, title }
+          : session
+      ));
+      sessionCache.updateSession(currentUser.id, sessionId, { title });
+
       const response = await fetch('/api/chat/sessions', {
         method: 'PATCH',
         headers: {
@@ -124,11 +155,12 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       })
 
       if (!response.ok) {
+        // Revert the optimistic update on failure
+        sessionCache.clear(currentUser.id); // Clear cache to force reload
+        await loadSessions();
         throw new Error('Failed to update session title')
       }
 
-      // Reload sessions to get updated list
-      await loadSessions()
       return true
     } catch (error) {
       console.error('Error updating session title:', error)
@@ -143,12 +175,16 @@ export function useChatSessions(user?: { id: string; email: string; name: string
     console.warn('Clear all sessions not yet implemented');
   }, []);
 
-  // Initialize sessions on mount when user is available
+  // Initialize sessions on mount when user is available (only once)
   useEffect(() => {
-    if (user) {
+    let isMounted = true;
+    if (user && isMounted) {
       loadSessions();
     }
-  }, [user?.id]); // Only depend on user.id instead of the whole user object and loadSessions
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, loadSessions]); // Only load once when user changes
 
   return {
     sessions,
@@ -171,13 +207,13 @@ export function useChatMessages() {
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Send a message via API
+   * Send a message via API (optimistic update)
    */
   const sendMessage = useCallback(async (
     content: string, 
     userId: string,
     model: string = 'gpt-4'
-  ): Promise<ChatMessage | null> => {
+  ): Promise<{ userMessage?: ChatMessage; assistantMessage?: ChatMessage; message?: ChatMessage } | null> => {
     setIsTyping(true);
     setError(null);
 
@@ -199,7 +235,7 @@ export function useChatMessages() {
       }
 
       const data = await response.json();
-      return data.message;
+      return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMessage);
@@ -211,7 +247,7 @@ export function useChatMessages() {
   }, []);
 
   /**
-   * Get messages for a session via API
+   * Get messages for a session via API (cache locally)
    */
   const getSessionMessages = useCallback(async (sessionId: string, userId: string): Promise<ChatMessage[]> => {
     try {

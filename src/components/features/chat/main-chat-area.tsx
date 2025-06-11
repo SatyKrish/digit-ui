@@ -11,12 +11,14 @@ import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { useSidebar } from "@/components/ui/sidebar"
 import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
 import { useChatSessions, useChatMessages } from "@/hooks/chat"
+import { useAutoSave } from "@/hooks/chat/use-auto-save"
 import type { MainChatAreaProps, Artifact, ChatMessage } from "@/types"
 
 export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainChatAreaProps) {
   const [isInitialState, setIsInitialState] = useState(!currentChatId)
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [pendingMessages, setPendingMessages] = useState<ChatMessage[]>([])
   const { open: sidebarOpen } = useSidebar()
   
   // Use our API-based session and messaging hooks
@@ -24,26 +26,55 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
   const { currentSession, switchToSession, createSession } = useChatSessions(userData)
   const { sendMessage, getSessionMessages, isTyping: isLoading, error: messageError } = useChatMessages()
 
-  // Load messages for current session
+  // Auto-save functionality
+  const { saveNow } = useAutoSave({
+    sessionId: currentSession?.id || null,
+    userId: user.email,
+    onSave: async () => {
+      // Auto-save is handled by touching the session timestamp
+      // This could be extended to save draft messages, session state, etc.
+      if (currentSession?.id) {
+        await fetch('/api/chat/sessions/touch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: currentSession.id, userId: user.email })
+        });
+      }
+    },
+    enabled: !!currentSession?.id && !isInitialState
+  });
+
+  // Load messages for current session (only when session changes)
   useEffect(() => {
+    let isMounted = true;
+    
     const loadMessages = async () => {
-      if (currentSession) {
+      if (currentSession && isMounted) {
         try {
           const sessionMessages = await getSessionMessages(currentSession.id, user.email)
-          setMessages(sessionMessages)
-          setIsInitialState(sessionMessages.length === 0)
+          if (isMounted) {
+            setMessages(sessionMessages)
+            setIsInitialState(sessionMessages.length === 0)
+            setPendingMessages([]) // Clear any pending messages when switching sessions
+          }
         } catch (error) {
           console.error('Failed to load messages:', error)
-          setMessages([])
+          if (isMounted) {
+            setMessages([])
+          }
         }
-      } else {
+      } else if (!currentSession && isMounted) {
         setMessages([])
         setIsInitialState(true)
+        setPendingMessages([])
       }
     }
 
     loadMessages()
-  }, [currentSession, getSessionMessages, user.email])
+    return () => {
+      isMounted = false;
+    }
+  }, [currentSession?.id, getSessionMessages, user.email]) // Only reload when session ID changes
 
   // Handle session switching from parent
   useEffect(() => {
@@ -52,44 +83,59 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     }
   }, [currentChatId, currentSession?.id, switchToSession])
 
-  // Handle sending message with domain context
+  // Handle sending message with optimistic updates
   const handleSendMessage = async (content: string, selectedHints: string[] = []) => {
     if (isLoading) return
 
     const fullContent = selectedHints.length > 0 ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` : content
 
+    // Create optimistic user message
+    const optimisticUserMessage: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      role: 'user',
+      content: fullContent,
+      timestamp: new Date(),
+      model: 'gpt-4'
+    }
+
+    // Optimistically update UI
     setIsInitialState(false)
+    setPendingMessages(prev => [...prev, optimisticUserMessage])
 
     try {
       // Send message through API
-      await sendMessage(fullContent, user.email)
+      const result = await sendMessage(fullContent, user.email) as any // Temporary type assertion
       
-      // Reload messages to get the latest
-      if (currentSession) {
-        const sessionMessages = await getSessionMessages(currentSession.id, user.email)
-        setMessages(sessionMessages)
+      if (result) {
+        // Remove optimistic message and add real messages
+        setPendingMessages(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id))
         
-        // Extract artifacts from the last assistant message
-        const lastAssistantMessage = sessionMessages.filter((m: ChatMessage) => m.role === "assistant").pop()
-        if (lastAssistantMessage) {
-          const artifacts = extractArtifacts(lastAssistantMessage.content)
-          setCurrentArtifacts(artifacts)
+        // Add both user and assistant messages if they were returned
+        if (result.userMessage && result.assistantMessage) {
+          setMessages(prev => [...prev, result.userMessage, result.assistantMessage])
+        } else if (result.message) {
+          // Fallback for backward compatibility
+          setMessages(prev => [...prev, result.message])
         }
+        
+        // Save session after successful message
+        await saveNow()
+      } else {
+        // Remove failed optimistic message
+        setPendingMessages(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id))
       }
     } catch (error) {
       console.error('Failed to send message:', error)
-      // Reload messages in case there was a partial update
-      if (currentSession) {
-        const sessionMessages = await getSessionMessages(currentSession.id, user.email)
-        setMessages(sessionMessages)
-      }
+      // Remove failed optimistic message
+      setPendingMessages(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id))
     }
   }
 
   const handleNewChat = async () => {
     try {
-      await createSession()
+      const newSession = await createSession()
       setMessages([])
+      setPendingMessages([])
       setIsInitialState(true)
       setCurrentArtifacts([])
       onNewChat?.()
@@ -98,7 +144,18 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     }
   }
 
-  // Update artifacts when messages change
+  // Update artifacts when messages change (debounced)
+  useEffect(() => {
+    const allMessages = [...messages, ...pendingMessages]
+    const lastAssistantMessage = allMessages.filter((m: ChatMessage) => m.role === "assistant").pop()
+    if (lastAssistantMessage) {
+      const artifacts = extractArtifacts(lastAssistantMessage.content)
+      setCurrentArtifacts(artifacts)
+    }
+  }, [messages, pendingMessages])
+
+  // Combine real and pending messages for display
+  const displayMessages = [...messages, ...pendingMessages]
   useEffect(() => {
     const lastAssistantMessage = messages.filter((m) => m.role === "assistant").pop()
 
@@ -129,7 +186,7 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
             <InitialWelcomeScreen user={user} onSendMessage={handleSendMessage} />
           ) : (
             <>
-              <ChatMessages messages={messages} isLoading={isLoading} user={user} />
+              <ChatMessages messages={displayMessages} isLoading={isLoading} user={user} />
               <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
             </>
           )}

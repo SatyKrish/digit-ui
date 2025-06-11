@@ -200,6 +200,24 @@ export class ChatService {
   }
 
   /**
+   * Touch session to update its timestamp (for auto-save)
+   */
+  async touchSession(sessionId: string): Promise<boolean> {
+    if (!this.currentUserId) {
+      return false;
+    }
+
+    // Verify session belongs to current user
+    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    if (!dbSession || dbSession.user_id !== this.currentUserId) {
+      return false;
+    }
+
+    this.sessionRepository.touchSession(sessionId);
+    return true;
+  }
+
+  /**
    * Send message to chat API
    * @deprecated Use the /api/chat/messages endpoint directly instead
    */

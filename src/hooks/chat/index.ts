@@ -1,4 +1,5 @@
 export { useMessageArtifacts } from './use-message-artifacts';
+export { useAutoSave } from './use-auto-save';
 
 // Directly export hook functions to avoid module resolution issues
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -180,7 +181,7 @@ export function useChatMessages() {
     content: string, 
     userId: string,
     model: string = 'gpt-4'
-  ): Promise<ChatMessage | null> => {
+  ): Promise<{ userMessage?: ChatMessage; assistantMessage?: ChatMessage; message?: ChatMessage } | null> => {
     setIsTyping(true);
     setError(null);
 
@@ -202,7 +203,7 @@ export function useChatMessages() {
       }
 
       const data = await response.json();
-      return data.message;
+      return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMessage);

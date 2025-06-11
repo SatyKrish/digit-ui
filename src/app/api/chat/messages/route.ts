@@ -130,7 +130,12 @@ export async function POST(request: NextRequest) {
       model: model
     })
 
-    return NextResponse.json({ message: assistantMessage })
+    // Return both messages for optimistic updates
+    return NextResponse.json({ 
+      userMessage,
+      assistantMessage,
+      message: assistantMessage // Keep backward compatibility
+    })
   } catch (error) {
     console.error('Failed to send message:', error)
     return NextResponse.json(

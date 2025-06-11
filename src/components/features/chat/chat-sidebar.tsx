@@ -34,8 +34,8 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
   const handleNewChat = async () => {
     setIsClosing(true)
     try {
-      // Create new session
-      await createSession()
+      // Create new session without reloading all sessions
+      const newSession = await createSession()
       // Smooth close animation before action
       setTimeout(() => {
         onNewChat()
