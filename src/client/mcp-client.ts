@@ -8,7 +8,7 @@ export interface MCPServer {
   id: string
   name: string
   description: string
-  status: "connected" | "disconnected" | "error" | "connecting"
+  status: "connected" | "disconnected" | "error" | "connecting" | "fallback"
   tools: string[]
   error?: string
   url?: string
@@ -147,8 +147,8 @@ class MCPClientImpl {
 
     if (!server.url) {
       // Create fallback server without real connection
-      server.status = "connected"
-      server.error = undefined
+      server.status = "fallback"
+      server.error = "No URL configured - running in fallback mode"
       this.addFallbackTools(serverId)
       return server
     }
@@ -267,11 +267,11 @@ class MCPClientImpl {
       }
     }
 
-    // Check if server is connected
-    if (server.status !== "connected") {
+    // Check if server is connected (allow fallback mode for tools)
+    if (server.status !== "connected" && server.status !== "fallback") {
       return {
         success: false,
-        error: `Server ${serverId} is not connected`,
+        error: `Server ${serverId} is not connected (status: ${server.status})`,
       }
     }
 
@@ -357,9 +357,16 @@ class MCPClientImpl {
 
   // Handle fallback tools for servers without real connections
   private handleFallbackTool(serverId: string, toolName: string, args: any): MCPToolResult {
+    console.log(`Executing fallback tool ${toolName} on ${serverId}:`, args)
+    
+    // Provide helpful error message based on the tool type
+    const server = this.servers.find(s => s.id === serverId)
+    const serverName = server?.name || serverId
+    const envVar = `MCP_${serverId.toUpperCase().replace('-', '_')}_SERVER_URL`
+    
     return {
       success: false,
-      error: `Fallback mode: Real MCP server for ${serverId} not configured. Please set MCP_${serverId.toUpperCase().replace('-', '_')}_SERVER_URL environment variable.`,
+      error: `Tool "${toolName}" is running in fallback mode on ${serverName}. To enable real functionality, configure the ${envVar} environment variable with your MCP server URL.`,
     }
   }
 

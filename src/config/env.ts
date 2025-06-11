@@ -39,6 +39,7 @@ export const env = {
 
   // Feature Flags
   ENABLE_MCP: getEnvVar('ENABLE_MCP', 'true') === 'true',
+  ENABLE_MCP_FALLBACK: getEnvVar('ENABLE_MCP_FALLBACK', 'true') === 'true',
   ENABLE_ANALYTICS: getEnvVar('ENABLE_ANALYTICS', 'false') === 'true',
 } as const
 

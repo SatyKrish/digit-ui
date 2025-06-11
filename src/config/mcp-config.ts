@@ -9,6 +9,7 @@ export interface MCPServerConfig {
   command?: string
   args?: string[]
   enabled: boolean
+  /** Enable fallback mode when server URL is not configured */
   fallback?: boolean
 }
 
@@ -55,8 +56,13 @@ export const getActiveMCPServers = (): MCPServerConfig[] => {
   }
 
   return defaultMCPServers.filter(server => {
-    // Enable server if it has a URL or fallback is enabled
-    return server.enabled && (server.url || server.fallback)
+    // Always include servers with URLs
+    if (server.url) {
+      return server.enabled
+    }
+    
+    // Only include servers without URLs if fallback is enabled globally and per-server
+    return server.enabled && server.fallback && env.ENABLE_MCP_FALLBACK
   })
 }
 
