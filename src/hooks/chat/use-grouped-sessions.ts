@@ -14,8 +14,8 @@ export function useGroupedChatSessions(sessions: ChatSession[]): {
     const groups: GroupedChatSessions = {}
     
     sessions.forEach(session => {
-      // Use updatedAt if available, otherwise use timestamp
-      const date = session.updatedAt || session.timestamp
+      // Use updatedAt if available, otherwise use timestamp, or fallback to current date
+      const date = session.updatedAt || session.timestamp || new Date()
       const period = getTimePeriod(date)
       
       if (!groups[period]) {
@@ -29,8 +29,8 @@ export function useGroupedChatSessions(sessions: ChatSession[]): {
       const period = key as TimePeriod
       if (groups[period]) {
         groups[period]!.sort((a, b) => {
-          const dateA = new Date(a.updatedAt || a.timestamp).getTime()
-          const dateB = new Date(b.updatedAt || b.timestamp).getTime()
+          const dateA = new Date(a.updatedAt || a.timestamp || new Date()).getTime()
+          const dateB = new Date(b.updatedAt || b.timestamp || new Date()).getTime()
           return dateB - dateA // Most recent first
         })
       }

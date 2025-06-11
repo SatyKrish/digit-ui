@@ -3,6 +3,12 @@
  */
 export function formatDate(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
+  
+  // Check if date is valid
+  if (!d || isNaN(d.getTime())) {
+    return 'Invalid date'
+  }
+  
   return d.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short', 
@@ -15,6 +21,12 @@ export function formatDate(date: string | Date): string {
  */
 export function formatRelativeTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
+  
+  // Check if date is valid
+  if (!d || isNaN(d.getTime())) {
+    return 'Unknown date'
+  }
+  
   const now = new Date()
   const diffInMs = now.getTime() - d.getTime()
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
@@ -59,6 +71,12 @@ export type TimePeriod = 'today' | 'yesterday' | 'last-week' | 'last-month' | 'o
  */
 export function getTimePeriod(date: string | Date): TimePeriod {
   const d = typeof date === 'string' ? new Date(date) : date
+  
+  // Check if date is valid
+  if (!d || isNaN(d.getTime())) {
+    return 'older' // Default to 'older' for invalid dates
+  }
+  
   const now = new Date()
   const diffInMs = now.getTime() - d.getTime()
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
