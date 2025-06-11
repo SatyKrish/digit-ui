@@ -233,6 +233,7 @@ class MCPClientImpl {
     }
 
     server.status = "connecting"
+    console.log(`Connecting to MCP server ${serverId} at ${server.url}`)
     
     // Set connection timeout
     const connectionTimeout = setTimeout(() => {
@@ -246,18 +247,13 @@ class MCPClientImpl {
         version: '1.0.0'
       })
 
-      let transport: StreamableHTTPClientTransport
-
-      // Use Streamable HTTP transport only
-      try {
-        transport = new StreamableHTTPClientTransport(new URL(server.url))
-        await client.connect(transport)
-        console.log(`Connected to ${serverId} using Streamable HTTP transport`)
-      } catch (error) {
-        console.error(`Streamable HTTP connection failed for ${serverId}:`, error)
-        throw new Error(`Failed to connect to ${serverId} using Streamable HTTP transport: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      }
-
+      const transport = new StreamableHTTPClientTransport(new URL(server.url))
+      
+      console.log(`Attempting to connect to ${serverId} at ${server.url}`)
+      
+      await client.connect(transport)
+      console.log(`Connected to ${serverId} using Streamable HTTP transport`)
+      
       // Clear the timeout since connection succeeded
       clearTimeout(connectionTimeout)
 
@@ -413,45 +409,57 @@ class MCPClientImpl {
 
   // Refresh tools for a specific server
   async refreshServerTools(serverId: string): Promise<MCPTool[]> {
-    const server = this.servers.find(s => s.id === serverId)
-    if (!server) {
-      throw new Error(`Server ${serverId} not found`)
-    }
-
-    if (server.status !== "connected") {
-      throw new Error(`Server ${serverId} is not connected`)
-    }
-
     const connectedClient = this.clients.get(serverId)
+    const server = this.servers.find(s => s.id === serverId)
     
-    if (!connectedClient) {
-      throw new Error(`No active connection to server ${serverId}`)
+    if (!connectedClient || !server) {
+      return []
     }
 
     try {
-      // Query the server for its available tools
-      const toolsList = await connectedClient.client.listTools()
+      // Using StreamableHTTPClientTransport
+      let tools: any[] = []
       
-      // Remove old tools for this server
+      try {
+        const response = await connectedClient.client.listTools()
+        tools = response.tools || []
+      } catch (error) {
+        console.warn(`Failed to list tools using client.listTools(), trying manual request:`, error)
+        // Fallback to manual request if listTools method fails
+        const response = await fetch(server.url!, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: Date.now(),
+            method: 'tools/list',
+            params: {}
+          })
+        })
+        const data = await response.json()
+        tools = data.result?.tools || []
+      }
+
+      // Remove existing tools for this server
       this.tools = this.tools.filter(tool => tool.serverId !== serverId)
-      
+
       // Add new tools from server response
-      const newTools: MCPTool[] = toolsList.tools.map(tool => ({
+      const newTools: MCPTool[] = tools.map((tool: any) => ({
         name: tool.name,
-        description: tool.description || `Tool: ${tool.name}`,
-        serverId,
+        description: tool.description || '',
+        serverId: serverId,
         serverName: server.name,
-        inputSchema: tool.inputSchema as MCPTool['inputSchema']
+        inputSchema: tool.inputSchema || { type: 'object', properties: {}, required: [] }
       }))
 
       this.tools.push(...newTools)
-      
-      // Update server's tool list
-      server.tools = newTools.map(t => t.name)
-      
+      server.tools = newTools.map(tool => tool.name)
+
+      console.log(`Refreshed ${newTools.length} tools for server ${serverId}:`, newTools.map(t => t.name))
       return newTools
     } catch (error) {
-      throw new Error(`Failed to refresh tools for server ${serverId}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error(`Failed to refresh tools for server ${serverId}:`, error)
+      return []
     }
   }
 
