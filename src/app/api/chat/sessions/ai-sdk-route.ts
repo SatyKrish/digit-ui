@@ -17,16 +17,13 @@ export async function GET(request: NextRequest) {
     const chats = await aiSdkChatService.getUserChats(userId)
     
     // Transform to match the expected format for compatibility
-    const sessions = await Promise.all(chats.map(async (chat) => {
-      const stats = await aiSdkChatService.getChatStats(chat.id)
-      return {
-        id: chat.id,
-        userId: chat.userId,
-        title: chat.title || 'New Chat',
-        createdAt: chat.createdAt,
-        updatedAt: chat.updatedAt,
-        messageCount: stats.messageCount
-      }
+    const sessions = chats.map(chat => ({
+      id: chat.id,
+      userId: chat.userId,
+      title: chat.title || 'New Chat',
+      createdAt: chat.createdAt,
+      updatedAt: chat.updatedAt,
+      messageCount: 0 // Will be populated if needed
     }))
 
     return NextResponse.json({ sessions })
@@ -73,25 +70,26 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+export async function DELETE(request: NextRequest) {
   try {
-    const { userId, sessionId, title } = await request.json()
+    const { searchParams } = new URL(request.url)
+    const sessionId = searchParams.get('sessionId')
 
-    if (!userId || !sessionId || !title) {
+    if (!sessionId) {
       return NextResponse.json(
-        { error: 'User ID, session ID, and title are required' },
+        { error: 'Session ID is required' },
         { status: 400 }
       )
     }
 
-    // Update chat title using AI SDK service
-    await aiSdkChatService.updateChatTitle(sessionId, title)
+    // Delete chat using AI SDK service
+    await aiSdkChatService.deleteChat(sessionId)
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Failed to update session title:', error)
+    console.error('Failed to delete session:', error)
     return NextResponse.json(
-      { error: 'Failed to update session title' },
+      { error: 'Failed to delete session' },
       { status: 500 }
     )
   }

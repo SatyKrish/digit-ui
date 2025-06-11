@@ -1,0 +1,267 @@
+"use client"
+
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { SidebarInset } from "@/components/ui/sidebar"
+import { ChatHeader } from "./chat-header"
+import { ChatMessages } from "./chat-messages"
+import { ChatInput } from "./chat-input"
+import { InitialWelcomeScreen } from "./initial-welcome-screen"
+import { ArtifactPanel } from "../artifacts/artifact-panel"
+import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
+import { useSidebar } from "@/components/ui/sidebar"
+import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
+import { useChat } from "@ai-sdk/react"
+import { toast } from "sonner"
+import type { MainChatAreaProps, Artifact } from "@/types"
+import type { Message } from "ai"
+
+interface AiSdkMainChatAreaProps extends MainChatAreaProps {
+  // Additional props for enhanced functionality
+  enableSmootherStreaming?: boolean;
+  enableThrottling?: boolean;
+  maxRetries?: number;
+}
+
+export function AiSdkMainChatArea({ 
+  user, 
+  currentChatId, 
+  onLogout, 
+  onNewChat,
+  enableSmootherStreaming = true,
+  enableThrottling = true,
+  maxRetries = 3
+}: AiSdkMainChatAreaProps) {
+  const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
+  const [retryCount, setRetryCount] = useState(0)
+  const { open: sidebarOpen } = useSidebar()
+  
+  // Initialize user in chat service via API
+  useEffect(() => {
+    const initializeUser = async () => {
+      if (user?.email) {
+        try {
+          await fetch('/api/chat/init', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.email,
+              name: user.name,
+              email: user.email
+            })
+          })
+        } catch (error) {
+          console.error('Failed to initialize user:', error)
+          toast.error('Failed to initialize chat session')
+        }
+      }
+    }
+    
+    initializeUser()
+  }, [user?.email, user?.name])
+
+  // Enhanced error handling with retry logic
+  const handleError = useCallback((error: Error) => {
+    console.error('Chat error:', error)
+    
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1)
+      toast.error(`Connection error. Retrying... (${retryCount + 1}/${maxRetries})`)
+    } else {
+      toast.error('Unable to connect to chat service. Please refresh the page.')
+    }
+  }, [retryCount, maxRetries])
+
+  // Enhanced finish handler with better error recovery
+  const handleFinish = useCallback((message: Message) => {
+    // Reset retry count on successful message
+    setRetryCount(0)
+    
+    console.log('Message finished:', message.id)
+    
+    // Update artifacts from the completed message
+    if (message.role === 'assistant') {
+      try {
+        const artifacts = extractArtifacts(message.content)
+        setCurrentArtifacts(artifacts)
+      } catch (error) {
+        console.error('Failed to extract artifacts:', error)
+        // Don't show user error for artifact extraction failures
+      }
+    }
+  }, [])
+
+  // Use Vercel AI SDK's useChat hook with enhanced configuration
+  const { 
+    messages, 
+    input, 
+    handleInputChange, 
+    handleSubmit, 
+    isLoading, 
+    error,
+    setMessages,
+    reload,
+    setInput,
+    append,
+    status // New AI SDK feature for connection status
+  } = useChat({
+    id: currentChatId || undefined,
+    api: '/api/chat',
+    body: {
+      userId: user?.email,
+      id: currentChatId || undefined,
+      enableSmootherStreaming,
+      enableThrottling
+    },
+    // Load initial messages for existing chats
+    initialMessages: useMemo(() => {
+      // This will be populated by the API route when currentChatId is provided
+      return []
+    }, [currentChatId]),
+    onFinish: handleFinish,
+    onError: handleError
+  })
+
+  // Check if we're on the initial welcome screen
+  const isInitialState = !currentChatId && messages.length === 0
+
+  // Enhanced message sending with better error handling
+  const handleSendMessage = useCallback(async (content: string, selectedHints: string[] = []) => {
+    if (isLoading) {
+      toast.warning('Please wait for the current message to complete')
+      return
+    }
+
+    if (!content.trim()) {
+      toast.warning('Please enter a message')
+      return
+    }
+
+    const fullContent = selectedHints.length > 0 
+      ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` 
+      : content
+
+    try {
+      // If no current chat ID, this will be a new chat
+      if (!currentChatId && onNewChat) {
+        onNewChat()
+      }
+
+      // Use AI SDK's append function
+      await append({
+        role: 'user',
+        content: fullContent
+      })
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      toast.error('Failed to send message. Please try again.')
+    }
+  }, [isLoading, currentChatId, onNewChat, append])
+
+  // Enhanced navigation with cleanup
+  const handleNavigateHome = useCallback(() => {
+    // Clear current state
+    setMessages([])
+    setCurrentArtifacts([])
+    setRetryCount(0)
+    
+    // Navigate to welcome screen
+    onNewChat?.()
+  }, [setMessages, onNewChat])
+
+  // Enhanced retry functionality
+  const handleRetry = useCallback(async () => {
+    if (retryCount >= maxRetries) {
+      toast.error('Maximum retries reached. Please refresh the page.')
+      return
+    }
+
+    try {
+      await reload()
+    } catch (error) {
+      console.error('Retry failed:', error)
+      handleError(error as Error)
+    }
+  }, [retryCount, maxRetries, reload, handleError])
+
+  // Update artifacts when messages change (memoized for performance)
+  const lastArtifacts = useMemo(() => {
+    const lastAssistantMessage = messages.filter((m) => m.role === "assistant").pop()
+    if (lastAssistantMessage) {
+      try {
+        return extractArtifacts(lastAssistantMessage.content)
+      } catch (error) {
+        console.error('Failed to extract artifacts:', error)
+        return []
+      }
+    }
+    return []
+  }, [messages])
+
+  // Update artifacts state when artifacts change
+  useEffect(() => {
+    setCurrentArtifacts(lastArtifacts)
+  }, [lastArtifacts])
+
+  // Determine if we should show the artifact panel
+  const showArtifactPanel = currentArtifacts && currentArtifacts.length > 0
+
+  // Connection status indicator
+  const connectionStatus = useMemo(() => {
+    if (status === 'streaming') return 'Thinking...'
+    if (error) return 'Connection error'
+    if (status === 'ready') return 'Ready'
+    return ''
+  }, [status, error])
+
+  return (
+    <SidebarInset className="flex flex-col relative transition-all duration-300 ease-in-out">
+      <SidebarHoverTrigger />
+      <ChatHeader 
+        user={user} 
+        onLogout={onLogout} 
+        onNavigateHome={handleNavigateHome}
+      />
+
+      <div className="flex-1 flex min-h-0 transition-all duration-300 ease-in-out">
+        <div
+          className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${
+            showArtifactPanel ? "mr-2" : ""
+          }`}
+        >
+          {isInitialState ? (
+            <InitialWelcomeScreen user={user} onSendMessage={handleSendMessage} />
+          ) : (
+            <>
+              <ChatMessages 
+                messages={messages.map(msg => ({
+                  id: msg.id,
+                  role: msg.role as 'user' | 'assistant' | 'system',
+                  content: msg.content,
+                  timestamp: msg.createdAt || new Date(),
+                  model: 'gpt-4',
+                  isError: false
+                }))} 
+                isLoading={isLoading}
+                user={user} 
+              />
+              <ChatInput 
+                onSendMessage={handleSendMessage} 
+                isLoading={isLoading}
+              />
+            </>
+          )}
+        </div>
+
+        {showArtifactPanel && (
+          <div
+            className={`transition-all duration-300 ease-in-out ${
+              sidebarOpen ? "w-96" : "w-[28rem]"
+            }`}
+          >
+            <ArtifactPanel artifacts={currentArtifacts} />
+          </div>
+        )}
+      </div>
+    </SidebarInset>
+  )
+}
