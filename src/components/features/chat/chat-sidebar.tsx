@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSidebar } from "@/components/ui/sidebar"
+import { MCPToolsPanel } from "@/components/shared/mcp-tools-panel"
 import { useChatSessions, useGroupedChatSessions } from "@/hooks/chat"
 import { formatRelativeTime } from "@/utils/format"
 import type { ChatSidebarProps, ChatSession, TimePeriod } from "@/types/chat"
@@ -33,11 +34,12 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
   const handleNewChat = async () => {
     setIsClosing(true)
     try {
-      // Create new session
-      await createSession()
+      // Create new session without reloading all sessions
+      const newSession = await createSession()
       // Smooth close animation before action
       setTimeout(() => {
-        onNewChat()
+        // Switch to the new session instead of just calling onNewChat
+        onChatSelect(newSession.id)
         setOpen(false)
         setIsClosing(false)
       }, 150)

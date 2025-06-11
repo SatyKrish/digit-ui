@@ -13,21 +13,31 @@ export class ChatService {
   private messageRepository = getMessageRepository();
   private currentUserId: string | null = null;
   private currentSessionId: string | null = null;
+  private initializedUsers = new Set<string>(); 
 
   /**
    * Initialize service for a user
    */
   async initializeForUser(userData: { id: string; email: string; name: string }): Promise<void> {
+    // Skip initialization if user is already initialized
+    if (this.currentUserId === userData.id && this.initializedUsers.has(userData.id)) {
+      return;
+    }
+
     this.currentUserId = userData.id;
     
-    // Ensure user exists in database
-    const createUserData: CreateUser = {
-      id: userData.id,
-      email: userData.email,
-      name: userData.name
-    };
-    
-    this.userRepository.upsertUser(createUserData);
+    // Only upsert user if not already initialized
+    if (!this.initializedUsers.has(userData.id)) {
+      // Ensure user exists in database
+      const createUserData: CreateUser = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name
+      };
+      
+      this.userRepository.upsertUser(createUserData);
+      this.initializedUsers.add(userData.id);
+    }
     
     // Get or create a session for the user
     const sessions = this.sessionRepository.getSessionsForUser(userData.id, 1);
@@ -200,54 +210,44 @@ export class ChatService {
   }
 
   /**
+   * Touch session to update its timestamp (for auto-save)
+   */
+  async touchSession(sessionId: string): Promise<boolean> {
+    if (!this.currentUserId) {
+      return false;
+    }
+
+    // Verify session belongs to current user
+    const dbSession = this.sessionRepository.getSessionById(sessionId);
+    if (!dbSession || dbSession.user_id !== this.currentUserId) {
+      return false;
+    }
+
+    this.sessionRepository.touchSession(sessionId);
+    return true;
+  }
+
+  /**
    * Send message to chat API
+   * @deprecated Use the /api/chat/messages endpoint directly instead
    */
   async sendMessage(content: string, model?: string): Promise<ChatMessage> {
+    console.warn('chatService.sendMessage is deprecated. Use /api/chat/messages endpoint directly.')
+    
     const userMessage = await this.addMessage({
       role: 'user',
       content,
       model: model || 'gpt-4'
     });
 
-    try {
-      const response = await fetch(API_ROUTES.CHAT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: content,
-          model: model || 'gpt-4',
-          sessionId: this.currentSessionId
-        })
-      });
+    // For backward compatibility, return a simple response
+    const assistantMessage = await this.addMessage({
+      role: 'assistant',
+      content: 'Please use the updated chat API for proper MCP integration.',
+      model: model || 'gpt-4'
+    });
 
-      if (!response.ok) {
-        throw new Error(`Chat API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      const assistantMessage = await this.addMessage({
-        role: 'assistant',
-        content: data.message || data.content,
-        model: model || 'gpt-4'
-      });
-
-      return assistantMessage;
-    } catch (error) {
-      console.error('Error sending message:', error);
-      
-      // Add error message to chat
-      const errorMessage = await this.addMessage({
-        role: 'assistant',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
-        model: model || 'gpt-4',
-        isError: true
-      });
-
-      throw error;
-    }
+    return assistantMessage;
   }
 
   /**
@@ -278,6 +278,19 @@ export class ChatService {
 
     const dbMessages = this.messageRepository.getMessagesForSession(sessionId);
     return dbMessages.map(this.mapDbMessageToMessage);
+  }
+
+  /**
+   * Clear user initialization cache (useful for logout or user switching)
+   */
+  clearUserCache(userId?: string): void {
+    if (userId) {
+      this.initializedUsers.delete(userId);
+    } else {
+      this.initializedUsers.clear();
+      this.currentUserId = null;
+      this.currentSessionId = null;
+    }
   }
 
   // Helper methods for mapping database types to application types

@@ -10,40 +10,97 @@ import { ArtifactPanel } from "../artifacts/artifact-panel"
 import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { useSidebar } from "@/components/ui/sidebar"
 import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
-import { useChatSessions, useChatMessages } from "@/hooks/chat"
-import type { MainChatAreaProps, Artifact, ChatMessage } from "@/types"
+import { useChat } from "@ai-sdk/react"
+import { useChatSessions } from "@/hooks/chat"
+import type { MainChatAreaProps, Artifact } from "@/types"
+import type { Message } from "ai"
 
 export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainChatAreaProps) {
-  const [isInitialState, setIsInitialState] = useState(!currentChatId)
+  // Always start with welcome screen when no specific chat is selected
+  const [isInitialState, setIsInitialState] = useState(true)
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [isUserDataReady, setIsUserDataReady] = useState(false)
   const { open: sidebarOpen } = useSidebar()
   
-  // Use our API-based session and messaging hooks
+  // Use simplified session management
   const userData = { id: user.email, email: user.email, name: user.name }
   const { currentSession, switchToSession, createSession } = useChatSessions(userData)
-  const { sendMessage, getSessionMessages, isTyping: isLoading, error: messageError } = useChatMessages()
 
-  // Load messages for current session
+  // Wait for user data to be properly loaded before proceeding
+  useEffect(() => {
+    if (user && user.email && user.name) {
+      setIsUserDataReady(true)
+    }
+  }, [user])
+  
+  // Use Vercel AI SDK's useChat hook with current session ID
+  const { 
+    messages, 
+    input, 
+    handleInputChange, 
+    handleSubmit, 
+    isLoading, 
+    error,
+    setMessages,
+    reload,
+    setInput
+  } = useChat({
+    id: currentChatId || undefined,
+    api: '/api/chat',
+    body: {
+      userId: user.email
+    },
+    onFinish: async (message) => {
+      // Auto-save session on completion
+      if (currentSession?.id) {
+        try {
+          await fetch('/api/chat/sessions/touch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: currentSession.id, userId: user.email })
+          });
+        } catch (error) {
+          console.error('Failed to auto-save session:', error);
+        }
+      }
+    },
+    onError: (error) => {
+      console.error('Chat error:', error);
+    }
+  })
+
+  // Load messages for current session when it changes
   useEffect(() => {
     const loadMessages = async () => {
-      if (currentSession) {
-        try {
-          const sessionMessages = await getSessionMessages(currentSession.id, user.email)
-          setMessages(sessionMessages)
-          setIsInitialState(sessionMessages.length === 0)
-        } catch (error) {
-          console.error('Failed to load messages:', error)
-          setMessages([])
-        }
-      } else {
-        setMessages([])
-        setIsInitialState(true)
-      }
-    }
+      // Only load messages if user data is ready
+      if (!isUserDataReady) return
 
-    loadMessages()
-  }, [currentSession, getSessionMessages, user.email])
+      if (currentChatId && currentSession?.id === currentChatId) {
+        try {
+          const response = await fetch(`/api/chat/messages?sessionId=${currentChatId}&userId=${user.email}`);
+          if (response.ok) {
+            const data = await response.json();
+            const sessionMessages: Message[] = data.messages.map((msg: any) => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              createdAt: new Date(msg.timestamp)
+            }));
+            setMessages(sessionMessages);
+            setIsInitialState(false);
+          }
+        } catch (error) {
+          console.error('Failed to load messages:', error);
+        }
+      } else if (!currentChatId) {
+        // No chat ID selected - show welcome screen (only if user data is ready)
+        setMessages([]);
+        setIsInitialState(true);
+      }
+    };
+
+    loadMessages();
+  }, [currentChatId, currentSession?.id, setMessages, user.email, isUserDataReady])
 
   // Handle session switching from parent
   useEffect(() => {
@@ -52,43 +109,35 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     }
   }, [currentChatId, currentSession?.id, switchToSession])
 
-  // Handle sending message with domain context
+  // Handle sending message with domain hints
   const handleSendMessage = async (content: string, selectedHints: string[] = []) => {
     if (isLoading) return
 
     const fullContent = selectedHints.length > 0 ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` : content
 
-    setIsInitialState(false)
-
-    try {
-      // Send message through API
-      await sendMessage(fullContent, user.email)
-      
-      // Reload messages to get the latest
-      if (currentSession) {
-        const sessionMessages = await getSessionMessages(currentSession.id, user.email)
-        setMessages(sessionMessages)
-        
-        // Extract artifacts from the last assistant message
-        const lastAssistantMessage = sessionMessages.filter((m: ChatMessage) => m.role === "assistant").pop()
-        if (lastAssistantMessage) {
-          const artifacts = extractArtifacts(lastAssistantMessage.content)
-          setCurrentArtifacts(artifacts)
+    // Create a form event to use with handleSubmit
+    const fakeEvent = {
+      preventDefault: () => {},
+      target: {
+        elements: {
+          prompt: { value: fullContent }
         }
       }
-    } catch (error) {
-      console.error('Failed to send message:', error)
-      // Reload messages in case there was a partial update
-      if (currentSession) {
-        const sessionMessages = await getSessionMessages(currentSession.id, user.email)
-        setMessages(sessionMessages)
-      }
-    }
+    } as any;
+
+    // Set the input and submit
+    setInput(fullContent);
+    setIsInitialState(false);
+    
+    // Use a slight delay to ensure input is set
+    setTimeout(() => {
+      handleSubmit(fakeEvent);
+    }, 0);
   }
 
   const handleNewChat = async () => {
     try {
-      await createSession()
+      const newSession = await createSession()
       setMessages([])
       setIsInitialState(true)
       setCurrentArtifacts([])
@@ -98,10 +147,18 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     }
   }
 
+  const handleNavigateHome = () => {
+    // Navigate to welcome screen by resetting state
+    setMessages([])
+    setIsInitialState(true)
+    setCurrentArtifacts([])
+    // Call onNewChat to update the parent's currentChatId to null
+    onNewChat?.()
+  }
+
   // Update artifacts when messages change
   useEffect(() => {
     const lastAssistantMessage = messages.filter((m) => m.role === "assistant").pop()
-
     if (lastAssistantMessage) {
       const artifacts = extractArtifacts(lastAssistantMessage.content)
       setCurrentArtifacts(artifacts)
@@ -114,30 +171,41 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
   return (
     <SidebarInset className="flex flex-col relative transition-all duration-300 ease-in-out">
       <SidebarHoverTrigger />
-      <ChatHeader user={user} onLogout={onLogout} />
+      <ChatHeader user={user} onLogout={onLogout} onNavigateHome={handleNavigateHome} />
 
       <div className="flex-1 flex min-h-0 transition-all duration-300 ease-in-out">
-        {/* Chat Area - takes full width when no artifacts, 1/3 when artifacts are present */}
         <div
-          className={`
-            flex flex-col min-h-0 transition-all duration-300 ease-in-out
-            ${showArtifactPanel ? "w-1/3 border-r" : "w-full"}
-            ${sidebarOpen ? "opacity-95" : "opacity-100"}
-          `}
+          className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${
+            showArtifactPanel ? "mr-2" : ""
+          }`}
         >
-          {isInitialState ? (
+          {isInitialState && !currentChatId ? (
             <InitialWelcomeScreen user={user} onSendMessage={handleSendMessage} />
           ) : (
             <>
-              <ChatMessages messages={messages} isLoading={isLoading} user={user} />
+              <ChatMessages 
+                messages={messages.map(msg => ({
+                  id: msg.id,
+                  role: msg.role as 'user' | 'assistant' | 'system',
+                  content: msg.content,
+                  timestamp: msg.createdAt || new Date(),
+                  model: 'gpt-4',
+                  isError: false
+                }))} 
+                isLoading={isLoading} 
+                user={user} 
+              />
               <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
             </>
           )}
         </div>
 
-        {/* Artifact Panel - only shown when artifacts are present */}
         {showArtifactPanel && (
-          <div className="w-2/3 flex flex-col min-h-0 animate-in slide-in-from-right-1/2 duration-300">
+          <div
+            className={`transition-all duration-300 ease-in-out ${
+              sidebarOpen ? "w-96" : "w-[28rem]"
+            }`}
+          >
             <ArtifactPanel artifacts={currentArtifacts} />
           </div>
         )}

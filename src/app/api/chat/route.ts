@@ -1,9 +1,26 @@
-import { openai } from "@ai-sdk/openai"
 import { streamText, convertToCoreMessages } from "ai"
-import { mcpClient } from "@/mcp/mcp-client"
+import { mcpClient } from "@/client/mcp-client"
+import { chatService } from "@/services/chat/chat-service"
+import { env } from "@/config/env"
+import { getOpenAIModel, openaiConfig } from "@/config/openai"
 
 export async function POST(req: Request) {
-  const { messages } = await req.json()
+  const { messages, userId } = await req.json()
+
+  // Initialize chat service for user if userId is provided
+  if (userId) {
+    await chatService.initializeForUser({
+      id: userId,
+      email: userId,
+      name: 'User'
+    })
+  }
+
+  // Ensure MCP client is properly initialized before processing the request
+  if (!mcpClient.isReady()) {
+    console.log('MCP client not ready, initializing...')
+    await mcpClient.initialize()
+  }
 
   // Get available MCP servers and their capabilities
   const servers = mcpClient.getAvailableServers()
@@ -229,11 +246,38 @@ Always provide clear, professional responses suitable for enterprise use.
 Available domains: Account, Party, Holdings, Transaction, Customer, Product, Order, Payment`
 
   const result = await streamText({
-    model: openai("gpt-4o"),
+    model: getOpenAIModel(openaiConfig.model),
     system: systemPrompt,
     messages: convertToCoreMessages(messages),
     tools,
     maxSteps: 5,
+    onFinish: async ({ response, finishReason, usage, text }) => {
+      // Save messages to database if userId is provided
+      if (userId) {
+        try {
+          // Save the user message (last message in the input)
+          const userMessage = messages[messages.length - 1]
+          if (userMessage && userMessage.role === 'user') {
+            await chatService.addMessage({
+              role: 'user',
+              content: userMessage.content,
+              model: 'gpt-4o'
+            })
+          }
+
+          // Save the assistant response using the text content
+          if (text) {
+            await chatService.addMessage({
+              role: 'assistant',
+              content: text,
+              model: 'gpt-4o'
+            })
+          }
+        } catch (error) {
+          console.error('Failed to save messages to database:', error)
+        }
+      }
+    }
   })
 
   return result.toDataStreamResponse()

@@ -1,13 +1,12 @@
-import { env } from "./env"
-
 /**
  * Azure AD configuration for MSAL
+ * This configuration contains sensitive environment variables and should only be used server-side
  */
 export const azureConfig = {
-  clientId: env.AZURE_CLIENT_ID,
-  authority: `https://login.microsoftonline.com/${env.AZURE_TENANT_ID}`,
-  redirectUri: env.AZURE_REDIRECT_URI,
-  postLogoutRedirectUri: env.AZURE_POST_LOGOUT_REDIRECT_URI,
+  clientId: process.env.AZURE_CLIENT_ID!,
+  authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID!}`,
+  redirectUri: process.env.AZURE_REDIRECT_URI || 'http://localhost:3000',
+  postLogoutRedirectUri: process.env.AZURE_POST_LOGOUT_REDIRECT_URI || 'http://localhost:3000',
   scopes: {
     default: ["User.Read"],
     extended: ["User.Read", "email", "profile", "openid"]
@@ -45,7 +44,7 @@ export const systemConfig = {
           break
       }
     },
-    logLevel: env.NODE_ENV === 'development' ? 3 : 1, // Verbose in dev, Warning in prod
+    logLevel: (process.env.NODE_ENV || 'development') === 'development' ? 3 : 1, // Verbose in dev, Warning in prod
     piiLoggingEnabled: false
   }
 }

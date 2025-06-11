@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { MCPStatus } from "@/components/shared/mcp-status"
 
 interface User {
   name: string
@@ -21,9 +22,10 @@ interface User {
 interface ChatHeaderProps {
   user: User
   onLogout: () => void
+  onNavigateHome?: () => void
 }
 
-export function ChatHeader({ user, onLogout }: ChatHeaderProps) {
+export function ChatHeader({ user, onLogout, onNavigateHome }: ChatHeaderProps) {
   const { theme, setTheme } = useTheme()
 
   // Get user initials (first character of first name)
@@ -32,13 +34,24 @@ export function ChatHeader({ user, onLogout }: ChatHeaderProps) {
   return (
     <header className="flex h-18 shrink-0 items-center gap-6 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 shadow-elegant">
       <div className="flex-1 flex items-center gap-4">
-        {/* Company Logo with theme-aware styling */}
-        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105">
-          <svg className="w-6 h-6 text-primary-foreground" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-          </svg>
+        {/* Company Logo with theme-aware styling - clickable to navigate home */}
+        <button
+          onClick={onNavigateHome}
+          className="flex items-center gap-4 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+          aria-label="Go to welcome screen"
+        >
+          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-soft hover:shadow-medium transition-all duration-200 group-hover:scale-105">
+            <svg className="w-6 h-6 text-primary-foreground" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-primary tracking-tight group-hover:text-primary/80 transition-colors duration-200">DIGIT</h1>
+        </button>
+        
+        {/* MCP Status Display */}
+        <div className="ml-8">
+          <MCPStatus />
         </div>
-        <h1 className="text-2xl font-bold text-primary tracking-tight">DIGIT</h1>
       </div>
 
       <div className="flex items-center gap-3">

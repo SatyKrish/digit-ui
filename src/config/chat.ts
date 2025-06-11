@@ -28,6 +28,14 @@ export const chatConfig = {
   // Auto-save settings
   autoSaveInterval: 30000, // 30 seconds
   
+  // Session management
+  sessionCacheTime: 300000, // 5 minutes
+  maxCachedSessions: 50,
+  
+  // Database optimization
+  batchInsertSize: 10,
+  queryTimeoutMs: 5000,
+  
   // Rate limiting
   messagesPerMinute: 30,
   
@@ -35,4 +43,5 @@ export const chatConfig = {
   enableArtifactPanel: true,
   enableDomainHints: true,
   enableChatHistory: true,
+  enableOptimisticUpdates: true,
 } as const

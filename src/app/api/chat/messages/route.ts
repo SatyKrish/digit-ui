@@ -32,31 +32,5 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const { userId, content, model = 'gpt-4' } = await request.json()
-
-    if (!userId || !content) {
-      return NextResponse.json(
-        { error: 'User ID and content are required' },
-        { status: 400 }
-      )
-    }
-
-    // Initialize chat service for user
-    await chatService.initializeForUser({
-      id: userId,
-      email: userId,
-      name: 'User'
-    })
-
-    const message = await chatService.sendMessage(content, model)
-    return NextResponse.json({ message })
-  } catch (error) {
-    console.error('Failed to send message:', error)
-    return NextResponse.json(
-      { error: 'Failed to send message' },
-      { status: 500 }
-    )
-  }
-}
+// Remove the old POST endpoint since we now use /api/chat directly with useChat
+// This simplifies the architecture and leverages the AI SDK's built-in streaming

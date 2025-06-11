@@ -3,22 +3,52 @@
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { mcpClient } from "@/mcp/mcp-client"
+import { mcpClient } from "@/client/mcp-client"
 import { Database, BarChart3, FileText } from "lucide-react"
 
 export function MCPStatus() {
   const [servers, setServers] = useState<any[]>([])
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
 
   useEffect(() => {
-    // Get MCP servers
-    const availableServers = mcpClient.getAvailableServers()
-    setServers(availableServers)
+    // Initial load
+    const loadServers = async () => {
+      try {
+        // Ensure MCP client is initialized
+        if (!mcpClient.isReady()) {
+          console.log('MCP client not ready, initializing...')
+          await mcpClient.initialize()
+        }
+        
+        const availableServers = mcpClient.getAvailableServers()
+        setServers(availableServers)
+        setLastUpdate(Date.now())
+        console.log('MCP servers loaded:', availableServers.map(s => `${s.name}: ${s.status}`))
+      } catch (error) {
+        console.error('Failed to load MCP servers:', error)
+      }
+    }
 
-    // Refresh every 30 seconds
-    const interval = setInterval(() => {
-      const updatedServers = mcpClient.getAvailableServers()
-      setServers(updatedServers)
-    }, 30000)
+    loadServers()
+
+    // Refresh every 10 seconds for more responsive UI
+    const interval = setInterval(async () => {
+      try {
+        const updatedServers = mcpClient.getAvailableServers()
+        
+        // Only update if there are actual changes
+        const currentServerStates = servers.map(s => `${s.id}:${s.status}`).join(',')
+        const newServerStates = updatedServers.map(s => `${s.id}:${s.status}`).join(',')
+        
+        if (currentServerStates !== newServerStates) {
+          console.log('MCP server status changed:', updatedServers.map(s => `${s.name}: ${s.status}`))
+          setServers(updatedServers)
+          setLastUpdate(Date.now())
+        }
+      } catch (error) {
+        console.error('Failed to refresh MCP servers:', error)
+      }
+    }, 10000)
 
     return () => clearInterval(interval)
   }, [])
@@ -40,8 +70,10 @@ export function MCPStatus() {
     switch (status) {
       case "connected":
         return "success"
+      case "connecting":
+        return "default"
       case "disconnected":
-        return "warning"
+        return "secondary"
       case "error":
         return "destructive"
       default:
@@ -53,8 +85,10 @@ export function MCPStatus() {
     switch (status) {
       case "connected":
         return "bg-success shadow-glow"
+      case "connecting":
+        return "bg-primary animate-pulse"
       case "disconnected":
-        return "bg-warning animate-pulse"
+        return "bg-muted"
       case "error":
         return "bg-destructive animate-pulse"
       default:
@@ -91,6 +125,11 @@ export function MCPStatus() {
                     {server.status}
                   </Badge>
                 </div>
+                {server.error && (
+                  <p className="text-red-600 text-xs">
+                    Error: {server.error}
+                  </p>
+                )}
                 <p className="text-muted-foreground">
                   <span className="font-medium">{server.tools.length}</span> tools available
                 </p>
