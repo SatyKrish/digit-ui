@@ -55,19 +55,17 @@ Handles file system operations, reading, writing, and searching files.
 
 ## Transport Protocols
 
-The MCP client supports multiple transport protocols with automatic fallback:
+The MCP client supports the following transport protocols:
 
-1. **Streamable HTTP** (preferred) - Modern transport with session management
-2. **SSE (Server-Sent Events)** - Legacy transport for compatibility
-3. **WebSocket** - Real-time bidirectional communication
-4. **stdio** - Process-based communication
+1. **Streamable HTTP** (default) - Modern transport with session management
+2. **WebSocket** - Real-time bidirectional communication
+3. **stdio** - Process-based communication
 
 ## Connection Management
 
 The MCP client automatically:
-- Connects to configured servers on startup
+- Connects to configured servers on startup using Streamable HTTP
 - Retries failed connections with exponential backoff
-- Handles transport fallback (Streamable HTTP → SSE)
 - Manages session state and reconnection
 - Refreshes server capabilities periodically
 - Shows servers as "Disconnected" when URLs are not configured or connections fail

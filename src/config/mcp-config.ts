@@ -3,7 +3,7 @@ export interface MCPServerConfig {
   name: string
   description: string
   url?: string
-  transport: 'stdio' | 'http' | 'sse' | 'websocket'
+  transport: 'stdio' | 'http' | 'websocket'
   command?: string
   args?: string[]
   enabled: boolean
@@ -60,5 +60,6 @@ export const mcpTransportConfig = {
   retryDelay: 1000,
   connectionTimeout: 10000,
   requestTimeout: 30000,
-  keepAliveInterval: 30000
+  keepAliveInterval: 30000,
+  preferredTransport: 'http' as const // Use Streamable HTTP only
 } as const

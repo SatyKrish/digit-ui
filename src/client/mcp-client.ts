@@ -1,6 +1,5 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
 
 // Client-safe transport configuration
 const mcpTransportConfig = {
@@ -16,7 +15,7 @@ interface MCPServerConfig {
   name: string
   description: string
   url?: string
-  transport: 'stdio' | 'http' | 'sse' | 'websocket'
+  transport: 'stdio' | 'http' | 'websocket'
   command?: string
   args?: string[]
   enabled: boolean
@@ -108,7 +107,7 @@ export interface MCPToolResult {
 
 interface ConnectedMCPClient {
   client: Client
-  transport: StreamableHTTPClientTransport | SSEClientTransport
+  transport: StreamableHTTPClientTransport
   config: MCPServerConfig
 }
 
@@ -235,25 +234,32 @@ class MCPClientImpl {
 
     server.status = "connecting"
     
+    // Set connection timeout
+    const connectionTimeout = setTimeout(() => {
+      server.status = "error"
+      server.error = "Connection timeout"
+    }, mcpTransportConfig.connectionTimeout)
+    
     try {
       const client = new Client({
         name: 'digit-ui-client',
         version: '1.0.0'
       })
 
-      let transport: StreamableHTTPClientTransport | SSEClientTransport
+      let transport: StreamableHTTPClientTransport
 
-      // Try modern Streamable HTTP first, fallback to SSE
+      // Use Streamable HTTP transport only
       try {
         transport = new StreamableHTTPClientTransport(new URL(server.url))
         await client.connect(transport)
         console.log(`Connected to ${serverId} using Streamable HTTP transport`)
       } catch (error) {
-        console.log(`Streamable HTTP failed for ${serverId}, trying SSE transport`)
-        transport = new SSEClientTransport(new URL(server.url))
-        await client.connect(transport)
-        console.log(`Connected to ${serverId} using SSE transport`)
+        console.error(`Streamable HTTP connection failed for ${serverId}:`, error)
+        throw new Error(`Failed to connect to ${serverId} using Streamable HTTP transport: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
+
+      // Clear the timeout since connection succeeded
+      clearTimeout(connectionTimeout)
 
       // Store the connected client
       const serverConfig = this.servers.find(s => s.id === serverId)
@@ -277,6 +283,9 @@ class MCPClientImpl {
       
       return server
     } catch (error) {
+      // Clear the timeout in case of error
+      clearTimeout(connectionTimeout)
+      
       server.status = "error"
       server.error = error instanceof Error ? error.message : 'Connection failed'
       
@@ -289,6 +298,9 @@ class MCPClientImpl {
         setTimeout(() => {
           this.connectToServer(serverId).catch(console.error)
         }, mcpTransportConfig.retryDelay * (retries + 1))
+      } else {
+        console.error(`Failed to connect to ${serverId} after ${mcpTransportConfig.retryAttempts} attempts`)
+        this.connectionRetries.delete(serverId)
       }
 
       throw error
