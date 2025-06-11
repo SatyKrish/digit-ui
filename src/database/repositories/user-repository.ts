@@ -2,13 +2,20 @@ import { getDatabase } from '../index';
 import type { User, CreateUser } from '../types';
 
 export class UserRepository {
-  private db = getDatabase();
+  private db: ReturnType<typeof getDatabase> | null = null;
+
+  private getDb() {
+    if (!this.db) {
+      this.db = getDatabase();
+    }
+    return this.db;
+  }
 
   /**
    * Create or update user (upsert)
    */
   upsertUser(userData: CreateUser): User {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       INSERT INTO users (id, email, name, updated_at)
       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(id) DO UPDATE SET
@@ -25,7 +32,7 @@ export class UserRepository {
    * Get user by ID
    */
   getUserById(id: string): User | null {
-    const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
+    const stmt = this.getDb().prepare('SELECT * FROM users WHERE id = ?');
     return stmt.get(id) as User | null;
   }
 
@@ -33,7 +40,7 @@ export class UserRepository {
    * Get user by email
    */
   getUserByEmail(email: string): User | null {
-    const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
+    const stmt = this.getDb().prepare('SELECT * FROM users WHERE email = ?');
     return stmt.get(email) as User | null;
   }
 
@@ -41,7 +48,7 @@ export class UserRepository {
    * Delete user and all related data
    */
   deleteUser(id: string): boolean {
-    const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
+    const stmt = this.getDb().prepare('DELETE FROM users WHERE id = ?');
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -50,7 +57,7 @@ export class UserRepository {
    * Get all users (admin function)
    */
   getAllUsers(): User[] {
-    const stmt = this.db.prepare('SELECT * FROM users ORDER BY created_at DESC');
+    const stmt = this.getDb().prepare('SELECT * FROM users ORDER BY created_at DESC');
     return stmt.all() as User[];
   }
 }

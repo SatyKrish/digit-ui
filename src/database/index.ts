@@ -42,6 +42,11 @@ export function initializeDatabase(): Database.Database {
     return dbInstance;
   }
 
+  // Skip database initialization during build time
+  if (process.env.BUILDING === 'true') {
+    throw new Error('Database not available during build time');
+  }
+
   const config = getDatabaseConfig();
   
   try {

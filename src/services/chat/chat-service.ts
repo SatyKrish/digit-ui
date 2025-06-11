@@ -8,12 +8,30 @@ import type { CreateUser } from '@/database/types';
  * Chat service for handling chat operations and state management with database
  */
 export class ChatService {
-  private userRepository = getUserRepository();
-  private sessionRepository = getSessionRepository();
-  private messageRepository = getMessageRepository();
+  private userRepository: ReturnType<typeof getUserRepository> | null = null;
+  private sessionRepository: ReturnType<typeof getSessionRepository> | null = null;
+  private messageRepository: ReturnType<typeof getMessageRepository> | null = null;
   private currentUserId: string | null = null;
   private currentSessionId: string | null = null;
   private initializedUsers = new Set<string>(); 
+
+  private getRepositories() {
+    if (!this.userRepository) {
+      this.userRepository = getUserRepository();
+    }
+    if (!this.sessionRepository) {
+      this.sessionRepository = getSessionRepository();
+    }
+    if (!this.messageRepository) {
+      this.messageRepository = getMessageRepository();
+    }
+    
+    return {
+      userRepository: this.userRepository,
+      sessionRepository: this.sessionRepository,
+      messageRepository: this.messageRepository
+    };
+  } 
 
   /**
    * Initialize service for a user
