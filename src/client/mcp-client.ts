@@ -45,34 +45,8 @@ const getActiveMCPServers = async (): Promise<MCPServerConfig[]> => {
     console.log('MCP server configuration received:', data)
     return data.enabled ? data.servers : []
   } catch (error) {
-    console.warn('Failed to fetch MCP server configuration, using defaults:', error)
-    // Fallback to default configurations if API fails
-    return [
-      {
-        id: "database-server",
-        name: "Database Server",
-        description: "Provides database query capabilities and schema introspection",
-        url: undefined,
-        transport: "http",
-        enabled: true
-      },
-      {
-        id: "analytics-server", 
-        name: "Analytics Server",
-        description: "Generates reports, visualizations, and analytical insights",
-        url: undefined,
-        transport: "http",
-        enabled: false
-      },
-      {
-        id: "file-server",
-        name: "File Server", 
-        description: "File system operations, reading, writing, and searching files",
-        url: undefined,
-        transport: "http",
-        enabled: false
-      }
-    ]
+    console.warn('Failed to fetch MCP server configuration:', error)
+    return []
   }
 }
 

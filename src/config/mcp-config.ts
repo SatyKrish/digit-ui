@@ -20,7 +20,7 @@ export const defaultMCPServers: MCPServerConfig[] = [
     description: "Provides database query capabilities and schema introspection",
     url: process.env.MCP_DATABASE_SERVER_URL || undefined,
     transport: "http",
-    enabled: true
+    enabled: !!process.env.MCP_DATABASE_SERVER_URL // Only enable if URL is configured
   },
   {
     id: "analytics-server", 
@@ -28,7 +28,7 @@ export const defaultMCPServers: MCPServerConfig[] = [
     description: "Generates reports, visualizations, and analytical insights",
     url: process.env.MCP_ANALYTICS_SERVER_URL || undefined,
     transport: "http",
-    enabled: true
+    enabled: !!process.env.MCP_ANALYTICS_SERVER_URL // Only enable if URL is configured
   },
   {
     id: "file-server",
@@ -36,7 +36,7 @@ export const defaultMCPServers: MCPServerConfig[] = [
     description: "File system operations, reading, writing, and searching files",
     url: process.env.MCP_FILE_SERVER_URL || undefined,
     transport: "http",
-    enabled: true
+    enabled: !!process.env.MCP_FILE_SERVER_URL // Only enable if URL is configured
   }
 ]
 
