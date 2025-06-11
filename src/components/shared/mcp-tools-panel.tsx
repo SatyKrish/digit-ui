@@ -5,28 +5,76 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { mcpClient } from "@/client/mcp-client"
-import { Database, BarChart3, FileText } from "lucide-react"
+import { Database, BarChart3, FileText, RefreshCw } from "lucide-react"
 
 export function MCPToolsPanel() {
   const [servers, setServers] = useState<any[]>([])
   const [tools, setTools] = useState<any[]>([])
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const loadMCPData = async () => {
+    try {
+      setIsRefreshing(true)
+      
+      // Ensure MCP client is initialized
+      if (!mcpClient.isReady()) {
+        console.log('MCP client not ready, initializing...')
+        await mcpClient.initialize()
+      }
+      
+      const availableServers = mcpClient.getAvailableServers()
+      const allTools = mcpClient.getAllTools()
+
+      setServers(availableServers)
+      setTools(allTools)
+      setLastUpdate(Date.now())
+      console.log('MCP data loaded:', {
+        servers: availableServers.length,
+        tools: allTools.length,
+        connected: availableServers.filter(s => s.status === "connected").length
+      })
+    } catch (error) {
+      console.error('Failed to load MCP data:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const handleManualRefresh = async () => {
+    await loadMCPData()
+  }
 
   useEffect(() => {
-    // Get MCP servers and tools
-    const availableServers = mcpClient.getAvailableServers()
-    const allTools = mcpClient.getAllTools()
+    // Initial load
+    loadMCPData()
 
-    setServers(availableServers)
-    setTools(allTools)
-
-    // Refresh every 30 seconds to keep status updated
-    const interval = setInterval(() => {
-      const updatedServers = mcpClient.getAvailableServers()
-      const updatedTools = mcpClient.getAllTools()
-      setServers(updatedServers)
-      setTools(updatedTools)
-    }, 30000)
+    // Refresh every 15 seconds to keep status updated
+    const interval = setInterval(async () => {
+      try {
+        const updatedServers = mcpClient.getAvailableServers()
+        const updatedTools = mcpClient.getAllTools()
+        
+        // Check for changes before updating
+        const serverStatusChanged = JSON.stringify(servers.map(s => ({id: s.id, status: s.status}))) !== 
+                                  JSON.stringify(updatedServers.map(s => ({id: s.id, status: s.status})))
+        const toolsChanged = tools.length !== updatedTools.length
+        
+        if (serverStatusChanged || toolsChanged) {
+          console.log('MCP status update:', {
+            servers: updatedServers.map(s => `${s.name}: ${s.status}`),
+            toolCount: updatedTools.length
+          })
+          setServers(updatedServers)
+          setTools(updatedTools)
+          setLastUpdate(Date.now())
+        }
+      } catch (error) {
+        console.error('Failed to refresh MCP data:', error)
+      }
+    }, 15000)
 
     return () => clearInterval(interval)
   }, [])
@@ -109,6 +157,16 @@ export function MCPToolsPanel() {
                 />
               ))}
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="h-8 w-8 p-0"
+              title="Refresh MCP status"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
         </div>
       </CardHeader>

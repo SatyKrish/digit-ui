@@ -9,7 +9,7 @@ import { ClientOnly } from "@/components/shared/client-only"
 import { useAuth } from "@/hooks/auth/use-auth"
 
 export default function DigitChat() {
-  const { isAuthenticated, user, signOut } = useAuth()
+  const { isAuthenticated, user, signOut, isLoading } = useAuth()
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
 
   const handleNewChat = () => {
@@ -22,7 +22,14 @@ export default function DigitChat() {
         <div className="animate-pulse">Loading...</div>
       </div>
     }>
-      {!isAuthenticated || !user ? (
+      {isLoading ? (
+        <div className="flex h-screen w-full bg-background text-foreground items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="text-sm text-muted-foreground">Completing authentication...</p>
+          </div>
+        </div>
+      ) : !isAuthenticated || !user ? (
         <AuthScreen />
       ) : (
         <SidebarProvider defaultOpen={false}>

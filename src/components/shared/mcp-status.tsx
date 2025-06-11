@@ -8,17 +8,47 @@ import { Database, BarChart3, FileText } from "lucide-react"
 
 export function MCPStatus() {
   const [servers, setServers] = useState<any[]>([])
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
 
   useEffect(() => {
-    // Get MCP servers
-    const availableServers = mcpClient.getAvailableServers()
-    setServers(availableServers)
+    // Initial load
+    const loadServers = async () => {
+      try {
+        // Ensure MCP client is initialized
+        if (!mcpClient.isReady()) {
+          console.log('MCP client not ready, initializing...')
+          await mcpClient.initialize()
+        }
+        
+        const availableServers = mcpClient.getAvailableServers()
+        setServers(availableServers)
+        setLastUpdate(Date.now())
+        console.log('MCP servers loaded:', availableServers.map(s => `${s.name}: ${s.status}`))
+      } catch (error) {
+        console.error('Failed to load MCP servers:', error)
+      }
+    }
 
-    // Refresh every 30 seconds
-    const interval = setInterval(() => {
-      const updatedServers = mcpClient.getAvailableServers()
-      setServers(updatedServers)
-    }, 30000)
+    loadServers()
+
+    // Refresh every 10 seconds for more responsive UI
+    const interval = setInterval(async () => {
+      try {
+        const updatedServers = mcpClient.getAvailableServers()
+        
+        // Only update if there are actual changes
+        const currentServerStates = servers.map(s => `${s.id}:${s.status}`).join(',')
+        const newServerStates = updatedServers.map(s => `${s.id}:${s.status}`).join(',')
+        
+        if (currentServerStates !== newServerStates) {
+          console.log('MCP server status changed:', updatedServers.map(s => `${s.name}: ${s.status}`))
+          setServers(updatedServers)
+          setLastUpdate(Date.now())
+        }
+      } catch (error) {
+        console.error('Failed to refresh MCP servers:', error)
+      }
+    }, 10000)
 
     return () => clearInterval(interval)
   }, [])

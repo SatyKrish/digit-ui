@@ -19,11 +19,19 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
   // Always start with welcome screen when no specific chat is selected
   const [isInitialState, setIsInitialState] = useState(true)
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
+  const [isUserDataReady, setIsUserDataReady] = useState(false)
   const { open: sidebarOpen } = useSidebar()
   
   // Use simplified session management
   const userData = { id: user.email, email: user.email, name: user.name }
   const { currentSession, switchToSession, createSession } = useChatSessions(userData)
+
+  // Wait for user data to be properly loaded before proceeding
+  useEffect(() => {
+    if (user && user.email && user.name) {
+      setIsUserDataReady(true)
+    }
+  }, [user])
   
   // Use Vercel AI SDK's useChat hook with current session ID
   const { 
@@ -64,6 +72,9 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
   // Load messages for current session when it changes
   useEffect(() => {
     const loadMessages = async () => {
+      // Only load messages if user data is ready
+      if (!isUserDataReady) return
+
       if (currentChatId && currentSession?.id === currentChatId) {
         try {
           const response = await fetch(`/api/chat/messages?sessionId=${currentChatId}&userId=${user.email}`);
@@ -82,14 +93,14 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
           console.error('Failed to load messages:', error);
         }
       } else if (!currentChatId) {
-        // No chat ID selected - show welcome screen
+        // No chat ID selected - show welcome screen (only if user data is ready)
         setMessages([]);
         setIsInitialState(true);
       }
     };
 
     loadMessages();
-  }, [currentChatId, currentSession?.id, setMessages, user.email])
+  }, [currentChatId, currentSession?.id, setMessages, user.email, isUserDataReady])
 
   // Handle session switching from parent
   useEffect(() => {

@@ -11,6 +11,7 @@ export function useAuth(): AuthContextType {
   const isAuthenticated = useIsAuthenticated();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   /**
@@ -60,6 +61,7 @@ export function useAuth(): AuthContextType {
   useEffect(() => {
     if (isAuthenticated && accounts.length > 0) {
       const loadUserData = async () => {
+        setIsInitializing(true);
         const account = accounts[0];
         
         // Get access token for Graph API calls
@@ -99,12 +101,15 @@ export function useAuth(): AuthContextType {
             tenantId: account.tenantId || '',
             roles: []
           });
+        } finally {
+          setIsInitializing(false);
         }
       };
 
       loadUserData();
     } else {
       setUser(null);
+      setIsInitializing(false);
     }
   }, [isAuthenticated, accounts, instance, fetchUserProfile, fetchUserPhoto]);
 
@@ -190,8 +195,8 @@ export function useAuth(): AuthContextType {
 
   return {
     user,
-    isLoading,
-    isAuthenticated,
+    isLoading: isLoading || isInitializing,
+    isAuthenticated: isAuthenticated && !!user && !isInitializing,
     error,
     signIn,
     signOut,
