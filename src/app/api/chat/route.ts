@@ -1,9 +1,19 @@
 import { openai } from "@ai-sdk/openai"
 import { streamText, convertToCoreMessages } from "ai"
 import { mcpClient } from "@/client/mcp-client"
+import { chatService } from "@/services/chat/chat-service"
 
 export async function POST(req: Request) {
-  const { messages } = await req.json()
+  const { messages, userId } = await req.json()
+
+  // Initialize chat service for user if userId is provided
+  if (userId) {
+    await chatService.initializeForUser({
+      id: userId,
+      email: userId,
+      name: 'User'
+    })
+  }
 
   // Get available MCP servers and their capabilities
   const servers = mcpClient.getAvailableServers()
@@ -234,6 +244,33 @@ Available domains: Account, Party, Holdings, Transaction, Customer, Product, Ord
     messages: convertToCoreMessages(messages),
     tools,
     maxSteps: 5,
+    onFinish: async ({ response, finishReason, usage, text }) => {
+      // Save messages to database if userId is provided
+      if (userId) {
+        try {
+          // Save the user message (last message in the input)
+          const userMessage = messages[messages.length - 1]
+          if (userMessage && userMessage.role === 'user') {
+            await chatService.addMessage({
+              role: 'user',
+              content: userMessage.content,
+              model: 'gpt-4o'
+            })
+          }
+
+          // Save the assistant response using the text content
+          if (text) {
+            await chatService.addMessage({
+              role: 'assistant',
+              content: text,
+              model: 'gpt-4o'
+            })
+          }
+        } catch (error) {
+          console.error('Failed to save messages to database:', error)
+        }
+      }
+    }
   })
 
   return result.toDataStreamResponse()

@@ -10,136 +10,124 @@ import { ArtifactPanel } from "../artifacts/artifact-panel"
 import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { useSidebar } from "@/components/ui/sidebar"
 import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
-import { useChatSessions, useChatMessages } from "@/hooks/chat"
-import { useAutoSave } from "@/hooks/chat/use-auto-save"
-import type { MainChatAreaProps, Artifact, ChatMessage } from "@/types"
+import { useChat } from "@ai-sdk/react"
+import { useChatSessions } from "@/hooks/chat"
+import type { MainChatAreaProps, Artifact } from "@/types"
+import type { Message } from "ai"
 
 export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainChatAreaProps) {
   // Always start with welcome screen when no specific chat is selected
   const [isInitialState, setIsInitialState] = useState(true)
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [pendingMessages, setPendingMessages] = useState<ChatMessage[]>([])
   const { open: sidebarOpen } = useSidebar()
   
-  // Use our API-based session and messaging hooks
+  // Use simplified session management
   const userData = { id: user.email, email: user.email, name: user.name }
   const { currentSession, switchToSession, createSession } = useChatSessions(userData)
-  const { sendMessage, getSessionMessages, isTyping: isLoading, error: messageError } = useChatMessages()
-
-  // Auto-save functionality
-  const { saveNow } = useAutoSave({
-    sessionId: currentSession?.id || null,
-    userId: user.email,
-    onSave: async () => {
-      // Auto-save is handled by touching the session timestamp
-      // This could be extended to save draft messages, session state, etc.
+  
+  // Use Vercel AI SDK's useChat hook with current session ID
+  const { 
+    messages, 
+    input, 
+    handleInputChange, 
+    handleSubmit, 
+    isLoading, 
+    error,
+    setMessages,
+    reload,
+    setInput
+  } = useChat({
+    id: currentChatId || undefined,
+    api: '/api/chat',
+    body: {
+      userId: user.email
+    },
+    onFinish: async (message) => {
+      // Auto-save session on completion
       if (currentSession?.id) {
-        await fetch('/api/chat/sessions/touch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId: currentSession.id, userId: user.email })
-        });
+        try {
+          await fetch('/api/chat/sessions/touch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: currentSession.id, userId: user.email })
+          });
+        } catch (error) {
+          console.error('Failed to auto-save session:', error);
+        }
       }
     },
-    enabled: !!currentSession?.id && !isInitialState
-  });
+    onError: (error) => {
+      console.error('Chat error:', error);
+    }
+  })
 
-  // Load messages for current session (only when session changes)
+  // Load messages for current session when it changes
   useEffect(() => {
-    let isMounted = true;
-    
     const loadMessages = async () => {
-      if (currentSession && currentChatId && isMounted) {
+      if (currentChatId && currentSession?.id === currentChatId) {
         try {
-          const sessionMessages = await getSessionMessages(currentSession.id, user.email)
-          if (isMounted) {
-            setMessages(sessionMessages)
-            setIsInitialState(false) // Hide welcome screen when viewing a specific chat (even if empty)
-            setPendingMessages([]) // Clear any pending messages when switching sessions
+          const response = await fetch(`/api/chat/messages?sessionId=${currentChatId}&userId=${user.email}`);
+          if (response.ok) {
+            const data = await response.json();
+            const sessionMessages: Message[] = data.messages.map((msg: any) => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              createdAt: new Date(msg.timestamp)
+            }));
+            setMessages(sessionMessages);
+            setIsInitialState(false);
           }
         } catch (error) {
-          console.error('Failed to load messages:', error)
-          if (isMounted) {
-            setMessages([])
-            setIsInitialState(false) // Still show chat interface for the selected session, even on error
-          }
+          console.error('Failed to load messages:', error);
         }
-      } else if (!currentChatId && isMounted) {
-        // No chat ID selected - always show welcome screen
-        setMessages([])
-        setIsInitialState(true)
-        setPendingMessages([])
+      } else if (!currentChatId) {
+        // No chat ID selected - show welcome screen
+        setMessages([]);
+        setIsInitialState(true);
       }
-    }
+    };
 
-    loadMessages()
-    return () => {
-      isMounted = false;
-    }
-  }, [currentSession?.id, currentChatId, getSessionMessages, user.email]) // Key dependency on currentChatId
+    loadMessages();
+  }, [currentChatId, currentSession?.id, setMessages, user.email])
 
   // Handle session switching from parent
   useEffect(() => {
     if (currentChatId && currentSession?.id !== currentChatId) {
       switchToSession(currentChatId)
     }
-    // Note: When currentChatId is null, we let the component naturally show welcome screen
   }, [currentChatId, currentSession?.id, switchToSession])
 
-  // Handle sending message with optimistic updates
+  // Handle sending message with domain hints
   const handleSendMessage = async (content: string, selectedHints: string[] = []) => {
     if (isLoading) return
 
     const fullContent = selectedHints.length > 0 ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` : content
 
-    // Create optimistic user message
-    const optimisticUserMessage: ChatMessage = {
-      id: `temp-${Date.now()}`,
-      role: 'user',
-      content: fullContent,
-      timestamp: new Date(),
-      model: 'gpt-4'
-    }
-
-    // Optimistically update UI
-    setIsInitialState(false)
-    setPendingMessages(prev => [...prev, optimisticUserMessage])
-
-    try {
-      // Send message through API
-      const result = await sendMessage(fullContent, user.email) as any // Temporary type assertion
-      
-      if (result) {
-        // Remove optimistic message and add real messages
-        setPendingMessages(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id))
-        
-        // Add both user and assistant messages if they were returned
-        if (result.userMessage && result.assistantMessage) {
-          setMessages(prev => [...prev, result.userMessage, result.assistantMessage])
-        } else if (result.message) {
-          // Fallback for backward compatibility
-          setMessages(prev => [...prev, result.message])
+    // Create a form event to use with handleSubmit
+    const fakeEvent = {
+      preventDefault: () => {},
+      target: {
+        elements: {
+          prompt: { value: fullContent }
         }
-        
-        // Save session after successful message
-        await saveNow()
-      } else {
-        // Remove failed optimistic message
-        setPendingMessages(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id))
       }
-    } catch (error) {
-      console.error('Failed to send message:', error)
-      // Remove failed optimistic message
-      setPendingMessages(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id))
-    }
+    } as any;
+
+    // Set the input and submit
+    setInput(fullContent);
+    setIsInitialState(false);
+    
+    // Use a slight delay to ensure input is set
+    setTimeout(() => {
+      handleSubmit(fakeEvent);
+    }, 0);
   }
 
   const handleNewChat = async () => {
     try {
       const newSession = await createSession()
       setMessages([])
-      setPendingMessages([])
       setIsInitialState(true)
       setCurrentArtifacts([])
       onNewChat?.()
@@ -148,21 +136,9 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     }
   }
 
-  // Update artifacts when messages change (debounced)
-  useEffect(() => {
-    const allMessages = [...messages, ...pendingMessages]
-    const lastAssistantMessage = allMessages.filter((m: ChatMessage) => m.role === "assistant").pop()
-    if (lastAssistantMessage) {
-      const artifacts = extractArtifacts(lastAssistantMessage.content)
-      setCurrentArtifacts(artifacts)
-    }
-  }, [messages, pendingMessages])
-
-  // Combine real and pending messages for display
-  const displayMessages = [...messages, ...pendingMessages]
+  // Update artifacts when messages change
   useEffect(() => {
     const lastAssistantMessage = messages.filter((m) => m.role === "assistant").pop()
-
     if (lastAssistantMessage) {
       const artifacts = extractArtifacts(lastAssistantMessage.content)
       setCurrentArtifacts(artifacts)
@@ -178,27 +154,38 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
       <ChatHeader user={user} onLogout={onLogout} />
 
       <div className="flex-1 flex min-h-0 transition-all duration-300 ease-in-out">
-        {/* Chat Area - takes full width when no artifacts, 1/3 when artifacts are present */}
         <div
-          className={`
-            flex flex-col min-h-0 transition-all duration-300 ease-in-out
-            ${showArtifactPanel ? "w-1/3 border-r" : "w-full"}
-            ${sidebarOpen ? "opacity-95" : "opacity-100"}
-          `}
+          className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${
+            showArtifactPanel ? "mr-2" : ""
+          }`}
         >
-          {isInitialState ? (
+          {isInitialState && !currentChatId ? (
             <InitialWelcomeScreen user={user} onSendMessage={handleSendMessage} />
           ) : (
             <>
-              <ChatMessages messages={displayMessages} isLoading={isLoading} user={user} />
+              <ChatMessages 
+                messages={messages.map(msg => ({
+                  id: msg.id,
+                  role: msg.role as 'user' | 'assistant' | 'system',
+                  content: msg.content,
+                  timestamp: msg.createdAt || new Date(),
+                  model: 'gpt-4',
+                  isError: false
+                }))} 
+                isLoading={isLoading} 
+                user={user} 
+              />
               <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
             </>
           )}
         </div>
 
-        {/* Artifact Panel - only shown when artifacts are present */}
         {showArtifactPanel && (
-          <div className="w-2/3 flex flex-col min-h-0 animate-in slide-in-from-right-1/2 duration-300">
+          <div
+            className={`transition-all duration-300 ease-in-out ${
+              sidebarOpen ? "w-96" : "w-[28rem]"
+            }`}
+          >
             <ArtifactPanel artifacts={currentArtifacts} />
           </div>
         )}

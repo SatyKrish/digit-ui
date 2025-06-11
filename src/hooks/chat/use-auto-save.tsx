@@ -4,17 +4,31 @@ import { chatConfig } from '@/config/chat';
 interface AutoSaveOptions {
   sessionId: string | null;
   userId: string;
-  onSave: () => Promise<void>;
   enabled?: boolean;
 }
 
 /**
  * Hook for auto-saving chat sessions periodically
- * Saves the current session state to the database at configured intervals
+ * Simplified for use with Vercel AI SDK - just touches session timestamps
  */
-export function useAutoSave({ sessionId, userId, onSave, enabled = true }: AutoSaveOptions) {
+export function useAutoSave({ sessionId, userId, enabled = true }: AutoSaveOptions) {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveRef = useRef<number>(0);
+
+  const touchSession = useCallback(async () => {
+    if (!sessionId || !userId) return;
+
+    try {
+      await fetch('/api/chat/sessions/touch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, userId })
+      });
+      lastSaveRef.current = Date.now();
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    }
+  }, [sessionId, userId]);
 
   const scheduleAutoSave = useCallback(() => {
     if (!enabled || !sessionId || !userId) return;
@@ -26,15 +40,9 @@ export function useAutoSave({ sessionId, userId, onSave, enabled = true }: AutoS
 
     // Schedule the next save
     saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        await onSave();
-        lastSaveRef.current = Date.now();
-        console.log(`Auto-saved session ${sessionId} at ${new Date().toLocaleTimeString()}`);
-      } catch (error) {
-        console.error('Auto-save failed:', error);
-      }
+      await touchSession();
     }, chatConfig.autoSaveInterval);
-  }, [enabled, sessionId, userId, onSave]);
+  }, [enabled, sessionId, userId, touchSession]);
 
   // Trigger auto-save when session or user changes
   useEffect(() => {
@@ -61,18 +69,10 @@ export function useAutoSave({ sessionId, userId, onSave, enabled = true }: AutoS
 
   // Manual save function
   const saveNow = useCallback(async () => {
-    if (!sessionId || !userId) return;
-
-    try {
-      await onSave();
-      lastSaveRef.current = Date.now();
-      
-      // Reschedule the next auto-save
-      scheduleAutoSave();
-    } catch (error) {
-      console.error('Manual save failed:', error);
-    }
-  }, [sessionId, userId, onSave, scheduleAutoSave]);
+    await touchSession();
+    // Reschedule the next auto-save
+    scheduleAutoSave();
+  }, [touchSession, scheduleAutoSave]);
 
   return {
     saveNow,

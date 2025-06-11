@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ChatSession, ChatMessage } from '@/types/chat';
+import { ChatSession } from '@/types/chat';
 import { sessionCache } from '@/services/chat/session-cache';
 
 /**
- * Enhanced chat session management hook using API calls
+ * Simplified chat session management hook for use with Vercel AI SDK
+ * Focuses on session list management while letting useChat handle messages
  */
 export function useChatSessions(user?: { id: string; email: string; name: string }) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -17,7 +18,7 @@ export function useChatSessions(user?: { id: string; email: string; name: string
   }, [user]);
 
   /**
-   * Load sessions from API (only when needed, with caching)
+   * Load sessions from API (simplified for AI SDK usage)
    */
   const loadSessions = useCallback(async () => {
     const currentUser = userRef.current;
@@ -27,8 +28,6 @@ export function useChatSessions(user?: { id: string; email: string; name: string
     const cachedSessions = sessionCache.get(currentUser.id);
     if (cachedSessions) {
       setSessions(cachedSessions);
-      // Don't automatically set current session from cache either
-      // This ensures welcome screen is shown after login
       setIsLoading(false);
       return;
     }
@@ -45,21 +44,16 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       
       // Update cache
       sessionCache.set(currentUser.id, fetchedSessions);
-      
       setSessions(fetchedSessions);
-      
-      // Don't automatically set a current session after login
-      // Let the user explicitly choose or start a new chat to show welcome screen
-      // setCurrentSession will only be called when user explicitly selects a session
     } catch (error) {
       console.error('Error loading chat sessions:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []); // No dependencies needed since we use ref
+  }, []);
 
   /**
-   * Create a new chat session (optimistically with cache update)
+   * Create a new chat session (optimistic update)
    */
   const createSession = useCallback(async (title?: string) => {
     const currentUser = userRef.current;
@@ -84,10 +78,8 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       const data = await response.json();
       const newSession = data.session;
       
-      // Update cache
+      // Update cache and local state
       sessionCache.addSession(currentUser.id, newSession);
-      
-      // Optimistically update sessions list without refetching all
       setSessions(prev => [newSession, ...prev]);
       setCurrentSession(newSession);
       
@@ -96,10 +88,10 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       console.error('Error creating session:', error);
       throw error;
     }
-  }, []); // Removed dependency on loadSessions
+  }, []);
 
   /**
-   * Switch to a different session
+   * Switch to a different session (simplified for AI SDK)
    */
   const switchToSession = useCallback(async (sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);
@@ -111,22 +103,52 @@ export function useChatSessions(user?: { id: string; email: string; name: string
   }, [sessions]);
 
   /**
-   * Delete a session (placeholder - to be implemented)
+   * Delete a session
    */
   const deleteSession = useCallback(async (sessionId: string) => {
-    console.warn('Delete session not yet implemented');
-    return false;
-  }, []);
+    const currentUser = userRef.current;
+    if (!currentUser) return false;
+
+    try {
+      const response = await fetch('/api/chat/sessions', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          userId: currentUser.id
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete session');
+      }
+
+      // Update local state and cache
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      sessionCache.removeSession(currentUser.id, sessionId);
+      
+      if (currentSession?.id === sessionId) {
+        setCurrentSession(null);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      return false;
+    }
+  }, [currentSession]);
 
   /**
-   * Update session title (optimistically with cache update)
+   * Update session title
    */
   const updateSessionTitle = useCallback(async (sessionId: string, title: string) => {
     const currentUser = userRef.current;
-    if (!currentUser) return false
+    if (!currentUser) return false;
 
     try {
-      // Optimistically update the title in local state and cache
+      // Optimistically update local state
       setSessions(prev => prev.map(session => 
         session.id === sessionId 
           ? { ...session, title }
@@ -144,30 +166,54 @@ export function useChatSessions(user?: { id: string; email: string; name: string
           title,
           userId: currentUser.id
         }),
-      })
+      });
 
       if (!response.ok) {
-        // Revert the optimistic update on failure
-        sessionCache.clear(currentUser.id); // Clear cache to force reload
+        // Revert optimistic update on failure
+        sessionCache.clear(currentUser.id);
         await loadSessions();
-        throw new Error('Failed to update session title')
+        throw new Error('Failed to update session title');
       }
 
-      return true
+      return true;
     } catch (error) {
-      console.error('Error updating session title:', error)
-      return false
+      console.error('Error updating session title:', error);
+      return false;
     }
   }, [loadSessions]);
 
   /**
-   * Clear all chat history (placeholder - to be implemented)
+   * Clear all chat history
    */
   const clearAllSessions = useCallback(async () => {
-    console.warn('Clear all sessions not yet implemented');
+    const currentUser = userRef.current;
+    if (!currentUser) return;
+
+    try {
+      const response = await fetch('/api/chat/sessions/clear', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: currentUser.id
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear sessions');
+      }
+
+      // Clear local state and cache
+      setSessions([]);
+      setCurrentSession(null);
+      sessionCache.clear(currentUser.id);
+    } catch (error) {
+      console.error('Error clearing sessions:', error);
+    }
   }, []);
 
-  // Initialize sessions on mount when user is available (only once)
+  // Initialize sessions on mount when user is available
   useEffect(() => {
     let isMounted = true;
     if (user && isMounted) {
@@ -176,7 +222,7 @@ export function useChatSessions(user?: { id: string; email: string; name: string
     return () => {
       isMounted = false;
     };
-  }, [user?.id, loadSessions]); // Only load once when user changes
+  }, [user?.id, loadSessions]);
 
   return {
     sessions,
@@ -188,115 +234,5 @@ export function useChatSessions(user?: { id: string; email: string; name: string
     updateSessionTitle,
     clearAllSessions,
     refreshSessions: loadSessions
-  };
-}
-
-/**
- * Hook for sending messages and managing chat state using API calls
- */
-export function useChatMessages() {
-  const [isTyping, setIsTyping] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  /**
-   * Send a message via API (optimistic update)
-   */
-  const sendMessage = useCallback(async (
-    content: string, 
-    userId: string,
-    model: string = 'gpt-4'
-  ): Promise<{ userMessage?: ChatMessage; assistantMessage?: ChatMessage; message?: ChatMessage } | null> => {
-    setIsTyping(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/chat/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          content,
-          model
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
-      setError(errorMessage);
-      console.error('Send message error:', err);
-      return null;
-    } finally {
-      setIsTyping(false);
-    }
-  }, []);
-
-  /**
-   * Get messages for a session via API (cache locally)
-   */
-  const getSessionMessages = useCallback(async (sessionId: string, userId: string): Promise<ChatMessage[]> => {
-    try {
-      const response = await fetch(`/api/chat/messages?sessionId=${encodeURIComponent(sessionId)}&userId=${encodeURIComponent(userId)}`);
-      if (!response.ok) {
-        throw new Error('Failed to get messages');
-      }
-      
-      const data = await response.json();
-      return data.messages || [];
-    } catch (error) {
-      console.error('Error getting messages:', error);
-      return [];
-    }
-  }, []);
-
-  return {
-    isTyping,
-    error,
-    sendMessage,
-    getSessionMessages,
-    clearError: () => setError(null)
-  };
-}
-
-/**
- * Hook for managing chat UI state
- */
-export function useChatUI() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [artifactsPanelOpen, setArtifactsPanelOpen] = useState(false);
-  const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
-
-  const toggleSidebar = useCallback(() => {
-    setSidebarOpen(prev => !prev);
-  }, []);
-
-  const toggleArtifactsPanel = useCallback(() => {
-    setArtifactsPanelOpen(prev => !prev);
-  }, []);
-
-  const selectArtifact = useCallback((artifactId: string | null) => {
-    setSelectedArtifact(artifactId);
-    if (artifactId && !artifactsPanelOpen) {
-      setArtifactsPanelOpen(true);
-    }
-  }, [artifactsPanelOpen]);
-
-  return {
-    sidebarOpen,
-    artifactsPanelOpen,
-    selectedArtifact,
-    setSidebarOpen,
-    setArtifactsPanelOpen,
-    setSelectedArtifact,
-    toggleSidebar,
-    toggleArtifactsPanel,
-    selectArtifact
   };
 }
