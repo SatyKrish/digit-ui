@@ -16,7 +16,7 @@ export class SessionRepository {
    */
   createSession(sessionData: CreateChatSession): ChatSession {
     const stmt = this.getDb().prepare(`
-      INSERT INTO chat_sessions (id, user_id, title)
+      INSERT INTO chats (id, user_id, title)
       VALUES (?, ?, ?)
       RETURNING *
     `);
@@ -28,7 +28,7 @@ export class SessionRepository {
    * Get session by ID
    */
   getSessionById(id: string): ChatSession | null {
-    const stmt = this.getDb().prepare('SELECT * FROM chat_sessions WHERE id = ?');
+    const stmt = this.getDb().prepare('SELECT * FROM chats WHERE id = ?');
     return stmt.get(id) as ChatSession | null;
   }
 
@@ -41,8 +41,8 @@ export class SessionRepository {
         s.*,
         COUNT(m.id) as message_count,
         MAX(m.created_at) as last_message_at
-      FROM chat_sessions s
-      LEFT JOIN chat_messages m ON s.id = m.session_id
+      FROM chats s
+      LEFT JOIN messages m ON s.id = m.chat_id
       WHERE s.user_id = ?
       GROUP BY s.id
       ORDER BY s.updated_at DESC
@@ -60,7 +60,7 @@ export class SessionRepository {
     const values = Object.values(updates);
     
     const stmt = this.getDb().prepare(`
-      UPDATE chat_sessions 
+      UPDATE chats 
       SET ${setClause}, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
       RETURNING *
@@ -73,7 +73,7 @@ export class SessionRepository {
    * Delete session and all its messages
    */
   deleteSession(id: string): boolean {
-    const stmt = this.getDb().prepare('DELETE FROM chat_sessions WHERE id = ?');
+    const stmt = this.getDb().prepare('DELETE FROM chats WHERE id = ?');
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -82,7 +82,7 @@ export class SessionRepository {
    * Delete all sessions for a user
    */
   deleteAllSessionsForUser(userId: string): number {
-    const stmt = this.getDb().prepare('DELETE FROM chat_sessions WHERE user_id = ?');
+    const stmt = this.getDb().prepare('DELETE FROM chats WHERE user_id = ?');
     const result = stmt.run(userId);
     return result.changes;
   }
@@ -91,7 +91,7 @@ export class SessionRepository {
    * Get session count for user
    */
   getSessionCountForUser(userId: string): number {
-    const stmt = this.getDb().prepare('SELECT COUNT(*) as count FROM chat_sessions WHERE user_id = ?');
+    const stmt = this.getDb().prepare('SELECT COUNT(*) as count FROM chats WHERE user_id = ?');
     const result = stmt.get(userId) as { count: number };
     return result.count;
   }
@@ -100,7 +100,7 @@ export class SessionRepository {
    * Touch session (update timestamp)
    */
   touchSession(id: string): void {
-    const stmt = this.getDb().prepare('UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    const stmt = this.getDb().prepare('UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
     stmt.run(id);
   }
 }
