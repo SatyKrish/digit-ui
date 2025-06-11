@@ -15,6 +15,12 @@ export async function POST(req: Request) {
     })
   }
 
+  // Ensure MCP client is properly initialized before processing the request
+  if (!mcpClient.isReady()) {
+    console.log('MCP client not ready, initializing...')
+    await mcpClient.initialize()
+  }
+
   // Get available MCP servers and their capabilities
   const servers = mcpClient.getAvailableServers()
   const connectedServers = mcpClient.getConnectedServers()

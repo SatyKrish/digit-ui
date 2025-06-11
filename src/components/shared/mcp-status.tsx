@@ -42,8 +42,6 @@ export function MCPStatus() {
         return "success"
       case "connecting":
         return "default"
-      case "fallback":
-        return "warning"
       case "disconnected":
         return "secondary"
       case "error":
@@ -59,8 +57,6 @@ export function MCPStatus() {
         return "bg-success shadow-glow"
       case "connecting":
         return "bg-primary animate-pulse"
-      case "fallback":
-        return "bg-yellow-500 animate-pulse"
       case "disconnected":
         return "bg-muted"
       case "error":
@@ -99,12 +95,7 @@ export function MCPStatus() {
                     {server.status}
                   </Badge>
                 </div>
-                {server.status === "fallback" && (
-                  <p className="text-yellow-600 text-xs">
-                    ⚠️ Running in fallback mode - configure URL to enable real connection
-                  </p>
-                )}
-                {server.error && !server.error.includes("fallback mode") && (
+                {server.error && (
                   <p className="text-red-600 text-xs">
                     Error: {server.error}
                   </p>

@@ -9,8 +9,6 @@ export interface MCPServerConfig {
   command?: string
   args?: string[]
   enabled: boolean
-  /** Enable fallback mode when server URL is not configured */
-  fallback?: boolean
 }
 
 /**
@@ -24,8 +22,7 @@ export const defaultMCPServers: MCPServerConfig[] = [
     description: "Provides database query capabilities and schema introspection",
     url: env.MCP_DATABASE_SERVER_URL || undefined,
     transport: "http",
-    enabled: true,
-    fallback: true
+    enabled: true
   },
   {
     id: "analytics-server", 
@@ -33,8 +30,7 @@ export const defaultMCPServers: MCPServerConfig[] = [
     description: "Generates reports, visualizations, and analytical insights",
     url: env.MCP_ANALYTICS_SERVER_URL || undefined,
     transport: "http",
-    enabled: true,
-    fallback: true
+    enabled: true
   },
   {
     id: "file-server",
@@ -42,8 +38,7 @@ export const defaultMCPServers: MCPServerConfig[] = [
     description: "File system operations, reading, writing, and searching files",
     url: env.MCP_FILE_SERVER_URL || undefined,
     transport: "http",
-    enabled: true,
-    fallback: true
+    enabled: true
   }
 ]
 
@@ -55,15 +50,7 @@ export const getActiveMCPServers = (): MCPServerConfig[] => {
     return []
   }
 
-  return defaultMCPServers.filter(server => {
-    // Always include servers with URLs
-    if (server.url) {
-      return server.enabled
-    }
-    
-    // Only include servers without URLs if fallback is enabled globally and per-server
-    return server.enabled && server.fallback && env.ENABLE_MCP_FALLBACK
-  })
+  return defaultMCPServers.filter(server => server.enabled)
 }
 
 /**

@@ -8,7 +8,7 @@ export interface MCPServer {
   id: string
   name: string
   description: string
-  status: "connected" | "disconnected" | "error" | "connecting" | "fallback"
+  status: "connected" | "disconnected" | "error" | "connecting"
   tools: string[]
   error?: string
   url?: string
@@ -61,18 +61,22 @@ class MCPClientImpl {
     // Initialize servers from configuration
     this.initializeServers()
     
-    // Connect to all enabled servers
-    const connectionPromises = this.servers.map(server => 
-      this.connectToServer(server.id).catch(error => {
-        console.warn(`Failed to connect to server ${server.id}:`, error)
-        return null
-      })
-    )
+    // Connect to all enabled servers that have URLs configured
+    const connectionPromises = this.servers
+      .filter(server => server.url) // Only attempt connection if URL is configured
+      .map(server => 
+        this.connectToServer(server.id).catch(error => {
+          console.warn(`Failed to connect to server ${server.id}:`, error)
+          return null
+        })
+      )
 
     await Promise.allSettled(connectionPromises)
     this.isInitialized = true
     
-    console.log(`MCP client initialized. Connected servers: ${this.getConnectedServers().length}`)
+    const connectedCount = this.getConnectedServers().length
+    const totalServers = this.servers.length
+    console.log(`MCP client initialized. Connected servers: ${connectedCount}/${totalServers}, Total tools: ${this.tools.length}`)
   }
 
   // Initialize servers from configuration
@@ -146,10 +150,9 @@ class MCPClientImpl {
     }
 
     if (!server.url) {
-      // Create fallback server without real connection
-      server.status = "fallback"
-      server.error = "No URL configured - running in fallback mode"
-      this.addFallbackTools(serverId)
+      // No URL configured - mark as disconnected
+      server.status = "disconnected"
+      server.error = "No URL configured for this server"
       return server
     }
 
@@ -239,7 +242,7 @@ class MCPClientImpl {
     return [...this.servers]
   }
 
-  // Get all connected MCP servers
+  // Get all connected MCP servers 
   getConnectedServers(): MCPServer[] {
     return this.servers.filter((server) => server.status === "connected")
   }
@@ -267,8 +270,8 @@ class MCPClientImpl {
       }
     }
 
-    // Check if server is connected (allow fallback mode for tools)
-    if (server.status !== "connected" && server.status !== "fallback") {
+    // Check if server is connected
+    if (server.status !== "connected") {
       return {
         success: false,
         error: `Server ${serverId} is not connected (status: ${server.status})`,
@@ -287,8 +290,10 @@ class MCPClientImpl {
     const connectedClient = this.clients.get(serverId)
     
     if (!connectedClient) {
-      // Handle fallback servers
-      return this.handleFallbackTool(serverId, toolName, args)
+      return {
+        success: false,
+        error: `No active connection to server ${serverId}`,
+      }
     }
 
     try {
@@ -324,8 +329,7 @@ class MCPClientImpl {
     const connectedClient = this.clients.get(serverId)
     
     if (!connectedClient) {
-      // Return fallback tools for servers without real connections
-      return this.getFallbackTools(serverId)
+      throw new Error(`No active connection to server ${serverId}`)
     }
 
     try {
@@ -353,166 +357,6 @@ class MCPClientImpl {
     } catch (error) {
       throw new Error(`Failed to refresh tools for server ${serverId}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
-  }
-
-  // Handle fallback tools for servers without real connections
-  private handleFallbackTool(serverId: string, toolName: string, args: any): MCPToolResult {
-    console.log(`Executing fallback tool ${toolName} on ${serverId}:`, args)
-    
-    // Provide helpful error message based on the tool type
-    const server = this.servers.find(s => s.id === serverId)
-    const serverName = server?.name || serverId
-    const envVar = `MCP_${serverId.toUpperCase().replace('-', '_')}_SERVER_URL`
-    
-    return {
-      success: false,
-      error: `Tool "${toolName}" is running in fallback mode on ${serverName}. To enable real functionality, configure the ${envVar} environment variable with your MCP server URL.`,
-    }
-  }
-
-  // Add fallback tools for development/demo purposes
-  private addFallbackTools(serverId: string): void {
-    const server = this.servers.find(s => s.id === serverId)
-    if (!server) return
-
-    const fallbackTools = this.getFallbackTools(serverId)
-    this.tools.push(...fallbackTools)
-    server.tools = fallbackTools.map(t => t.name)
-  }
-
-  // Get fallback tools based on server type
-  private getFallbackTools(serverId: string): MCPTool[] {
-    const server = this.servers.find(s => s.id === serverId)
-    if (!server) return []
-
-    const baseTools: MCPTool[] = []
-
-    switch (serverId) {
-      case 'database-server':
-        baseTools.push(
-          {
-            name: 'query_database',
-            description: 'Execute SQL queries against the database',
-            serverId,
-            serverName: server.name,
-            inputSchema: {
-              type: 'object',
-              properties: {
-                query: { type: 'string', description: 'SQL query to execute' },
-                database: { type: 'string', description: 'Database name (optional)' }
-              },
-              required: ['query']
-            }
-          },
-          {
-            name: 'get_schema',
-            description: 'Get database schema information',
-            serverId,
-            serverName: server.name,
-            inputSchema: {
-              type: 'object',
-              properties: {
-                database: { type: 'string', description: 'Database name (optional)' }
-              }
-            }
-          }
-        )
-        break
-
-      case 'analytics-server':
-        baseTools.push(
-          {
-            name: 'generate_report',
-            description: 'Generate analytical reports',
-            serverId,
-            serverName: server.name,
-            inputSchema: {
-              type: 'object',
-              properties: {
-                reportType: { 
-                  type: 'string', 
-                  enum: ['sales', 'customer', 'financial', 'operational'],
-                  description: 'Type of report to generate' 
-                },
-                dateRange: { type: 'string', description: 'Date range for the report' },
-                filters: { type: 'object', description: 'Additional filters' }
-              },
-              required: ['reportType']
-            }
-          },
-          {
-            name: 'create_visualization',
-            description: 'Create data visualizations',
-            serverId,
-            serverName: server.name,
-            inputSchema: {
-              type: 'object',
-              properties: {
-                chartType: {
-                  type: 'string',
-                  enum: ['bar', 'line', 'pie', 'heatmap', 'treemap'],
-                  description: 'Type of chart to create'
-                },
-                dataSource: { type: 'string', description: 'Data source identifier' },
-                metrics: { type: 'array', items: { type: 'string' }, description: 'Metrics to include' },
-                dimensions: { type: 'array', items: { type: 'string' }, description: 'Dimensions to include' }
-              },
-              required: ['chartType', 'dataSource']
-            }
-          }
-        )
-        break
-
-      case 'file-server':
-        baseTools.push(
-          {
-            name: 'read_file',
-            description: 'Read file contents',
-            serverId,
-            serverName: server.name,
-            inputSchema: {
-              type: 'object',
-              properties: {
-                path: { type: 'string', description: 'File path to read' },
-                encoding: { type: 'string', description: 'File encoding', default: 'utf-8' }
-              },
-              required: ['path']
-            }
-          },
-          {
-            name: 'list_files',
-            description: 'List files in a directory',
-            serverId,
-            serverName: server.name,
-            inputSchema: {
-              type: 'object',
-              properties: {
-                path: { type: 'string', description: 'Directory path' },
-                pattern: { type: 'string', description: 'File pattern filter' }
-              },
-              required: ['path']
-            }
-          },
-          {
-            name: 'search_files',
-            description: 'Search for files by content',
-            serverId,
-            serverName: server.name,
-            inputSchema: {
-              type: 'object',
-              properties: {
-                query: { type: 'string', description: 'Search query' },
-                path: { type: 'string', description: 'Search path' },
-                fileTypes: { type: 'array', items: { type: 'string' }, description: 'File types to search' }
-              },
-              required: ['query']
-            }
-          }
-        )
-        break
-    }
-
-    return baseTools
   }
 
   // Get server status

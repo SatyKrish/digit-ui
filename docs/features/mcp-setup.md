@@ -4,7 +4,7 @@ This guide explains how to configure Model Context Protocol (MCP) servers for yo
 
 ## Overview
 
-Digit UI uses the Model Context Protocol to connect to external servers that provide tools and capabilities for data analysis, file operations, and other functionality. The application supports both real MCP servers and fallback mode for development.
+Digit UI uses the Model Context Protocol to connect to external servers that provide tools and capabilities for data analysis, file operations, and other functionality. Servers without configured URLs will show as "Disconnected" and their tools will not be available.
 
 ## Environment Configuration
 
@@ -14,7 +14,7 @@ Configure MCP servers using environment variables in your `.env.local` file:
 # Enable MCP functionality
 ENABLE_MCP=true
 
-# MCP Server URLs (leave empty for fallback mode)
+# MCP Server URLs (required for server connectivity)
 MCP_DATABASE_SERVER_URL=http://localhost:3001
 MCP_ANALYTICS_SERVER_URL=http://localhost:3002
 MCP_FILE_SERVER_URL=http://localhost:3003
@@ -62,12 +62,6 @@ The MCP client supports multiple transport protocols with automatic fallback:
 3. **WebSocket** - Real-time bidirectional communication
 4. **stdio** - Process-based communication
 
-## Fallback Mode
-
-When server URLs are not configured, the application provides mock implementations of tools for development and testing purposes.
-
-Fallback tools return helpful error messages indicating that real MCP servers need to be configured.
-
 ## Connection Management
 
 The MCP client automatically:
@@ -76,6 +70,7 @@ The MCP client automatically:
 - Handles transport fallback (Streamable HTTP → SSE)
 - Manages session state and reconnection
 - Refreshes server capabilities periodically
+- Shows servers as "Disconnected" when URLs are not configured or connections fail
 
 ## Retry Configuration
 
@@ -108,12 +103,11 @@ To add a custom MCP server:
      description: "Your custom MCP server",
      url: env.MCP_CUSTOM_SERVER_URL || undefined,
      transport: "http",
-     enabled: true,
-     fallback: true
+     enabled: true
    }
    ```
 
-3. Optionally add fallback tools in the `getFallbackTools` method.
+3. The server will show as "Disconnected" until a valid URL is configured and the server is accessible.
 
 ## API Endpoints
 
@@ -149,11 +143,12 @@ Monitor MCP server status in the UI:
 3. Check server logs for execution errors
 4. Test tools directly via the API endpoint
 
-### Fallback Mode
-If servers aren't connecting:
-1. Tools will return helpful error messages when URLs aren't configured
-2. Use for development when real servers aren't available
-3. Each server type has predefined fallback tools available
+### Disconnected Servers
+If servers show as "Disconnected":
+1. Verify that the server URL environment variable is set correctly
+2. Ensure the MCP server is running and accessible
+3. Check network connectivity to the server
+4. Review server logs for any startup or configuration issues
 
 ## Security Considerations
 
@@ -168,7 +163,7 @@ If servers aren't connecting:
 For local development:
 1. Start your MCP servers on different ports
 2. Configure environment variables to point to local servers
-3. Use fallback mode when servers aren't available
+3. Servers without configured URLs will show as "Disconnected"
 4. Monitor connection status in the browser console
 
 ## Production Deployment

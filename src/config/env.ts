@@ -32,14 +32,13 @@ export const env = {
   DATABASE_TIMEOUT: parseInt(getEnvVar('DATABASE_TIMEOUT', '30000')),
   DATABASE_VERBOSE: getEnvVar('DATABASE_VERBOSE', 'false') === 'true',
 
-  // MCP Server Configuration - Optional URLs for fallback mode
+  // MCP Server Configuration
   MCP_DATABASE_SERVER_URL: getOptionalEnvVar('MCP_DATABASE_SERVER_URL'),
   MCP_ANALYTICS_SERVER_URL: getOptionalEnvVar('MCP_ANALYTICS_SERVER_URL'),
   MCP_FILE_SERVER_URL: getOptionalEnvVar('MCP_FILE_SERVER_URL'),
 
   // Feature Flags
   ENABLE_MCP: getEnvVar('ENABLE_MCP', 'true') === 'true',
-  ENABLE_MCP_FALLBACK: getEnvVar('ENABLE_MCP_FALLBACK', 'true') === 'true',
   ENABLE_ANALYTICS: getEnvVar('ENABLE_ANALYTICS', 'false') === 'true',
 } as const
 
