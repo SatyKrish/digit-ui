@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { mcpClient } from "@/mcp/mcp-client"
+import { mcpClient } from "@/client/mcp-client"
 import { Database, BarChart3, FileText } from "lucide-react"
 
 export function MCPToolsPanel() {

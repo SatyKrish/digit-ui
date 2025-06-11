@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { mcpClient } from "@/mcp/mcp-client"
+import { mcpClient } from "@/client/mcp-client"
 import { Database, BarChart3, FileText } from "lucide-react"
 
 export function MCPStatus() {
@@ -40,6 +40,8 @@ export function MCPStatus() {
     switch (status) {
       case "connected":
         return "success"
+      case "connecting":
+        return "default"
       case "disconnected":
         return "warning"
       case "error":
@@ -53,6 +55,8 @@ export function MCPStatus() {
     switch (status) {
       case "connected":
         return "bg-success shadow-glow"
+      case "connecting":
+        return "bg-primary animate-pulse"
       case "disconnected":
         return "bg-warning animate-pulse"
       case "error":

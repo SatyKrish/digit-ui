@@ -27,6 +27,11 @@ export const env = {
   DATABASE_TIMEOUT: parseInt(getEnvVar('DATABASE_TIMEOUT', '30000')),
   DATABASE_VERBOSE: getEnvVar('DATABASE_VERBOSE', 'false') === 'true',
 
+  // MCP Server Configuration
+  MCP_DATABASE_SERVER_URL: getEnvVar('MCP_DATABASE_SERVER_URL', ''),
+  MCP_ANALYTICS_SERVER_URL: getEnvVar('MCP_ANALYTICS_SERVER_URL', ''),
+  MCP_FILE_SERVER_URL: getEnvVar('MCP_FILE_SERVER_URL', ''),
+
   // Feature Flags
   ENABLE_MCP: getEnvVar('ENABLE_MCP', 'true') === 'true',
   ENABLE_ANALYTICS: getEnvVar('ENABLE_ANALYTICS', 'false') === 'true',

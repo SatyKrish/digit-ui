@@ -1,6 +1,6 @@
 import { openai } from "@ai-sdk/openai"
 import { streamText, convertToCoreMessages } from "ai"
-import { mcpClient } from "@/mcp/mcp-client"
+import { mcpClient } from "@/client/mcp-client"
 
 export async function POST(req: Request) {
   const { messages } = await req.json()
