@@ -22,36 +22,59 @@ interface MCPServerConfig {
   enabled: boolean
 }
 
-// Client-safe MCP server configuration - no server-side env imports
-const getActiveMCPServers = (): MCPServerConfig[] => {
-  // Default server configurations for client-side use
-  // URLs will be empty if not configured, servers will show as disconnected
-  return [
-    {
-      id: "database-server",
-      name: "Database Server",
-      description: "Provides database query capabilities and schema introspection",
-      url: undefined, // Will be populated by server if available
-      transport: "http",
-      enabled: true
-    },
-    {
-      id: "analytics-server", 
-      name: "Analytics Server",
-      description: "Generates reports, visualizations, and analytical insights",
-      url: undefined, // Will be populated by server if available
-      transport: "http",
-      enabled: false
-    },
-    {
-      id: "file-server",
-      name: "File Server", 
-      description: "File system operations, reading, writing, and searching files",
-      url: undefined, // Will be populated by server if available
-      transport: "http",
-      enabled: false
+// Client-safe MCP server configuration - fetched from server API
+const getActiveMCPServers = async (): Promise<MCPServerConfig[]> => {
+  // Server-side: directly import and use the config function
+  if (typeof window === 'undefined') {
+    try {
+      const { getActiveMCPServers: getServerConfig } = await import('@/config/mcp-config')
+      return getServerConfig()
+    } catch (error) {
+      console.warn('Failed to get server-side MCP configuration:', error)
+      return []
     }
-  ]
+  }
+
+  // Client-side: fetch from API
+  try {
+    console.log('Fetching MCP server configuration from API...')
+    const response = await fetch('/api/mcp/config')
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    const data = await response.json()
+    console.log('MCP server configuration received:', data)
+    return data.enabled ? data.servers : []
+  } catch (error) {
+    console.warn('Failed to fetch MCP server configuration, using defaults:', error)
+    // Fallback to default configurations if API fails
+    return [
+      {
+        id: "database-server",
+        name: "Database Server",
+        description: "Provides database query capabilities and schema introspection",
+        url: undefined,
+        transport: "http",
+        enabled: true
+      },
+      {
+        id: "analytics-server", 
+        name: "Analytics Server",
+        description: "Generates reports, visualizations, and analytical insights",
+        url: undefined,
+        transport: "http",
+        enabled: false
+      },
+      {
+        id: "file-server",
+        name: "File Server", 
+        description: "File system operations, reading, writing, and searching files",
+        url: undefined,
+        transport: "http",
+        enabled: false
+      }
+    ]
+  }
 }
 
 // MCP Server types
@@ -98,7 +121,6 @@ class MCPClientImpl {
   private connectionRetries: Map<string, number> = new Map()
 
   constructor() {
-    this.initializeServers()
   }
 
   // Initialize the client with configured MCP servers
@@ -110,7 +132,7 @@ class MCPClientImpl {
     console.log('Initializing MCP client...')
     
     // Initialize servers from configuration
-    this.initializeServers()
+    await this.initializeServers()
     
     // Connect to all enabled servers that have URLs configured
     const connectionPromises = this.servers
@@ -131,8 +153,10 @@ class MCPClientImpl {
   }
 
   // Initialize servers from configuration
-  private initializeServers(): void {
-    const configs = getActiveMCPServers()
+  private async initializeServers(): Promise<void> {
+    console.log('Initializing MCP servers...')
+    const configs = await getActiveMCPServers()
+    console.log('Server configs received:', configs)
     
     this.servers = configs.map(config => ({
       id: config.id,
@@ -142,6 +166,8 @@ class MCPClientImpl {
       tools: [],
       url: config.url
     }))
+    
+    console.log('MCP servers initialized:', this.servers.map(s => ({ id: s.id, url: s.url })))
   }
 
   // Add a new MCP server
@@ -230,9 +256,16 @@ class MCPClientImpl {
       }
 
       // Store the connected client
-      const serverConfig = getActiveMCPServers().find(c => c.id === serverId)
+      const serverConfig = this.servers.find(s => s.id === serverId)
       if (serverConfig) {
-        this.clients.set(serverId, { client, transport, config: serverConfig })
+        this.clients.set(serverId, { client, transport, config: {
+          id: serverConfig.id,
+          name: serverConfig.name,
+          description: serverConfig.description,
+          url: serverConfig.url,
+          transport: "http",
+          enabled: true
+        }})
       }
 
       server.status = "connected"
