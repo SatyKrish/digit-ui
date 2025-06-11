@@ -13,21 +13,31 @@ export class ChatService {
   private messageRepository = getMessageRepository();
   private currentUserId: string | null = null;
   private currentSessionId: string | null = null;
+  private initializedUsers = new Set<string>(); 
 
   /**
    * Initialize service for a user
    */
   async initializeForUser(userData: { id: string; email: string; name: string }): Promise<void> {
+    // Skip initialization if user is already initialized
+    if (this.currentUserId === userData.id && this.initializedUsers.has(userData.id)) {
+      return;
+    }
+
     this.currentUserId = userData.id;
     
-    // Ensure user exists in database
-    const createUserData: CreateUser = {
-      id: userData.id,
-      email: userData.email,
-      name: userData.name
-    };
-    
-    this.userRepository.upsertUser(createUserData);
+    // Only upsert user if not already initialized
+    if (!this.initializedUsers.has(userData.id)) {
+      // Ensure user exists in database
+      const createUserData: CreateUser = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name
+      };
+      
+      this.userRepository.upsertUser(createUserData);
+      this.initializedUsers.add(userData.id);
+    }
     
     // Get or create a session for the user
     const sessions = this.sessionRepository.getSessionsForUser(userData.id, 1);
@@ -268,6 +278,19 @@ export class ChatService {
 
     const dbMessages = this.messageRepository.getMessagesForSession(sessionId);
     return dbMessages.map(this.mapDbMessageToMessage);
+  }
+
+  /**
+   * Clear user initialization cache (useful for logout or user switching)
+   */
+  clearUserCache(userId?: string): void {
+    if (userId) {
+      this.initializedUsers.delete(userId);
+    } else {
+      this.initializedUsers.clear();
+      this.currentUserId = null;
+      this.currentSessionId = null;
+    }
   }
 
   // Helper methods for mapping database types to application types
