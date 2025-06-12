@@ -287,7 +287,7 @@ export function MainChatArea({
           >
             {isGeneratingArtifacts ? (
               <div className="flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in">
-                <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background/90 backdrop-blur-lg">
+                <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <div className="w-10 h-10 bg-gradient-to-br from-primary/15 to-primary/5 rounded-xl flex items-center justify-center">

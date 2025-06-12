@@ -56,7 +56,7 @@ export function ArtifactPanel({ artifacts }: ArtifactPanelProps) {
   return (
     <div className={`flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in transition-all duration-300 ${isExpanded ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Enhanced Header */}
-      <div className="border-b border-border/50 p-4 lg:p-6 xl:p-8 2xl:p-10 shadow-soft bg-background/90 backdrop-blur-lg">
+      <div className="border-b border-border/50 p-4 lg:p-6 xl:p-8 2xl:p-10 shadow-soft bg-background">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
