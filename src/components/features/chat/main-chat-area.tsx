@@ -7,6 +7,7 @@ import { ChatMessages } from "./chat-messages"
 import { ChatInput } from "./chat-input"
 import { InitialWelcomeScreen } from "./initial-welcome-screen"
 import { ArtifactPanel } from "../artifacts/artifact-panel"
+import { StreamableArtifact } from "../artifacts/streamable-artifact"
 import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { useSidebar } from "@/components/ui/sidebar"
 import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
@@ -32,6 +33,7 @@ export function MainChatArea({
   maxRetries = 3
 }: EnhancedMainChatAreaProps) {
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
+  const [isGeneratingArtifacts, setIsGeneratingArtifacts] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const { open: sidebarOpen } = useSidebar()
   
@@ -70,20 +72,30 @@ export function MainChatArea({
     }
   }, [retryCount, maxRetries])
 
-  // Enhanced finish handler with better error recovery
+  // Enhanced finish handler with better artifact processing
   const handleFinish = useCallback((message: Message) => {
-    // Reset retry count on successful message
-    setRetryCount(0)
-    
     console.log('Message finished:', message.id)
     
     // Update artifacts from the completed message
     if (message.role === 'assistant') {
+      setIsGeneratingArtifacts(true)
+      
       try {
         const artifacts = extractArtifacts(message.content)
-        setCurrentArtifacts(artifacts)
+        
+        // Simulate artifact processing time for better UX
+        setTimeout(() => {
+          setCurrentArtifacts(artifacts)
+          setIsGeneratingArtifacts(false)
+          
+          // Show success toast if artifacts were generated
+          if (artifacts.length > 0) {
+            toast.success(`Generated ${artifacts.length} artifact${artifacts.length > 1 ? 's' : ''}`)
+          }
+        }, 800)
       } catch (error) {
         console.error('Failed to extract artifacts:', error)
+        setIsGeneratingArtifacts(false)
         // Don't show user error for artifact extraction failures
       }
     }
@@ -182,7 +194,7 @@ export function MainChatArea({
     }
   }, [retryCount, maxRetries, reload, handleError])
 
-  // Update artifacts when messages change (memoized for performance)
+  // Enhanced artifact processing with loading states
   const lastArtifacts = useMemo(() => {
     const lastAssistantMessage = messages.filter((m) => m.role === "assistant").pop()
     if (lastAssistantMessage) {
@@ -196,13 +208,15 @@ export function MainChatArea({
     return []
   }, [messages])
 
-  // Update artifacts state when artifacts change
+  // Update artifacts state with smooth transitions
   useEffect(() => {
-    setCurrentArtifacts(lastArtifacts)
-  }, [lastArtifacts])
+    if (!isGeneratingArtifacts) {
+      setCurrentArtifacts(lastArtifacts)
+    }
+  }, [lastArtifacts, isGeneratingArtifacts])
 
   // Determine if we should show the artifact panel
-  const showArtifactPanel = currentArtifacts && currentArtifacts.length > 0
+  const showArtifactPanel = currentArtifacts.length > 0 || isGeneratingArtifacts
 
   // Connection status indicator
   const connectionStatus = useMemo(() => {
@@ -215,11 +229,17 @@ export function MainChatArea({
   return (
     <SidebarInset className="flex flex-col relative transition-all duration-300 ease-in-out">
       <SidebarHoverTrigger />
-      <ChatHeader user={user} onLogout={onLogout} onNavigateHome={handleNavigateHome} />
+      <ChatHeader 
+        user={user} 
+        onLogout={onLogout} 
+        onNavigateHome={handleNavigateHome}
+        connectionStatus={connectionStatus}
+        artifactCount={currentArtifacts.length}
+      />
 
-      <div className="flex-1 flex min-h-0 transition-all duration-300 ease-in-out">
+      <div className="flex-1 flex min-h-0 transition-all duration-500 ease-in-out">
         <div
-          className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${
+          className={`flex-1 flex flex-col transition-all duration-500 ease-in-out ${
             showArtifactPanel ? "mr-2" : ""
           }`}
         >
@@ -239,18 +259,48 @@ export function MainChatArea({
                 isLoading={isLoading} 
                 user={user} 
               />
-              <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+              <ChatInput 
+                onSendMessage={handleSendMessage} 
+                isLoading={isLoading}
+                placeholder={isGeneratingArtifacts ? "Generating artifacts..." : undefined}
+              />
             </>
           )}
         </div>
 
         {showArtifactPanel && (
           <div
-            className={`transition-all duration-300 ease-in-out ${
+            className={`transition-all duration-500 ease-in-out transform ${
               sidebarOpen ? "w-96" : "w-[28rem]"
-            }`}
+            } ${showArtifactPanel ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}`}
           >
-            <ArtifactPanel artifacts={currentArtifacts} />
+            {isGeneratingArtifacts ? (
+              <div className="flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in">
+                <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background/90 backdrop-blur-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary/15 to-primary/5 rounded-xl flex items-center justify-center">
+                        <div className="w-5 h-5 border-2 border-primary/60 border-t-primary rounded-full animate-spin" />
+                      </div>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-foreground">Generating Artifacts</h2>
+                      <p className="text-xs text-muted-foreground">
+                        Creating interactive content...
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 p-6">
+                  <StreamableArtifact 
+                    artifact={null} 
+                    isStreaming={true}
+                  />
+                </div>
+              </div>
+            ) : (
+              <ArtifactPanel artifacts={currentArtifacts} />
+            )}
           </div>
         )}
       </div>

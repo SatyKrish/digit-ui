@@ -8,9 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { DOMAIN_HINTS } from "@/constants/chat"
-import type { ChatInputProps } from "@/types/chat"
 
-export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
+export interface ChatInputProps {
+  onSendMessage: (content: string, selectedHints?: string[]) => void
+  isLoading?: boolean
+  placeholder?: string
+}
+
+export function ChatInput({ onSendMessage, isLoading, placeholder }: ChatInputProps) {
   const [message, setMessage] = useState("")
   const [selectedHints, setSelectedHints] = useState<string[]>([])
 
@@ -81,7 +86,7 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask me anything about your data..."
+            placeholder={placeholder || "Ask me anything about your data..."}
             disabled={isLoading}
             className="
               min-h-[48px] max-h-32 resize-none pr-16 w-full

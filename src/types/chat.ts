@@ -54,6 +54,7 @@ export interface ChatMessagesProps {
 export interface ChatInputProps {
   onSendMessage: (content: string, selectedHints?: string[]) => void
   isLoading?: boolean
+  placeholder?: string
 }
 
 export interface MainChatAreaProps {

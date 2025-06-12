@@ -23,9 +23,11 @@ interface ChatHeaderProps {
   user: User
   onLogout: () => void
   onNavigateHome?: () => void
+  connectionStatus?: string
+  artifactCount?: number
 }
 
-export function ChatHeader({ user, onLogout, onNavigateHome }: ChatHeaderProps) {
+export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, artifactCount }: ChatHeaderProps) {
   const { theme, setTheme } = useTheme()
 
   // Get user initials (first character of first name)
@@ -49,8 +51,31 @@ export function ChatHeader({ user, onLogout, onNavigateHome }: ChatHeaderProps) 
         </button>
         
         {/* MCP Status Display */}
-        <div className="ml-8">
+        <div className="ml-8 flex items-center gap-4">
           <MCPStatus />
+          
+          {/* Connection Status */}
+          {connectionStatus && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-full text-sm text-muted-foreground">
+              <div className={`w-2 h-2 rounded-full ${
+                connectionStatus === 'Ready' ? 'bg-green-500' :
+                connectionStatus === 'Thinking...' ? 'bg-blue-500 animate-pulse' :
+                connectionStatus === 'Connection error' ? 'bg-red-500' :
+                'bg-yellow-500'
+              }`} />
+              {connectionStatus}
+            </div>
+          )}
+          
+          {/* Artifact Count */}
+          {artifactCount !== undefined && artifactCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full text-sm text-primary">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {artifactCount} artifact{artifactCount > 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       </div>
 

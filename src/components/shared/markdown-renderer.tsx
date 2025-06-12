@@ -25,7 +25,8 @@ interface CodeBlockProps {
   node?: any
   inline?: boolean
   className?: string
-  children: React.ReactNode
+  children?: React.ReactNode
+  [key: string]: any
 }
 
 // Memoized CodeBlock component for better performance
@@ -36,7 +37,7 @@ const CodeBlock = memo(({ node, inline, className, children, ...props }: CodeBlo
   const match = /language-(\w+)/.exec(className || '')
   const language = match ? match[1] : ''
   
-  const codeString = String(children).replace(/\n$/, '')
+  const codeString = String(children || '').replace(/\n$/, '')
 
   const copyToClipboard = async () => {
     try {
