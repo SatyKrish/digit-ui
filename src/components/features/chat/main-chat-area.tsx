@@ -10,7 +10,7 @@ import { ArtifactPanel } from "../artifacts/artifact-panel"
 import { StreamableArtifact } from "../artifacts/streamable-artifact"
 import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { useSidebar } from "@/components/ui/sidebar"
-import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
+import { extractArtifacts, hasArtifacts } from "@/services/artifacts/artifact-extractor"
 import { useChat } from "@ai-sdk/react"
 import { toast } from "sonner"
 import type { MainChatAreaProps, Artifact } from "@/types"
@@ -75,28 +75,43 @@ export function MainChatArea({
 
   // Enhanced finish handler with better artifact processing
   const handleFinish = useCallback((message: Message) => {
-    console.log('Message finished:', message.id)
+    console.log('Message finished:', message.id, 'Content preview:', message.content.substring(0, 100))
     
     // Update artifacts from the completed message
     if (message.role === 'assistant') {
-      setIsGeneratingArtifacts(true)
-      
       try {
-        const artifacts = extractArtifacts(message.content)
-        
-        // Simulate artifact processing time for better UX
-        setTimeout(() => {
-          setCurrentArtifacts(artifacts)
-          setIsGeneratingArtifacts(false)
+        // First check if the message has artifacts before doing expensive extraction
+        if (hasArtifacts(message.content)) {
+          console.log('Message has artifacts, extracting...')
+          const artifacts = extractArtifacts(message.content)
+          console.log('Extracted artifacts:', artifacts)
           
-          // Show success toast if artifacts were generated
           if (artifacts.length > 0) {
-            toast.success(`Generated ${artifacts.length} artifact${artifacts.length > 1 ? 's' : ''}`)
+            setIsGeneratingArtifacts(true)
+            
+            // Simulate artifact processing time for better UX
+            setTimeout(() => {
+              setCurrentArtifacts(artifacts)
+              setIsGeneratingArtifacts(false)
+              
+              // Show success toast if artifacts were generated
+              toast.success(`Generated ${artifacts.length} artifact${artifacts.length > 1 ? 's' : ''}`)
+            }, 800)
+          } else {
+            console.log('hasArtifacts returned true but extractArtifacts found none')
+            setCurrentArtifacts([])
+            setIsGeneratingArtifacts(false)
           }
-        }, 800)
+        } else {
+          console.log('Message has no artifacts')
+          // No artifacts found, clear any existing ones
+          setCurrentArtifacts([])
+          setIsGeneratingArtifacts(false)
+        }
       } catch (error) {
         console.error('Failed to extract artifacts:', error)
         setIsGeneratingArtifacts(false)
+        setCurrentArtifacts([])
         // Don't show user error for artifact extraction failures
       }
     }
@@ -148,6 +163,10 @@ export function MainChatArea({
       return
     }
 
+    // Clear artifacts when starting a new message
+    setCurrentArtifacts([])
+    setIsGeneratingArtifacts(false)
+
     const fullContent = selectedHints.length > 0 
       ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` 
       : content
@@ -195,29 +214,18 @@ export function MainChatArea({
     }
   }, [retryCount, maxRetries, reload, handleError])
 
-  // Enhanced artifact processing with loading states
-  const lastArtifacts = useMemo(() => {
-    const lastAssistantMessage = messages.filter((m) => m.role === "assistant").pop()
-    if (lastAssistantMessage) {
-      try {
-        return extractArtifacts(lastAssistantMessage.content)
-      } catch (error) {
-        console.error('Failed to extract artifacts:', error)
-        return []
-      }
-    }
-    return []
-  }, [messages])
-
-  // Update artifacts state with smooth transitions
-  useEffect(() => {
-    if (!isGeneratingArtifacts) {
-      setCurrentArtifacts(lastArtifacts)
-    }
-  }, [lastArtifacts, isGeneratingArtifacts])
-
   // Determine if we should show the artifact panel
   const showArtifactPanel = currentArtifacts.length > 0 || isGeneratingArtifacts
+  
+  // Debug logging for artifact panel visibility
+  useEffect(() => {
+    console.log('Artifact panel state:', {
+      showArtifactPanel,
+      currentArtifactsCount: currentArtifacts.length,
+      isGeneratingArtifacts,
+      messagesCount: messages.length
+    })
+  }, [showArtifactPanel, currentArtifacts.length, isGeneratingArtifacts, messages.length])
 
   // Connection status indicator
   const connectionStatus = useMemo(() => {
