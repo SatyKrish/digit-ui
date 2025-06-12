@@ -10,6 +10,7 @@ import { VisualizationArtifact } from "./visualizations/visualization-artifact"
 import { HeatmapArtifact } from "./visualizations/heatmap-artifact"
 import { TreemapArtifact } from "./visualizations/treemap-artifact"
 import { GeospatialArtifact } from "./visualizations/geospatial-artifact"
+import { MarkdownRenderer as SharedMarkdownRenderer } from "@/components/shared/markdown-renderer"
 import { useTheme } from "next-themes"
 import type { Artifact, ArtifactRendererProps } from "@/types/artifacts"
 
@@ -44,9 +45,10 @@ function CodeBlock({ content, language }: { content: string; language?: string }
 // Markdown renderer component with dark mode support
 function MarkdownRenderer({ content }: { content: string }) {
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground">
-      <pre className="whitespace-pre-wrap text-sm text-foreground">{content}</pre>
-    </div>
+    <SharedMarkdownRenderer 
+      content={content} 
+      className="prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground"
+    />
   )
 }
 
