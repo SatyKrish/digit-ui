@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { TrendingUp, BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon, Download } from "lucide-react"
+import { TrendingUp, BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon } from "lucide-react"
 import { useTheme } from "next-themes"
 
 interface ChartData {
@@ -183,23 +183,6 @@ export function ChartArtifact({ data, chartType = "bar", title, xKey, yKey }: Ch
     }
   }
 
-  const downloadChart = () => {
-    const csvContent = [
-      [defaultXKey, defaultYKey].join(','),
-      ...data.map(row => [row[defaultXKey], row[defaultYKey]].join(','))
-    ].join('\n')
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${title || 'chart-data'}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const ChartIcon = CHART_ICONS[currentChartType as keyof typeof CHART_ICONS]
-
   return (
     <Card className="w-full bg-gradient-to-br from-background to-muted/20 border border-border/50">
       <CardHeader className="pb-4">
@@ -207,7 +190,6 @@ export function ChartArtifact({ data, chartType = "bar", title, xKey, yKey }: Ch
           <div className="flex items-center gap-3">
             {title && (
               <div className="flex items-center gap-2">
-                <ChartIcon className="h-5 w-5 text-primary" />
                 <h3 className="text-lg font-semibold text-foreground">{title}</h3>
               </div>
             )}
@@ -228,11 +210,6 @@ export function ChartArtifact({ data, chartType = "bar", title, xKey, yKey }: Ch
                 <SelectItem value="pie">Pie Chart</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Button variant="outline" size="sm" onClick={downloadChart}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
           </div>
         </div>
 

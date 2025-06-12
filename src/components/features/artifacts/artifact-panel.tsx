@@ -11,8 +11,6 @@ import type { Artifact, ArtifactPanelProps } from "@/types/artifacts"
 
 export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChatMinimized, onClose }: ArtifactPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState(0)
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isPinned, setIsPinned] = useState(false)
 
   if (artifacts.length === 0) {
     return (
@@ -54,11 +52,7 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
   }
 
   return (
-    <div className={`flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in transition-all duration-300 ${
-      isExpanded 
-        ? 'fixed inset-0 z-50 bg-background shadow-2xl' 
-        : ''
-    }`}>
+    <div className={`flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in transition-all duration-300`}>
       {/* Enhanced Header */}
       <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
         <div className="flex items-center justify-between">
@@ -88,7 +82,7 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
                 size="sm"
                 onClick={onToggleChatMinimized}
                 className="h-8 w-8 p-0 hover:bg-muted/50"
-                title={isChatMinimized ? "Show chat" : "Minimize chat"}
+                title={isChatMinimized ? "Minimize artifacts" : "Expand artifacts"}
               >
                 {isChatMinimized ? <SidebarOpen className="h-4 w-4" /> : <SidebarClose className="h-4 w-4" />}
               </Button>
@@ -104,25 +98,6 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
                 <X className="h-4 w-4" />
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsPinned(!isPinned)}
-              className="h-8 w-8 p-0 hover:bg-muted/50"
-              title={isPinned ? "Unpin panel" : "Pin panel"}
-              title={isPinned ? "Unpin panel" : "Pin panel"}
-            >
-              {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="h-8 w-8 p-0 hover:bg-muted/50"
-              title={isExpanded ? "Exit fullscreen" : "Enter fullscreen"}
-            >
-              {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
           </div>
         </div>
       </div>

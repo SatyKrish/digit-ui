@@ -16,7 +16,6 @@ import {
   Pause, 
   Square, 
   Download, 
-  Share2, 
   Edit3,
   RefreshCw,
   Copy,
@@ -220,15 +219,6 @@ export function Artifact({
         a.click()
         URL.revokeObjectURL(url)
         toast.success("Artifact downloaded")
-      }
-    },
-    {
-      icon: <Share2 className="h-4 w-4" />,
-      label: "Share",
-      description: "Share artifact",
-      onClick: ({ artifact }) => {
-        // Implement sharing logic
-        toast.success("Share link copied to clipboard")
       }
     }
   ]
