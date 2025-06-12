@@ -6,10 +6,10 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Maximize2, Minimize2, Pin, PinOff } from "lucide-react"
+import { Maximize2, Minimize2, Pin, PinOff, X } from "lucide-react"
 import type { Artifact, ArtifactPanelProps } from "@/types/artifacts"
 
-export function ArtifactPanel({ artifacts }: ArtifactPanelProps) {
+export function ArtifactPanel({ artifacts, onClose }: ArtifactPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState(0)
   const [isExpanded, setIsExpanded] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
@@ -54,7 +54,11 @@ export function ArtifactPanel({ artifacts }: ArtifactPanelProps) {
   }
 
   return (
-    <div className={`flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in transition-all duration-300 ${isExpanded ? 'fixed inset-0 z-50 bg-background' : ''}`}>
+    <div className={`flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in transition-all duration-300 ${
+      isExpanded 
+        ? 'fixed inset-0 z-50 bg-background shadow-2xl' 
+        : ''
+    }`}>
       {/* Enhanced Header */}
       <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background/90 backdrop-blur-lg">
         <div className="flex items-center justify-between">
@@ -78,11 +82,23 @@ export function ArtifactPanel({ artifacts }: ArtifactPanelProps) {
           </div>
           
           <div className="flex items-center gap-2">
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="h-8 w-8 p-0 hover:bg-muted/50"
+                title="Close artifacts"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsPinned(!isPinned)}
               className="h-8 w-8 p-0 hover:bg-muted/50"
+              title={isPinned ? "Unpin panel" : "Pin panel"}
             >
               {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
             </Button>
@@ -91,6 +107,7 @@ export function ArtifactPanel({ artifacts }: ArtifactPanelProps) {
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
               className="h-8 w-8 p-0 hover:bg-muted/50"
+              title={isExpanded ? "Exit fullscreen" : "Expand to fullscreen"}
             >
               {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>

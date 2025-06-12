@@ -11,6 +11,7 @@ export interface Artifact {
 
 export interface ArtifactPanelProps {
   artifacts: Artifact[]
+  onClose?: () => void
 }
 
 export interface ArtifactRendererProps {

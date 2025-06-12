@@ -271,7 +271,7 @@ export function MainChatArea({
         {showArtifactPanel && (
           <div
             className={`transition-all duration-500 ease-in-out transform ${
-              sidebarOpen ? "w-96" : "w-[28rem]"
+              sidebarOpen ? "w-[70vw]" : "w-[70vw]"
             } ${showArtifactPanel ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}`}
           >
             {isGeneratingArtifacts ? (
@@ -299,7 +299,13 @@ export function MainChatArea({
                 </div>
               </div>
             ) : (
-              <ArtifactPanel artifacts={currentArtifacts} />
+              <ArtifactPanel 
+                artifacts={currentArtifacts} 
+                onClose={() => {
+                  setCurrentArtifacts([])
+                  setIsGeneratingArtifacts(false)
+                }}
+              />
             )}
           </div>
         )}
