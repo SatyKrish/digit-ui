@@ -89,27 +89,8 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
             </Button>
           </div>
 
-          {/* Selected Hints Display */}
-          {selectedHints.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Selected domains:</p>
-              <div className="flex flex-wrap gap-2">
-                {selectedHints.map((hint, index) => (
-                  <Badge 
-                    key={hint} 
-                    variant="default" 
-                    className={`cursor-pointer transition-all duration-200 hover:scale-105 animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
-                    onClick={() => toggleHint(hint)}
-                  >
-                    {hint} ×
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Domain Hints */}
-          <div className="space-y-2">
+          {/* Domain Hints - positioned below the chat text bar */}
+          <div className="space-y-2 max-w-2xl mx-auto">
             <h3 className="text-sm font-medium text-muted-foreground">Domains</h3>
             <div className="flex flex-wrap gap-2">
               {domainHints.map((hint, index) => (
@@ -128,6 +109,25 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
               ))}
             </div>
           </div>
+
+          {/* Selected Hints Display */}
+          {selectedHints.length > 0 && (
+            <div className="space-y-2 max-w-2xl mx-auto">
+              <p className="text-sm text-muted-foreground">Selected domains:</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedHints.map((hint, index) => (
+                  <Badge 
+                    key={hint} 
+                    variant="default" 
+                    className={`cursor-pointer transition-all duration-200 hover:scale-105 animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
+                    onClick={() => toggleHint(hint)}
+                  >
+                    {hint} ×
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
       </div>
     </div>
