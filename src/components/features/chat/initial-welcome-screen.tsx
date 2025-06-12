@@ -7,6 +7,7 @@ import { Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { useWelcomeMessage } from "@/hooks/welcome/use-welcome-message"
 
 interface User {
   name: string
@@ -26,6 +27,8 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
   const [message, setMessage] = useState("")
   const [selectedHints, setSelectedHints] = useState<string[]>([])
 
+  // Get dynamic welcome message
+  const welcomeMessage = useWelcomeMessage(user)
   const firstName = user.name.split(" ")[0]
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -53,8 +56,24 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
       <div className="w-full max-w-4xl space-y-8">
         {/* Welcome Message */}
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-foreground">Welcome back, {firstName}!</h1>
-          <p className="text-xl text-muted-foreground">How can I help you today?</p>
+          <h1 className="text-4xl font-bold text-foreground">
+            {welcomeMessage.isLoading ? `Welcome, ${firstName}!` : welcomeMessage.title}
+          </h1>
+          <p className="text-xl text-muted-foreground">
+            {welcomeMessage.isLoading ? 'How can I help you today?' : welcomeMessage.subtitle}
+          </p>
+          {!welcomeMessage.isLoading && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground/80">
+              <span className="px-2 py-1 bg-muted/30 rounded-full text-xs font-medium">
+                {welcomeMessage.context}
+              </span>
+              <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full"></span>
+              <span className="text-xs">
+                {welcomeMessage.tone === 'professional' ? '🎯' : 
+                 welcomeMessage.tone === 'friendly' ? '😊' : '⚡'} {welcomeMessage.tone}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Centered Input */}
