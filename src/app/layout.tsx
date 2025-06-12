@@ -3,6 +3,7 @@ import './globals.css'
 import { ThemeScript } from '@/components/features/layout/theme-script'
 import { MsalAuthProvider } from '@/components/features/auth/msal-provider'
 import { ThemeProvider } from '@/components/features/layout/theme-provider'
+import { SidebarProvider } from '@/components/ui/sidebar'
 
 export const metadata: Metadata = {
   title: 'Digit',
@@ -26,9 +27,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <MsalAuthProvider>
-            {children}
-          </MsalAuthProvider>
+          <SidebarProvider defaultOpen={false}>
+            <MsalAuthProvider>
+              {children}
+            </MsalAuthProvider>
+          </SidebarProvider>
         </ThemeProvider>
       </body>
     </html>

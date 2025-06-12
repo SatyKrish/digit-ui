@@ -2,14 +2,21 @@ import { getDatabase } from '../index';
 import type { ChatSession, CreateChatSession, UpdateChatSession, SessionWithMessageCount } from '../types';
 
 export class SessionRepository {
-  private db = getDatabase();
+  private db: ReturnType<typeof getDatabase> | null = null;
+
+  private getDb() {
+    if (!this.db) {
+      this.db = getDatabase();
+    }
+    return this.db;
+  }
 
   /**
    * Create a new chat session
    */
   createSession(sessionData: CreateChatSession): ChatSession {
-    const stmt = this.db.prepare(`
-      INSERT INTO chat_sessions (id, user_id, title)
+    const stmt = this.getDb().prepare(`
+      INSERT INTO chats (id, user_id, title)
       VALUES (?, ?, ?)
       RETURNING *
     `);
@@ -21,7 +28,7 @@ export class SessionRepository {
    * Get session by ID
    */
   getSessionById(id: string): ChatSession | null {
-    const stmt = this.db.prepare('SELECT * FROM chat_sessions WHERE id = ?');
+    const stmt = this.getDb().prepare('SELECT * FROM chats WHERE id = ?');
     return stmt.get(id) as ChatSession | null;
   }
 
@@ -29,13 +36,13 @@ export class SessionRepository {
    * Get sessions for a user with message count
    */
   getSessionsForUser(userId: string, limit = 50): SessionWithMessageCount[] {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT 
         s.*,
         COUNT(m.id) as message_count,
         MAX(m.created_at) as last_message_at
-      FROM chat_sessions s
-      LEFT JOIN chat_messages m ON s.id = m.session_id
+      FROM chats s
+      LEFT JOIN messages m ON s.id = m.chat_id
       WHERE s.user_id = ?
       GROUP BY s.id
       ORDER BY s.updated_at DESC
@@ -52,8 +59,8 @@ export class SessionRepository {
     const setClause = Object.keys(updates).map(key => `${key} = ?`).join(', ');
     const values = Object.values(updates);
     
-    const stmt = this.db.prepare(`
-      UPDATE chat_sessions 
+    const stmt = this.getDb().prepare(`
+      UPDATE chats 
       SET ${setClause}, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
       RETURNING *
@@ -66,7 +73,7 @@ export class SessionRepository {
    * Delete session and all its messages
    */
   deleteSession(id: string): boolean {
-    const stmt = this.db.prepare('DELETE FROM chat_sessions WHERE id = ?');
+    const stmt = this.getDb().prepare('DELETE FROM chats WHERE id = ?');
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -75,7 +82,7 @@ export class SessionRepository {
    * Delete all sessions for a user
    */
   deleteAllSessionsForUser(userId: string): number {
-    const stmt = this.db.prepare('DELETE FROM chat_sessions WHERE user_id = ?');
+    const stmt = this.getDb().prepare('DELETE FROM chats WHERE user_id = ?');
     const result = stmt.run(userId);
     return result.changes;
   }
@@ -84,7 +91,7 @@ export class SessionRepository {
    * Get session count for user
    */
   getSessionCountForUser(userId: string): number {
-    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM chat_sessions WHERE user_id = ?');
+    const stmt = this.getDb().prepare('SELECT COUNT(*) as count FROM chats WHERE user_id = ?');
     const result = stmt.get(userId) as { count: number };
     return result.count;
   }
@@ -93,7 +100,7 @@ export class SessionRepository {
    * Touch session (update timestamp)
    */
   touchSession(id: string): void {
-    const stmt = this.db.prepare('UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    const stmt = this.getDb().prepare('UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = ?');
     stmt.run(id);
   }
 }

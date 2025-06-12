@@ -20,6 +20,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Set build environment variables to prevent database initialization
+ENV NODE_ENV=production
+ENV BUILDING=true
+ENV NEXT_PHASE=phase-production-build
+
 # Rebuild native modules for the target platform and build the application
 RUN npm rebuild better-sqlite3
 RUN npm run build
@@ -35,6 +40,9 @@ ENV NODE_ENV=production
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+
+# Create data directory for SQLite database with proper permissions
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 
 # Copy built application
 COPY --from=builder /app/public ./public

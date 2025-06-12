@@ -54,6 +54,7 @@ export interface ChatMessagesProps {
 export interface ChatInputProps {
   onSendMessage: (content: string, selectedHints?: string[]) => void
   isLoading?: boolean
+  placeholder?: string
 }
 
 export interface MainChatAreaProps {
@@ -65,4 +66,8 @@ export interface MainChatAreaProps {
   currentChatId: string | null
   onLogout: () => void
   onNewChat?: () => void
+  // Enhanced functionality props (optional for backward compatibility)
+  enableSmootherStreaming?: boolean;
+  enableThrottling?: boolean;
+  maxRetries?: number;
 }

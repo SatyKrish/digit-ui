@@ -6,12 +6,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { mcpClient } from "@/client/mcp-client"
 import { Database, BarChart3, FileText, RefreshCw } from "lucide-react"
 
+interface MCPServer {
+  id: string
+  name: string
+  description: string
+  status: "connected" | "disconnected" | "error" | "connecting"
+  tools: string[]
+  error?: string
+  url?: string
+}
+
+interface MCPTool {
+  name: string
+  description: string
+  serverId: string
+  serverName: string
+  inputSchema: {
+    type: string
+    properties?: Record<string, any>
+    required?: string[]
+  }
+}
+
 export function MCPToolsPanel() {
-  const [servers, setServers] = useState<any[]>([])
-  const [tools, setTools] = useState<any[]>([])
+  const [servers, setServers] = useState<MCPServer[]>([])
+  const [tools, setTools] = useState<MCPTool[]>([])
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -19,22 +40,20 @@ export function MCPToolsPanel() {
     try {
       setIsRefreshing(true)
       
-      // Ensure MCP client is initialized
-      if (!mcpClient.isReady()) {
-        console.log('MCP client not ready, initializing...')
-        await mcpClient.initialize()
+      // Fetch status from server-side API instead of client-side MCP client
+      const response = await fetch('/api/mcp')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
-      const availableServers = mcpClient.getAvailableServers()
-      const allTools = mcpClient.getAllTools()
+      const data = await response.json()
 
-      setServers(availableServers)
-      setTools(allTools)
+      setServers(data.servers || [])
+      setTools(data.tools || [])
       setLastUpdate(Date.now())
       console.log('MCP data loaded:', {
-        servers: availableServers.length,
-        tools: allTools.length,
-        connected: availableServers.filter(s => s.status === "connected").length
+        servers: data.servers?.length || 0,
+        tools: data.tools?.length || 0,
+        connected: data.connected || 0
       })
     } catch (error) {
       console.error('Failed to load MCP data:', error)
@@ -54,17 +73,22 @@ export function MCPToolsPanel() {
     // Refresh every 15 seconds to keep status updated
     const interval = setInterval(async () => {
       try {
-        const updatedServers = mcpClient.getAvailableServers()
-        const updatedTools = mcpClient.getAllTools()
+        const response = await fetch('/api/mcp')
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        const data = await response.json()
+        const updatedServers = data.servers || []
+        const updatedTools = data.tools || []
         
         // Check for changes before updating
-        const serverStatusChanged = JSON.stringify(servers.map(s => ({id: s.id, status: s.status}))) !== 
-                                  JSON.stringify(updatedServers.map(s => ({id: s.id, status: s.status})))
+        const serverStatusChanged = JSON.stringify(servers.map((s: MCPServer) => ({id: s.id, status: s.status}))) !== 
+                                  JSON.stringify(updatedServers.map((s: MCPServer) => ({id: s.id, status: s.status})))
         const toolsChanged = tools.length !== updatedTools.length
         
         if (serverStatusChanged || toolsChanged) {
           console.log('MCP status update:', {
-            servers: updatedServers.map(s => `${s.name}: ${s.status}`),
+            servers: updatedServers.map((s: MCPServer) => `${s.name}: ${s.status}`),
             toolCount: updatedTools.length
           })
           setServers(updatedServers)
