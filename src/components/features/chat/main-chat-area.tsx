@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { ChatHeader } from "./chat-header"
 import { ChatMessages } from "./chat-messages"
@@ -11,11 +11,28 @@ import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { useSidebar } from "@/components/ui/sidebar"
 import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
 import { useChat } from "@ai-sdk/react"
+import { toast } from "sonner"
 import type { MainChatAreaProps, Artifact } from "@/types"
 import type { Message } from "ai"
 
-export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainChatAreaProps) {
+interface EnhancedMainChatAreaProps extends MainChatAreaProps {
+  // Enhanced functionality props
+  enableSmootherStreaming?: boolean;
+  enableThrottling?: boolean;
+  maxRetries?: number;
+}
+
+export function MainChatArea({ 
+  user, 
+  currentChatId, 
+  onLogout, 
+  onNewChat,
+  enableSmootherStreaming = true,
+  enableThrottling = true,
+  maxRetries = 3
+}: EnhancedMainChatAreaProps) {
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
+  const [retryCount, setRetryCount] = useState(0)
   const { open: sidebarOpen } = useSidebar()
   
   // Initialize user in chat service via API
@@ -41,7 +58,38 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     initializeUser()
   }, [user?.email, user?.name])
 
-  // Use Vercel AI SDK's useChat hook - this handles everything!
+  // Enhanced error handling with retry logic
+  const handleError = useCallback((error: Error) => {
+    console.error('Chat error:', error)
+    
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1)
+      toast.error(`Connection error. Retrying... (${retryCount + 1}/${maxRetries})`)
+    } else {
+      toast.error('Unable to connect to chat service. Please refresh the page.')
+    }
+  }, [retryCount, maxRetries])
+
+  // Enhanced finish handler with better error recovery
+  const handleFinish = useCallback((message: Message) => {
+    // Reset retry count on successful message
+    setRetryCount(0)
+    
+    console.log('Message finished:', message.id)
+    
+    // Update artifacts from the completed message
+    if (message.role === 'assistant') {
+      try {
+        const artifacts = extractArtifacts(message.content)
+        setCurrentArtifacts(artifacts)
+      } catch (error) {
+        console.error('Failed to extract artifacts:', error)
+        // Don't show user error for artifact extraction failures
+      }
+    }
+  }, [])
+
+  // Use Vercel AI SDK's useChat hook with enhanced configuration
   const { 
     messages, 
     input, 
@@ -52,72 +100,117 @@ export function MainChatArea({ user, currentChatId, onLogout, onNewChat }: MainC
     setMessages,
     reload,
     setInput,
-    append
+    append,
+    status // Enhanced connection status tracking
   } = useChat({
-    id: currentChatId || undefined, // Let AI SDK handle session creation when undefined
+    id: currentChatId || undefined,
     api: '/api/chat',
     body: {
       userId: user?.email,
-      id: currentChatId || undefined
+      id: currentChatId || undefined,
+      enableSmootherStreaming,
+      enableThrottling
     },
-    onFinish: (message) => {
-      // Session and message saving is handled automatically in the API route
-      console.log('Message finished:', message.id)
-      
-      // Update artifacts from the completed message
-      if (message.role === 'assistant') {
-        const artifacts = extractArtifacts(message.content)
-        setCurrentArtifacts(artifacts)
-      }
-    },
-    onError: (error) => {
-      console.error('Chat error:', error)
-    }
+    // Load initial messages for existing chats
+    initialMessages: useMemo(() => {
+      // This will be populated by the API route when currentChatId is provided
+      return []
+    }, [currentChatId]),
+    onFinish: handleFinish,
+    onError: handleError
   })
 
   // Check if we're on the initial welcome screen
   const isInitialState = !currentChatId && messages.length === 0
 
-  // Handle sending message with domain hints
-  const handleSendMessage = async (content: string, selectedHints: string[] = []) => {
-    if (isLoading) return
+  // Enhanced message sending with better error handling
+  const handleSendMessage = useCallback(async (content: string, selectedHints: string[] = []) => {
+    if (isLoading) {
+      toast.warning('Please wait for the current message to complete')
+      return
+    }
+
+    if (!content.trim()) {
+      toast.warning('Please enter a message')
+      return
+    }
 
     const fullContent = selectedHints.length > 0 
       ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` 
       : content
 
-    // If no current chat ID, this will be a new chat - AI SDK will handle the session creation
-    if (!currentChatId && onNewChat) {
-      // Notify parent that we're starting a new chat
-      onNewChat()
+    try {
+      // If no current chat ID, this will be a new chat
+      if (!currentChatId && onNewChat) {
+        onNewChat()
+      }
+
+      // Use AI SDK's append function
+      await append({
+        role: 'user',
+        content: fullContent
+      })
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      toast.error('Failed to send message. Please try again.')
     }
+  }, [isLoading, currentChatId, onNewChat, append])
 
-    // Use AI SDK's append function - much simpler!
-    await append({
-      role: 'user',
-      content: fullContent
-    })
-  }
-
-  const handleNavigateHome = () => {
-    // Navigate to welcome screen by clearing messages and artifacts
+  // Enhanced navigation with cleanup
+  const handleNavigateHome = useCallback(() => {
+    // Clear current state
     setMessages([])
     setCurrentArtifacts([])
-    // Call onNewChat to update the parent's currentChatId to null
+    setRetryCount(0)
+    
+    // Navigate to welcome screen
     onNewChat?.()
-  }
+  }, [setMessages, onNewChat])
 
-  // Update artifacts when messages change (for existing messages loaded from history)
-  useEffect(() => {
+  // Enhanced retry functionality
+  const handleRetry = useCallback(async () => {
+    if (retryCount >= maxRetries) {
+      toast.error('Maximum retries reached. Please refresh the page.')
+      return
+    }
+
+    try {
+      await reload()
+    } catch (error) {
+      console.error('Retry failed:', error)
+      handleError(error as Error)
+    }
+  }, [retryCount, maxRetries, reload, handleError])
+
+  // Update artifacts when messages change (memoized for performance)
+  const lastArtifacts = useMemo(() => {
     const lastAssistantMessage = messages.filter((m) => m.role === "assistant").pop()
     if (lastAssistantMessage) {
-      const artifacts = extractArtifacts(lastAssistantMessage.content)
-      setCurrentArtifacts(artifacts)
+      try {
+        return extractArtifacts(lastAssistantMessage.content)
+      } catch (error) {
+        console.error('Failed to extract artifacts:', error)
+        return []
+      }
     }
+    return []
   }, [messages])
+
+  // Update artifacts state when artifacts change
+  useEffect(() => {
+    setCurrentArtifacts(lastArtifacts)
+  }, [lastArtifacts])
 
   // Determine if we should show the artifact panel
   const showArtifactPanel = currentArtifacts && currentArtifacts.length > 0
+
+  // Connection status indicator
+  const connectionStatus = useMemo(() => {
+    if (status === 'streaming') return 'Thinking...'
+    if (error) return 'Connection error'
+    if (status === 'ready') return 'Ready'
+    return ''
+  }, [status, error])
 
   return (
     <SidebarInset className="flex flex-col relative transition-all duration-300 ease-in-out">

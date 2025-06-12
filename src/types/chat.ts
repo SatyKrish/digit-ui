@@ -65,4 +65,8 @@ export interface MainChatAreaProps {
   currentChatId: string | null
   onLogout: () => void
   onNewChat?: () => void
+  // Enhanced functionality props (optional for backward compatibility)
+  enableSmootherStreaming?: boolean;
+  enableThrottling?: boolean;
+  maxRetries?: number;
 }

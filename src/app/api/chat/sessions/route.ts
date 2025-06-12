@@ -13,20 +13,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get chats using the new AI SDK service
+    // Get chats using the AI SDK service (more efficient)
     const chats = await aiSdkChatService.getUserChats(userId)
     
     // Transform to match the expected format for compatibility
-    const sessions = await Promise.all(chats.map(async (chat) => {
-      const stats = await aiSdkChatService.getChatStats(chat.id)
-      return {
-        id: chat.id,
-        userId: chat.userId,
-        title: chat.title || 'New Chat',
-        createdAt: chat.createdAt,
-        updatedAt: chat.updatedAt,
-        messageCount: stats.messageCount
-      }
+    const sessions = chats.map(chat => ({
+      id: chat.id,
+      userId: chat.userId,
+      title: chat.title || 'New Chat',
+      createdAt: chat.createdAt,
+      updatedAt: chat.updatedAt,
+      messageCount: 0 // Computed on demand if needed
     }))
 
     return NextResponse.json({ sessions })
@@ -92,6 +89,31 @@ export async function PATCH(request: NextRequest) {
     console.error('Failed to update session title:', error)
     return NextResponse.json(
       { error: 'Failed to update session title' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const sessionId = searchParams.get('sessionId')
+
+    if (!sessionId) {
+      return NextResponse.json(
+        { error: 'Session ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Delete chat using AI SDK service
+    await aiSdkChatService.deleteChat(sessionId)
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Failed to delete session:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete session' },
       { status: 500 }
     )
   }

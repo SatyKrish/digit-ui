@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatSession } from '@/types/chat';
 import { sessionCache } from '@/services/chat/session-cache';
+import { toast } from 'sonner';
 
 /**
- * Simplified chat session management hook for use with Vercel AI SDK
+ * Enhanced chat session management hook with better error handling
  * Focuses on session list management while letting useChat handle messages
  */
 export function useChatSessions(user?: { id: string; email: string; name: string }) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const userRef = useRef(user);
   
   // Keep user ref updated
@@ -18,7 +20,7 @@ export function useChatSessions(user?: { id: string; email: string; name: string
   }, [user]);
 
   /**
-   * Load sessions from API (simplified for AI SDK usage)
+   * Load sessions from API with enhanced error handling
    */
   const loadSessions = useCallback(async () => {
     const currentUser = userRef.current;
@@ -33,6 +35,7 @@ export function useChatSessions(user?: { id: string; email: string; name: string
     }
     
     setIsLoading(true);
+    setError(null);
     try {
       const response = await fetch(`/api/chat/sessions?userId=${encodeURIComponent(currentUser.id)}`);
       if (!response.ok) {
@@ -45,8 +48,11 @@ export function useChatSessions(user?: { id: string; email: string; name: string
       // Update cache
       sessionCache.set(currentUser.id, fetchedSessions);
       setSessions(fetchedSessions);
-    } catch (error) {
-      console.error('Error loading chat sessions:', error);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load sessions';
+      setError(errorMessage);
+      console.error('Error loading chat sessions:', err);
+      toast.error('Failed to load chat history');
     } finally {
       setIsLoading(false);
     }
