@@ -35,6 +35,7 @@ export function MainChatArea({
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
   const [isGeneratingArtifacts, setIsGeneratingArtifacts] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  const [isChatMinimized, setIsChatMinimized] = useState(false)
   const { open: sidebarOpen } = useSidebar()
   
   // Initialize user in chat service via API
@@ -240,7 +241,11 @@ export function MainChatArea({
       <div className="flex-1 flex min-h-0 transition-all duration-500 ease-in-out">
         <div
           className={`flex-1 flex flex-col transition-all duration-500 ease-in-out ${
-            showArtifactPanel ? "mr-2" : ""
+            showArtifactPanel 
+              ? isChatMinimized 
+                ? "mr-2 min-w-0 max-w-80 xl:max-w-96" 
+                : "mr-2 min-w-0" 
+              : ""
           }`}
         >
           {isInitialState ? (
@@ -271,7 +276,13 @@ export function MainChatArea({
         {showArtifactPanel && (
           <div
             className={`transition-all duration-500 ease-in-out transform ${
-              sidebarOpen ? "w-96" : "w-[28rem]"
+              isChatMinimized
+                ? sidebarOpen 
+                  ? "w-[48rem] xl:w-[56rem] 2xl:w-[64rem]" 
+                  : "w-[52rem] xl:w-[60rem] 2xl:w-[68rem]"
+                : sidebarOpen 
+                  ? "w-[32rem] xl:w-[40rem] 2xl:w-[48rem]" 
+                  : "w-[36rem] xl:w-[44rem] 2xl:w-[52rem]"
             } ${showArtifactPanel ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}`}
           >
             {isGeneratingArtifacts ? (
@@ -299,7 +310,11 @@ export function MainChatArea({
                 </div>
               </div>
             ) : (
-              <ArtifactPanel artifacts={currentArtifacts} />
+              <ArtifactPanel 
+                artifacts={currentArtifacts} 
+                isChatMinimized={isChatMinimized}
+                onToggleChatMinimized={() => setIsChatMinimized(!isChatMinimized)}
+              />
             )}
           </div>
         )}

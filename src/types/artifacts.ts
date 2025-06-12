@@ -11,6 +11,8 @@ export interface Artifact {
 
 export interface ArtifactPanelProps {
   artifacts: Artifact[]
+  isChatMinimized?: boolean
+  onToggleChatMinimized?: () => void
 }
 
 export interface ArtifactRendererProps {
