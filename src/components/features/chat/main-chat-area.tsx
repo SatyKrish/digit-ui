@@ -35,6 +35,7 @@ export function MainChatArea({
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
   const [isGeneratingArtifacts, setIsGeneratingArtifacts] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  const [isChatMinimized, setIsChatMinimized] = useState(false)
   const { open: sidebarOpen } = useSidebar()
   
   // Initialize user in chat service via API
@@ -240,7 +241,11 @@ export function MainChatArea({
       <div className="flex-1 flex min-h-0 transition-all duration-500 ease-in-out">
         <div
           className={`flex-1 flex flex-col transition-all duration-500 ease-in-out ${
-            showArtifactPanel ? "mr-2" : ""
+            showArtifactPanel 
+              ? isChatMinimized 
+                ? "mr-2 min-w-0 max-w-80 xl:max-w-96" 
+                : "mr-2 min-w-0" 
+              : ""
           }`}
         >
           {isInitialState ? (
@@ -271,12 +276,18 @@ export function MainChatArea({
         {showArtifactPanel && (
           <div
             className={`transition-all duration-500 ease-in-out transform ${
-              sidebarOpen ? "w-[70vw]" : "w-[70vw]"
+              isChatMinimized
+                ? sidebarOpen 
+                  ? "w-[48rem] xl:w-[56rem] 2xl:w-[64rem]" 
+                  : "w-[52rem] xl:w-[60rem] 2xl:w-[68rem]"
+                : sidebarOpen 
+                  ? "w-[32rem] xl:w-[40rem] 2xl:w-[48rem]" 
+                  : "w-[36rem] xl:w-[44rem] 2xl:w-[52rem]"
             } ${showArtifactPanel ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}`}
           >
             {isGeneratingArtifacts ? (
               <div className="flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in">
-                <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background/90 backdrop-blur-lg">
+                <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <div className="w-10 h-10 bg-gradient-to-br from-primary/15 to-primary/5 rounded-xl flex items-center justify-center">
@@ -301,6 +312,8 @@ export function MainChatArea({
             ) : (
               <ArtifactPanel 
                 artifacts={currentArtifacts} 
+                isChatMinimized={isChatMinimized}
+                onToggleChatMinimized={() => setIsChatMinimized(!isChatMinimized)}
                 onClose={() => {
                   setCurrentArtifacts([])
                   setIsGeneratingArtifacts(false)

@@ -10,9 +10,9 @@ export function AuthScreen() {
   const { signIn, isLoading } = useAuth()
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background transition-colors duration-300">
+    <div className="min-h-screen w-full flex items-center justify-center bg-background transition-colors duration-300 p-4 md:p-6">
       {/* Theme toggle in top right */}
-      <div className="absolute top-6 right-6">
+      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10">
         <Button
           variant="ghost"
           size="icon"
@@ -25,41 +25,51 @@ export function AuthScreen() {
         </Button>
       </div>
 
-      <div className="flex flex-col items-center space-y-12 animate-scale-in">
-        <div className="text-center space-y-8 animate-fade-in">
+      {/* Main content - centered both horizontally and vertically */}
+      <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center space-y-8 md:space-y-12 animate-scale-in">
+        {/* Header section */}
+        <div className="text-center space-y-6 md:space-y-8 animate-fade-in">
           {/* Company Logo with theme-aware styling */}
-          <div className="flex items-center justify-center mb-8 animate-slide-in-up">
-            <div className="w-18 h-18 bg-primary rounded-lg flex items-center justify-center mr-6 shadow-large hover:shadow-glow-primary transition-all duration-300 hover:scale-105">
-              <svg className="w-12 h-12 text-primary-foreground" fill="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-center gap-4 md:gap-6 animate-slide-in-up">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-primary rounded-lg flex items-center justify-center shadow-elegant hover:shadow-elegant-lg transition-all duration-300 hover:scale-105">
+              <svg className="w-10 h-10 md:w-12 md:h-12 text-primary-foreground" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
               </svg>
             </div>
-            <h1 className="text-7xl font-bold text-primary tracking-tight animate-slide-in-left">DIGIT</h1>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary tracking-tight animate-slide-in-left">
+              DIGIT
+            </h1>
           </div>
-          <p className="text-xl text-muted-foreground animate-stagger-1 max-w-md">
+          
+          <p className="text-base md:text-lg lg:text-xl text-muted-foreground animate-stagger-1 max-w-md mx-auto px-4">
             Enterprise Data Intelligence Platform
           </p>
         </div>
 
-        <Button
-          onClick={signIn}
-          disabled={isLoading}
-          size="lg"
-          className="flex items-center space-x-4 px-10 py-6 text-lg shadow-large hover:shadow-glow transition-all duration-300 hover:scale-105 animate-stagger-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
-          ) : (
-            /* Official Microsoft Logo */
-            <svg className="w-6 h-6" viewBox="0 0 23 23" fill="none">
-              <path fill="#f25022" d="M1 1h10v10H1z" />
-              <path fill="#00a4ef" d="M12 1h10v10H12z" />
-              <path fill="#7fba00" d="M1 12h10v10H1z" />
-              <path fill="#ffb900" d="M12 12h10v10H12z" />
-            </svg>
-          )}
-          <span>{isLoading ? 'Signing in...' : 'Login with Microsoft'}</span>
-        </Button>
+        {/* Sign in button */}
+        <div className="w-full max-w-sm px-4 animate-stagger-2">
+          <Button
+            onClick={signIn}
+            disabled={isLoading}
+            size="lg"
+            className="w-full flex items-center justify-center space-x-3 md:space-x-4 px-6 md:px-8 py-3 md:py-4 text-base md:text-lg shadow-elegant hover:shadow-elegant-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" />
+            ) : (
+              /* Official Microsoft Logo */
+              <svg className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" viewBox="0 0 23 23" fill="none">
+                <path fill="#f25022" d="M1 1h10v10H1z" />
+                <path fill="#00a4ef" d="M12 1h10v10H12z" />
+                <path fill="#7fba00" d="M1 12h10v10H1z" />
+                <path fill="#ffb900" d="M12 12h10v10H12z" />
+              </svg>
+            )}
+            <span className="font-medium">
+              {isLoading ? 'Signing in...' : 'Login with Microsoft'}
+            </span>
+          </Button>
+        </div>
       </div>
     </div>
   )

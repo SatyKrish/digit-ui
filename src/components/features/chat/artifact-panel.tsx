@@ -1,15 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { ArtifactRenderer } from "./artifact-renderer"
+import { ArtifactRenderer } from "../artifacts/artifact-renderer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Maximize2, Minimize2, Pin, PinOff, SidebarClose, SidebarOpen, X } from "lucide-react"
+import { Maximize2, Minimize2, Pin, PinOff } from "lucide-react"
 import type { Artifact, ArtifactPanelProps } from "@/types/artifacts"
 
-export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChatMinimized, onClose }: ArtifactPanelProps) {
+export function ArtifactPanel({ artifacts }: ArtifactPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState(0)
   const [isExpanded, setIsExpanded] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
@@ -54,13 +54,9 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
   }
 
   return (
-    <div className={`flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in transition-all duration-300 ${
-      isExpanded 
-        ? 'fixed inset-0 z-50 bg-background shadow-2xl' 
-        : ''
-    }`}>
+    <div className={`flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in transition-all duration-300 ${isExpanded ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Enhanced Header */}
-      <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
+      <div className="border-b border-border/50 p-4 lg:p-6 xl:p-8 2xl:p-10 shadow-soft bg-background">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -82,35 +78,11 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
           </div>
           
           <div className="flex items-center gap-2">
-            {onToggleChatMinimized && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggleChatMinimized}
-                className="h-8 w-8 p-0 hover:bg-muted/50"
-                title={isChatMinimized ? "Show chat" : "Minimize chat"}
-              >
-                {isChatMinimized ? <SidebarOpen className="h-4 w-4" /> : <SidebarClose className="h-4 w-4" />}
-              </Button>
-            )}
-            {onClose && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-8 w-8 p-0 hover:bg-muted/50"
-                title="Close artifacts"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsPinned(!isPinned)}
               className="h-8 w-8 p-0 hover:bg-muted/50"
-              title={isPinned ? "Unpin panel" : "Pin panel"}
-              title={isPinned ? "Unpin panel" : "Pin panel"}
             >
               {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
             </Button>
@@ -119,7 +91,6 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
               className="h-8 w-8 p-0 hover:bg-muted/50"
-              title={isExpanded ? "Exit fullscreen" : "Enter fullscreen"}
             >
               {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
@@ -129,7 +100,7 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
 
       {/* Content Area */}
       {artifacts.length === 1 ? (
-        <ScrollArea className="flex-1 p-4 lg:p-6">
+        <ScrollArea className="flex-1 p-4 lg:p-6 xl:p-8 2xl:p-10">
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Badge variant="secondary" className="text-xs font-medium">
@@ -151,7 +122,7 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
           className="flex-1 flex flex-col"
         >
           {/* Enhanced Tab Navigation */}
-          <div className="px-4 lg:px-6 pt-4">
+          <div className="px-4 lg:px-6 xl:px-8 2xl:px-10 pt-4 xl:pt-6 2xl:pt-8">
             <TabsList className="grid w-full bg-muted/30 p-1 rounded-xl" style={{ gridTemplateColumns: `repeat(${Math.min(artifacts.length, 4)}, 1fr)` }}>
               {artifacts.slice(0, 4).map((artifact, index) => (
                 <TabsTrigger 
@@ -183,7 +154,7 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
 
           {/* Tab Content */}
           {artifacts.map((artifact, index) => (
-            <TabsContent key={index} value={index.toString()} className="flex-1 mt-0 p-4 lg:p-6">
+            <TabsContent key={index} value={index.toString()} className="flex-1 mt-0 p-4 lg:p-6 xl:p-8 2xl:p-10">
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Badge variant="secondary" className="text-xs font-medium">

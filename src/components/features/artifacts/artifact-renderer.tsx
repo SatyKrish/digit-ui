@@ -216,7 +216,7 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
     <TooltipProvider>
       <div className="group bg-card hover:bg-card/80 rounded-xl border border-border hover:border-border/80 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
         {/* Enhanced Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-gradient-to-r from-muted/30 via-muted/20 to-muted/30">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/20">
           <div className="flex items-center gap-3">
             <div className="relative">
               <span className="text-lg transition-transform group-hover:scale-110">{getArtifactIcon()}</span>
@@ -288,17 +288,17 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
 
           {artifact.type === "markdown" && <MarkdownRenderer content={artifact.content} />}
 
-          {artifact.type === "mermaid" && <MermaidDiagram content={artifact.content} title={artifact.title} />}
+          {artifact.type === "mermaid" && <MermaidDiagram content={artifact.content} title={undefined} />}
 
           {artifact.type === "chart" && artifact.data && (
             <div className="animate-fade-in">
-              <ChartArtifact data={artifact.data} chartType={artifact.chartType} title={artifact.title} />
+              <ChartArtifact data={artifact.data} chartType={artifact.chartType} title={undefined} />
             </div>
           )}
 
           {artifact.type === "table" && artifact.data && (
             <div className="animate-fade-in">
-              <TableArtifact data={artifact.data} title={artifact.title} />
+              <TableArtifact data={artifact.data} title={undefined} />
             </div>
           )}
 
@@ -307,26 +307,26 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
               <VisualizationArtifact
                 type={artifact.visualizationType || "custom"}
                 data={artifact.data}
-                title={artifact.title}
+                title={undefined}
               />
             </div>
           )}
 
           {artifact.type === "heatmap" && artifact.data && (
             <div className="animate-fade-in">
-              <HeatmapArtifact data={artifact.data} title={artifact.title} />
+              <HeatmapArtifact data={artifact.data} title={undefined} />
             </div>
           )}
 
           {artifact.type === "treemap" && artifact.data && (
             <div className="animate-fade-in">
-              <TreemapArtifact data={artifact.data} title={artifact.title} />
+              <TreemapArtifact data={artifact.data} title={undefined} />
             </div>
           )}
 
           {artifact.type === "geospatial" && artifact.data && (
             <div className="animate-fade-in">
-              <GeospatialArtifact data={artifact.data} title={artifact.title} mapType={artifact.mapType} />
+              <GeospatialArtifact data={artifact.data} title={undefined} mapType={artifact.mapType} />
             </div>
           )}
         </div>
