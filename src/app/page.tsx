@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { SidebarProvider } from "@/components/ui/sidebar"
 import { ChatSidebar } from "@/components/features/chat/chat-sidebar"
 import { MainChatArea } from "@/components/features/chat/main-chat-area"
 import { AuthScreen } from "@/components/features/auth/auth-screen"
@@ -32,17 +31,15 @@ export default function DigitChat() {
       ) : !isAuthenticated || !user ? (
         <AuthScreen />
       ) : (
-        <SidebarProvider defaultOpen={false}>
-          <div className="flex h-screen w-full bg-background text-foreground">
-            <ChatSidebar 
-              currentChatId={currentChatId} 
-              onChatSelect={setCurrentChatId} 
-              onNewChat={handleNewChat}
-              user={{ id: user.email, email: user.email, name: user.name }}
-            />
-            <MainChatArea user={user} currentChatId={currentChatId} onLogout={signOut} onNewChat={handleNewChat} />
-          </div>
-        </SidebarProvider>
+        <div className="flex h-screen w-full bg-background text-foreground">
+          <ChatSidebar 
+            currentChatId={currentChatId} 
+            onChatSelect={setCurrentChatId} 
+            onNewChat={handleNewChat}
+            user={{ id: user.email, email: user.email, name: user.name }}
+          />
+          <MainChatArea user={user} currentChatId={currentChatId} onLogout={signOut} onNewChat={handleNewChat} />
+        </div>
       )}
     </ClientOnly>
   )
