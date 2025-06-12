@@ -50,7 +50,7 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
 
   return (
     <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-background to-muted/20">
-      <div className="w-full max-w-2xl space-y-8">
+      <div className="w-full max-w-4xl space-y-8">
         {/* Welcome Message */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Welcome back, {firstName}!</h1>
@@ -59,14 +59,14 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
 
         {/* Centered Input */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="relative">
+          <div className="relative max-w-2xl mx-auto">
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask me anything about your data..."
               className="
-                min-h-[60px] text-lg resize-none pr-12 
+                min-h-[60px] text-lg resize-none pr-12 w-full
                 border-2 border-border/50 bg-background/50 
                 focus:border-primary focus:ring-2 focus:ring-primary/20
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0

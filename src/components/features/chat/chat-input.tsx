@@ -38,41 +38,45 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
     <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-6 space-y-4 shadow-elegant">
       {/* Selected Hints */}
       {selectedHints.length > 0 && (
-        <div className="flex flex-wrap gap-2 animate-fade-in">
-          {selectedHints.map((hint, index) => (
-            <Badge 
-              key={hint} 
-              variant="default" 
-              className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
-              onClick={() => toggleHint(hint)}
-            >
-              {hint} ×
-            </Badge>
-          ))}
+        <div className="flex justify-center">
+          <div className="w-full max-w-4xl flex flex-wrap gap-2 animate-fade-in">
+            {selectedHints.map((hint, index) => (
+              <Badge 
+                key={hint} 
+                variant="default" 
+                className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
+                onClick={() => toggleHint(hint)}
+              >
+                {hint} ×
+              </Badge>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Quick Domain Hints */}
-      <div className="flex flex-wrap gap-2">
-        {DOMAIN_HINTS.map((hint, index) => (
-          <Badge
-            key={hint}
-            variant={selectedHints.includes(hint) ? "default" : "outline"}
-            className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)} ${
-              selectedHints.includes(hint) 
-                ? "hover:bg-primary/80" 
-                : "hover:bg-primary hover:text-primary-foreground"
-            }`}
-            onClick={() => toggleHint(hint)}
-          >
-            {hint}
-          </Badge>
-        ))}
+      <div className="flex justify-center">
+        <div className="w-full max-w-4xl flex flex-wrap gap-2">
+          {DOMAIN_HINTS.map((hint, index) => (
+            <Badge
+              key={hint}
+              variant={selectedHints.includes(hint) ? "default" : "outline"}
+              className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)} ${
+                selectedHints.includes(hint) 
+                  ? "hover:bg-primary/80" 
+                  : "hover:bg-primary hover:text-primary-foreground"
+              }`}
+              onClick={() => toggleHint(hint)}
+            >
+              {hint}
+            </Badge>
+          ))}
+        </div>
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <div className="flex-1 relative">
+      <form onSubmit={handleSubmit} className="flex gap-2 justify-center">
+        <div className="w-full max-w-4xl relative">
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -80,7 +84,7 @@ export function ChatInput({ onSendMessage, isLoading }: ChatInputProps) {
             placeholder="Ask me anything about your data..."
             disabled={isLoading}
             className="
-              min-h-[48px] max-h-32 resize-none pr-16 
+              min-h-[48px] max-h-32 resize-none pr-16 w-full
               border-border/50 bg-background/50 shadow-soft
               focus:border-primary focus:ring-2 focus:ring-primary/20 focus:shadow-medium
               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0
