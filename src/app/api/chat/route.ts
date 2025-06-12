@@ -3,6 +3,102 @@ import { mcpClient } from "@/client/mcp-client"
 import { chatService } from "@/services/chat/chat-service"
 import { env } from "@/config/env"
 import { getOpenAIModel, openaiConfig } from "@/config/openai"
+import { z } from "zod"
+
+/**
+ * Convert JSON Schema to Zod schema for Vercel AI SDK compatibility
+ */
+function jsonSchemaToZod(schema: any): z.ZodType<any> {
+  if (!schema || typeof schema !== 'object') {
+    return z.any()
+  }
+
+  switch (schema.type) {
+    case 'string':
+      let stringSchema = z.string()
+      if (schema.description) {
+        stringSchema = stringSchema.describe(schema.description)
+      }
+      return stringSchema
+
+    case 'number':
+      let numberSchema = z.number()
+      if (schema.description) {
+        numberSchema = numberSchema.describe(schema.description)
+      }
+      return numberSchema
+
+    case 'integer':
+      let intSchema = z.number().int()
+      if (schema.description) {
+        intSchema = intSchema.describe(schema.description)
+      }
+      return intSchema
+
+    case 'boolean':
+      let boolSchema = z.boolean()
+      if (schema.description) {
+        boolSchema = boolSchema.describe(schema.description)
+      }
+      return boolSchema
+
+    case 'array':
+      const itemSchema = schema.items ? jsonSchemaToZod(schema.items) : z.any()
+      let arraySchema = z.array(itemSchema)
+      if (schema.description) {
+        arraySchema = arraySchema.describe(schema.description)
+      }
+      return arraySchema
+
+    case 'object':
+      if (!schema.properties) {
+        let objectSchema = z.record(z.any())
+        if (schema.description) {
+          objectSchema = objectSchema.describe(schema.description)
+        }
+        return objectSchema
+      }
+
+      const shape: Record<string, z.ZodType<any>> = {}
+      for (const [key, prop] of Object.entries(schema.properties)) {
+        shape[key] = jsonSchemaToZod(prop)
+      }
+
+      let objectSchema = z.object(shape)
+      
+      // Handle required fields
+      if (schema.required && Array.isArray(schema.required)) {
+        // Zod objects are required by default, so we need to make non-required fields optional
+        const requiredFields = new Set(schema.required)
+        const optionalShape: Record<string, z.ZodType<any>> = {}
+        
+        for (const [key, zodSchema] of Object.entries(shape)) {
+          if (requiredFields.has(key)) {
+            optionalShape[key] = zodSchema
+          } else {
+            optionalShape[key] = zodSchema.optional()
+          }
+        }
+        
+        objectSchema = z.object(optionalShape)
+      } else {
+        // If no required array, make all fields optional
+        const optionalShape: Record<string, z.ZodType<any>> = {}
+        for (const [key, zodSchema] of Object.entries(shape)) {
+          optionalShape[key] = zodSchema.optional()
+        }
+        objectSchema = z.object(optionalShape)
+      }
+
+      if (schema.description) {
+        objectSchema = objectSchema.describe(schema.description)
+      }
+      return objectSchema
+
+    default:
+      return z.any()
+  }
+}
 
 /**
  * Dynamically prepare MCP tools from connected servers
@@ -31,7 +127,7 @@ async function prepareMcpTools() {
 
     tools[tool.name] = {
       description: tool.description,
-      parameters: tool.inputSchema,
+      parameters: jsonSchemaToZod(tool.inputSchema),
       execute: async (args: any) => {
         try {
           console.log(`Executing tool ${tool.name} on ${tool.serverId} with args:`, args)
