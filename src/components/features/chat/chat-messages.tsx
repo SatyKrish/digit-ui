@@ -102,8 +102,8 @@ LoadingIndicator.displayName = 'LoadingIndicator'
 
 export const ChatMessages = memo(({ messages, isLoading, user }: ChatMessagesProps) => {
   return (
-    <ScrollArea className="flex-1 p-6">
-      <div className="space-y-8">
+    <ScrollArea className="h-full w-full">
+      <div className="p-6 space-y-8 min-h-full">
         {messages.map((message, index) => (
           <ChatMessageItem 
             key={message.id} 

@@ -52,9 +52,9 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
   }
 
   return (
-    <div className={`flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in transition-all duration-300`}>
+    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in">
       {/* Enhanced Header */}
-      <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
+      <div className="flex-shrink-0 border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -102,80 +102,90 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
         </div>
       </div>
 
-      {/* Content Area */}
-      {artifacts.length === 1 ? (
-        <ScrollArea className="flex-1 p-4 lg:p-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <Badge variant="secondary" className="text-xs font-medium">
-                {artifacts[0].type.charAt(0).toUpperCase() + artifacts[0].type.slice(1)}
-              </Badge>
-              {artifacts[0].title && (
-                <span className="text-sm font-medium text-muted-foreground">
-                  {artifacts[0].title}
-                </span>
+      {/* Content Area with proper scrolling support */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {artifacts.length === 1 ? (
+          <ScrollArea className="h-full">
+            <div className="p-4 lg:p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Badge variant="secondary" className="text-xs font-medium">
+                  {artifacts[0].type.charAt(0).toUpperCase() + artifacts[0].type.slice(1)}
+                </Badge>
+                {artifacts[0].title && (
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {artifacts[0].title}
+                  </span>
+                )}
+              </div>
+              <ArtifactRenderer artifact={artifacts[0]} />
+            </div>
+          </ScrollArea>
+        ) : (
+          <Tabs
+            value={selectedArtifact.toString()}
+            onValueChange={(value) => setSelectedArtifact(Number.parseInt(value))}
+            className="flex flex-col h-full"
+          >
+            {/* Enhanced Tab Navigation */}
+            <div className="flex-shrink-0 px-4 lg:px-6 pt-4 pb-2">
+              <TabsList className="grid w-full bg-muted/30 p-1 rounded-xl" style={{ gridTemplateColumns: `repeat(${Math.min(artifacts.length, 4)}, 1fr)` }}>
+                {artifacts.slice(0, 4).map((artifact, index) => (
+                  <TabsTrigger 
+                    key={index} 
+                    value={index.toString()} 
+                    className="text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                  >
+                    <span className="mr-2">{getArtifactIcon(artifact.type)}</span>
+                    {artifact.title || `${artifact.type.charAt(0).toUpperCase() + artifact.type.slice(1)} ${index + 1}`}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {artifacts.length > 4 && (
+                <div className="flex gap-1 mt-2 justify-center">
+                  {artifacts.slice(4).map((_, index) => (
+                    <Button
+                      key={index + 4}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedArtifact(index + 4)}
+                      className={`h-6 px-2 text-xs ${selectedArtifact === index + 4 ? 'bg-muted' : ''}`}
+                    >
+                      {index + 5}
+                    </Button>
+                  ))}
+                </div>
               )}
             </div>
-            <ArtifactRenderer artifact={artifacts[0]} />
-          </div>
-        </ScrollArea>
-      ) : (
-        <Tabs
-          value={selectedArtifact.toString()}
-          onValueChange={(value) => setSelectedArtifact(Number.parseInt(value))}
-          className="flex-1 flex flex-col"
-        >
-          {/* Enhanced Tab Navigation */}
-          <div className="px-4 lg:px-6 pt-4">
-            <TabsList className="grid w-full bg-muted/30 p-1 rounded-xl" style={{ gridTemplateColumns: `repeat(${Math.min(artifacts.length, 4)}, 1fr)` }}>
-              {artifacts.slice(0, 4).map((artifact, index) => (
-                <TabsTrigger 
+
+            {/* Tab Content with proper scrolling */}
+            <div className="flex-1 min-h-0">
+              {artifacts.map((artifact, index) => (
+                <TabsContent 
                   key={index} 
                   value={index.toString()} 
-                  className="text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                  className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col"
                 >
-                  <span className="mr-2">{getArtifactIcon(artifact.type)}</span>
-                  {artifact.title || `${artifact.type.charAt(0).toUpperCase() + artifact.type.slice(1)} ${index + 1}`}
-                </TabsTrigger>
+                  <ScrollArea className="flex-1">
+                    <div className="p-4 lg:p-6 space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge variant="secondary" className="text-xs font-medium">
+                          {artifact.type.charAt(0).toUpperCase() + artifact.type.slice(1)}
+                        </Badge>
+                        {artifact.title && (
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {artifact.title}
+                          </span>
+                        )}
+                      </div>
+                      <ArtifactRenderer artifact={artifact} />
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
               ))}
-            </TabsList>
-            {artifacts.length > 4 && (
-              <div className="flex gap-1 mt-2 justify-center">
-                {artifacts.slice(4).map((_, index) => (
-                  <Button
-                    key={index + 4}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedArtifact(index + 4)}
-                    className={`h-6 px-2 text-xs ${selectedArtifact === index + 4 ? 'bg-muted' : ''}`}
-                  >
-                    {index + 5}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Tab Content */}
-          {artifacts.map((artifact, index) => (
-            <TabsContent key={index} value={index.toString()} className="flex-1 mt-0 p-4 lg:p-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Badge variant="secondary" className="text-xs font-medium">
-                    {artifact.type.charAt(0).toUpperCase() + artifact.type.slice(1)}
-                  </Badge>
-                  {artifact.title && (
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {artifact.title}
-                    </span>
-                  )}
-                </div>
-                <ArtifactRenderer artifact={artifact} />
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-      )}
+            </div>
+          </Tabs>
+        )}
+      </div>
     </div>
   )
 }

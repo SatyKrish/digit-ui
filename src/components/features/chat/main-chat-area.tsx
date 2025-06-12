@@ -239,55 +239,47 @@ export function MainChatArea({
       />
 
       <div className="flex-1 flex min-h-0 transition-all duration-500 ease-in-out">
-        <div
-          className={`flex-1 flex flex-col transition-all duration-500 ease-in-out ${
-            showArtifactPanel 
-              ? isChatMinimized 
-                ? "mr-2 min-w-0 max-w-80 xl:max-w-96" 
-                : "mr-2 min-w-0" 
-              : ""
-          }`}
-        >
+        <div className="flex flex-col min-h-0 overflow-hidden flex-1">
           {isInitialState ? (
             <InitialWelcomeScreen user={user} onSendMessage={handleSendMessage} />
           ) : (
             <>
-              <ChatMessages 
-                messages={messages.map(msg => ({
-                  id: msg.id,
-                  role: msg.role as 'user' | 'assistant' | 'system',
-                  content: msg.content,
-                  timestamp: msg.createdAt || new Date(),
-                  model: 'gpt-4',
-                  isError: false
-                }))} 
-                isLoading={isLoading} 
-                user={user} 
-              />
-              <ChatInput 
-                onSendMessage={handleSendMessage} 
-                isLoading={isLoading}
-                placeholder={isGeneratingArtifacts ? "Generating artifacts..." : undefined}
-              />
+              <div className="flex-1 min-h-0">
+                <ChatMessages 
+                  messages={messages.map(msg => ({
+                    id: msg.id,
+                    role: msg.role as 'user' | 'assistant' | 'system',
+                    content: msg.content,
+                    timestamp: msg.createdAt || new Date(),
+                    model: 'gpt-4',
+                    isError: false
+                  }))} 
+                  isLoading={isLoading} 
+                  user={user} 
+                />
+              </div>
+              <div className="flex-shrink-0 p-4">
+                <ChatInput 
+                  onSendMessage={handleSendMessage} 
+                  isLoading={isLoading}
+                  placeholder={isGeneratingArtifacts ? "Generating artifacts..." : undefined}
+                />
+              </div>
             </>
           )}
         </div>
 
         {showArtifactPanel && (
-          <div
-            className={`transition-all duration-500 ease-in-out transform ${
-              isChatMinimized
-                ? sidebarOpen 
-                  ? "w-[48rem] xl:w-[56rem] 2xl:w-[64rem]" 
-                  : "w-[52rem] xl:w-[60rem] 2xl:w-[68rem]"
-                : sidebarOpen 
-                  ? "w-[32rem] xl:w-[40rem] 2xl:w-[48rem]" 
-                  : "w-[36rem] xl:w-[44rem] 2xl:w-[52rem]"
-            } ${showArtifactPanel ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}`}
+          <div 
+            className={`flex flex-col min-h-0 overflow-hidden transition-all duration-500 ease-in-out ${
+              isChatMinimized 
+                ? "w-[600px] xl:w-[700px] 2xl:w-[800px]" 
+                : "w-[450px] xl:w-[550px] 2xl:w-[650px]"
+            }`}
           >
             {isGeneratingArtifacts ? (
-              <div className="flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in">
-                <div className="border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
+              <div className="flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in overflow-hidden">
+                <div className="flex-shrink-0 border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <div className="w-10 h-10 bg-gradient-to-br from-primary/15 to-primary/5 rounded-xl flex items-center justify-center">
@@ -302,7 +294,7 @@ export function MainChatArea({
                     </div>
                   </div>
                 </div>
-                <div className="flex-1 p-6">
+                <div className="flex-1 min-h-0 p-6">
                   <StreamableArtifact 
                     artifact={null} 
                     isStreaming={true}
