@@ -1,0 +1,133 @@
+/* Anti-flicker optimizations for streaming chat */
+.streaming-message {
+  transform: translateZ(0); /* Force hardware acceleration */
+  backface-visibility: hidden; /* Prevent flicker during transitions */
+  will-change: auto; /* Reset will-change after streaming */
+}
+
+.streaming-message.is-streaming {
+  will-change: contents; /* Optimize for content changes */
+}
+
+.chat-container {
+  transform: translateZ(0); /* Force hardware acceleration for container */
+  contain: layout style; /* Optimize rendering containment */
+}
+
+.message-content {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  /* Prevent content from jumping during streaming */
+  min-height: 1.5rem;
+}
+
+/* Reduce reflow during streaming */
+.streaming-container {
+  contain: layout style;
+  transform: translateZ(0);
+}
+
+/* Optimize scroll performance */
+.chat-scroll-area {
+  scroll-behavior: auto; /* Disable smooth scroll during streaming */
+  overscroll-behavior: contain;
+  /* Improve scroll performance */
+  will-change: scroll-position;
+}
+
+.chat-scroll-area.streaming {
+  scroll-behavior: auto;
+  /* Reduce repaints during streaming */
+  contain: strict;
+}
+
+/* Prevent layout shifts */
+.message-bubble {
+  contain: layout;
+  transform: translateZ(0);
+  /* Ensure stable sizing during streaming */
+  box-sizing: border-box;
+}
+
+.message-bubble.streaming {
+  min-height: 2.5rem; /* Prevent height jumps */
+  /* Optimize for content changes */
+  will-change: contents;
+}
+
+/* Optimize avatar rendering */
+.message-avatar {
+  transform: translateZ(0);
+  contain: layout style;
+}
+
+/* Reduce animation impact during streaming */
+.streaming-message.is-streaming .animate-slide-in-up {
+  animation: none;
+}
+
+.streaming-message.is-streaming .animate-stagger-1,
+.streaming-message.is-streaming .animate-stagger-2,
+.streaming-message.is-streaming .animate-stagger-3,
+.streaming-message.is-streaming .animate-stagger-4 {
+  animation: none;
+}
+
+/* Optimize markdown rendering during streaming */
+.streaming .prose {
+  contain: layout style;
+}
+
+/* Prevent typography shifts */
+.streaming .prose p {
+  margin-bottom: 0.75rem;
+  margin-top: 0;
+}
+
+/* Stable loading indicator */
+.loading-indicator {
+  contain: layout;
+  transform: translateZ(0);
+}
+
+/* Layout overflow prevention */
+.chat-layout-container {
+  max-width: 100vw;
+  overflow: hidden;
+}
+
+/* Responsive artifact panel */
+.artifact-panel {
+  min-width: 0; /* Allow shrinking */
+  max-width: 60vw; /* Never take more than 60% of viewport */
+}
+
+/* Responsive chat area */
+.chat-area {
+  min-width: 320px; /* Minimum usable chat width */
+  max-width: 100%;
+}
+
+/* Ensure proper flexbox behavior */
+.chat-flex-container {
+  min-width: 0; /* Important for flexbox shrinking */
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  .artifact-panel {
+    max-width: 100vw;
+  }
+  
+  .chat-area {
+    min-width: 280px;
+  }
+}
+
+/* Tablet adjustments */
+@media (max-width: 1024px) {
+  .artifact-panel {
+    max-width: 50vw;
+  }
+}

@@ -1,6 +1,7 @@
 import { streamText, convertToCoreMessages } from "ai"
 import { mcpClient } from "@/client/mcp-client"
 import { chatService } from "@/services/chat/chat-service"
+import { aiSdkChatService } from "@/services/chat/ai-sdk-chat-service"
 import { env } from "@/config/env"
 import { getAzureOpenAIModel, azureOpenAIConfig } from "@/config/azure-openai"
 import { z } from "zod"
@@ -285,19 +286,21 @@ ${connectedServers.length > 0
               // Save the user message (last message in the input)
               const userMessage = messages[messages.length - 1]
               if (userMessage && userMessage.role === 'user') {
-                await chatService.addMessage({
+                await aiSdkChatService.addMessage(id, {
+                  id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                   role: 'user',
                   content: userMessage.content,
-                  model: 'gpt-4o'
+                  createdAt: new Date()
                 })
               }
 
               // Save the assistant response using the text content
               if (text) {
-                await chatService.addMessage({
+                await aiSdkChatService.addMessage(id, {
+                  id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                   role: 'assistant',
                   content: text,
-                  model: 'gpt-4o'
+                  createdAt: new Date()
                 })
               }
             } catch (error) {

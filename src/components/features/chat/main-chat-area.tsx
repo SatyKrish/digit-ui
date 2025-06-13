@@ -11,6 +11,7 @@ import { StreamableArtifact } from "../artifacts/streamable-artifact"
 import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { useSidebar } from "@/components/ui/sidebar"
 import { extractArtifacts, hasArtifacts } from "@/services/artifacts/artifact-extractor"
+import { useResponsiveLayout, getResponsiveLayoutClasses } from "@/hooks/shared/use-responsive-layout"
 import { useChat } from "@ai-sdk/react"
 import { toast } from "sonner"
 import type { MainChatAreaProps, Artifact } from "@/types"
@@ -36,6 +37,7 @@ export function MainChatArea({
   const [isGeneratingArtifacts, setIsGeneratingArtifacts] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const [isChatMinimized, setIsChatMinimized] = useState(false)
+  const [mobileViewMode, setMobileViewMode] = useState<'chat' | 'artifacts'>('chat')
   const { open: sidebarOpen } = useSidebar()
   
   // Initialize user in chat service via API
@@ -148,6 +150,18 @@ export function MainChatArea({
     onError: handleError
   })
 
+  // Memoize the mapped messages to prevent unnecessary re-renders
+  const mappedMessages = useMemo(() => 
+    messages.map(msg => ({
+      id: msg.id,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      content: msg.content,
+      timestamp: msg.createdAt || new Date(),
+      model: 'gpt-4',
+      isError: false
+    })), [messages]
+  )
+
   // Check if we're on the initial welcome screen
   const isInitialState = !currentChatId && messages.length === 0
 
@@ -217,6 +231,15 @@ export function MainChatArea({
   // Determine if we should show the artifact panel
   const showArtifactPanel = currentArtifacts.length > 0 || isGeneratingArtifacts
   
+  // Use responsive layout hook for better viewport handling
+  const layoutDimensions = useResponsiveLayout(showArtifactPanel, isChatMinimized)
+  const { chatClasses, artifactClasses } = getResponsiveLayoutClasses(
+    showArtifactPanel,
+    isChatMinimized,
+    layoutDimensions.isMobile,
+    layoutDimensions.isTablet
+  )
+  
   // Debug logging for artifact panel visibility
   useEffect(() => {
     console.log('Artifact panel state:', {
@@ -236,7 +259,7 @@ export function MainChatArea({
   }, [status, error])
 
   return (
-    <SidebarInset className="flex flex-col relative transition-all duration-300 ease-in-out">
+    <SidebarInset className="flex flex-col relative transition-all duration-300 ease-in-out chat-layout-container">
       <SidebarHoverTrigger />
       <ChatHeader 
         user={user} 
@@ -246,22 +269,15 @@ export function MainChatArea({
         artifactCount={currentArtifacts.length}
       />
 
-      <div className="flex-1 flex min-h-0 transition-all duration-500 ease-in-out">
-        <div className="flex flex-col min-h-0 overflow-hidden flex-1">
+      <div className="flex-1 flex min-h-0 max-w-full overflow-hidden transition-all duration-500 ease-in-out chat-flex-container">
+        <div className={`flex flex-col min-h-0 overflow-hidden transition-all duration-300 chat-area ${chatClasses}`}>
           {isInitialState ? (
             <InitialWelcomeScreen user={user} onSendMessage={handleSendMessage} />
           ) : (
             <>
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 overflow-hidden">
                 <ChatMessages 
-                  messages={messages.map(msg => ({
-                    id: msg.id,
-                    role: msg.role as 'user' | 'assistant' | 'system',
-                    content: msg.content,
-                    timestamp: msg.createdAt || new Date(),
-                    model: 'gpt-4',
-                    isError: false
-                  }))} 
+                  messages={mappedMessages} 
                   isLoading={isLoading} 
                   user={user} 
                 />
@@ -279,11 +295,7 @@ export function MainChatArea({
 
         {showArtifactPanel && (
           <div 
-            className={`flex flex-col min-h-0 overflow-hidden transition-all duration-500 ease-in-out ${
-              isChatMinimized 
-                ? "w-[600px] xl:w-[700px] 2xl:w-[800px]" 
-                : "w-[450px] xl:w-[550px] 2xl:w-[650px]"
-            }`}
+            className={`flex flex-col min-h-0 overflow-hidden transition-all duration-500 ease-in-out border-l border-border/50 artifact-panel ${artifactClasses}`}
           >
             {isGeneratingArtifacts ? (
               <div className="flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in overflow-hidden">
