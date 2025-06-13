@@ -38,8 +38,8 @@ export const getAzureOpenAIModel = (deploymentName?: string) => {
     // In production, consider using managed identity or service principal for enhanced security
     apiKey: env.AZURE_OPENAI_API_KEY,
     
-    // Azure OpenAI resource name (extracted from endpoint)
-    resourceName: env.AZURE_OPENAI_ENDPOINT.replace('https://', '').replace('.openai.azure.com', ''),
+    // Azure OpenAI base URL
+    baseURL: env.AZURE_OPENAI_ENDPOINT,
     
     // API version for Azure OpenAI
     apiVersion: env.AZURE_OPENAI_API_VERSION,
