@@ -54,23 +54,23 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
   return (
     <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in">
       {/* Enhanced Header */}
-      <div className="flex-shrink-0 border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
+      <div className="flex-shrink-0 border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background/95 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary/15 to-primary/5 rounded-xl flex items-center justify-center">
+              <div className="w-11 h-11 bg-gradient-to-br from-primary/15 to-primary/5 rounded-xl flex items-center justify-center shadow-soft">
                 <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary/20 rounded-full flex items-center justify-center">
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary/20 rounded-full flex items-center justify-center border-2 border-background">
                 <span className="text-xs font-bold text-primary">{artifacts.length}</span>
               </div>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground">Artifacts</h2>
-              <p className="text-xs text-muted-foreground">
-                {artifacts.length} {artifacts.length === 1 ? 'item' : 'items'} generated
+              <h2 className="text-xl font-bold text-foreground tracking-tight">Interactive Artifacts</h2>
+              <p className="text-xs text-muted-foreground font-medium">
+                {artifacts.length} {artifacts.length === 1 ? 'visualization' : 'visualizations'} ready
               </p>
             </div>
           </div>

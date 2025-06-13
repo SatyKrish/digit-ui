@@ -83,24 +83,29 @@ export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, a
         {/* Theme Toggle Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-10 w-10 shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-10 w-10 shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Toggle theme settings"
+            >
               <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setTheme("light")}>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
               <Sun className="mr-2 h-4 w-4" />
-              <span>Light</span>
+              <span>Light theme</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("dark")}>
+            <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
               <Moon className="mr-2 h-4 w-4" />
-              <span>Dark</span>
+              <span>Dark theme</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("system")}>
+            <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
               <Monitor className="mr-2 h-4 w-4" />
-              <span>System</span>
+              <span>System theme</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

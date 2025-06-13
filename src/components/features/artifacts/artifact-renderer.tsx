@@ -96,19 +96,28 @@ function CodeBlock({ content, language }: { content: string; language?: string }
   }
 
   return (
-    <div className="group relative">
+    <div className="group relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted/20 to-muted/5">
       <div className="absolute top-3 right-3 z-10">
-        <Badge variant="secondary" className="text-xs font-mono">
+        <Badge variant="secondary" className="text-xs font-mono backdrop-blur-sm bg-background/80">
           {language || "text"}
         </Badge>
       </div>
-      <div className="relative rounded-xl border border-border/50 overflow-hidden bg-gradient-to-br from-muted/30 to-muted/10">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent"></div>
-        <pre className="relative text-sm overflow-x-auto p-6 font-mono leading-relaxed">
-          <code className={`language-${language || "text"} text-foreground`}>
-            {content}
-          </code>
-        </pre>
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent"></div>
+      <pre className="relative text-sm overflow-x-auto p-6 font-mono leading-[1.6] selection:bg-primary/20">
+        <code className={`language-${language || "text"} text-foreground`}>
+          {content}
+        </code>
+      </pre>
+      {/* Copy button overlay */}
+      <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-8 w-8 p-0 backdrop-blur-sm bg-background/80 hover:bg-background/90"
+          onClick={() => navigator.clipboard.writeText(content)}
+        >
+          <Copy className="h-3 w-3" />
+        </Button>
       </div>
     </div>
   )

@@ -43,18 +43,25 @@ const ChatMessageItem = memo(({ message, user, index }: {
           {message.role === "assistant" ? (
             <MarkdownRenderer 
               content={message.content} 
-              className="text-sm leading-relaxed prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-a:text-primary prose-pre:bg-muted/30"
+              className="text-sm leading-[1.7] prose-headings:text-foreground prose-headings:font-semibold prose-headings:leading-tight prose-p:text-foreground prose-p:leading-[1.7] prose-strong:text-foreground prose-code:text-foreground prose-code:bg-background/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-pre:bg-muted/30 prose-pre:border prose-pre:border-border/30"
             />
           ) : (
-            <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+            <p className="text-sm whitespace-pre-wrap leading-[1.7] font-medium">{message.content}</p>
           )}
         </div>
 
         {/* Show artifact indicators for assistant messages */}
         {message.role === "assistant" && hasArtifacts(message.content) && (
-          <div className="text-xs text-muted-foreground bg-info/10 text-info-foreground rounded-md px-3 py-2 border border-info/20 animate-fade-in shadow-soft">
-            📊 {countArtifacts(message.content)} artifact{countArtifacts(message.content) > 1 ? "s" : ""}{" "}
-            generated
+          <div className="flex items-center gap-2 text-xs bg-gradient-to-r from-primary/10 to-primary/5 text-primary border border-primary/20 rounded-lg px-3 py-2 animate-fade-in shadow-soft">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+              <span className="font-medium">
+                {countArtifacts(message.content)} interactive artifact{countArtifacts(message.content) > 1 ? "s" : ""} generated
+              </span>
+            </div>
+            <svg className="w-4 h-4 text-primary/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
           </div>
         )}
       </div>
@@ -75,24 +82,24 @@ ChatMessageItem.displayName = 'ChatMessageItem'
 
 // Memoized loading indicator
 const LoadingIndicator = memo(() => (
-  <div className="flex gap-3 justify-start">
-    <Avatar className="h-8 w-8 shrink-0 ring-2 ring-primary/10">
-      <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-xs">D</AvatarFallback>
+  <div className="flex gap-3 justify-start animate-fade-in">
+    <Avatar className="h-10 w-10 shrink-0 ring-2 ring-primary/20 shadow-soft">
+      <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">D</AvatarFallback>
     </Avatar>
-    <div className="bg-muted/50 dark:bg-muted/20 rounded-lg px-4 py-3 border border-border/50">
-      <div className="flex items-center space-x-2">
+    <div className="bg-muted/50 dark:bg-muted/20 rounded-lg px-5 py-4 border border-border/50 shadow-soft">
+      <div className="flex items-center space-x-3">
         <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce"></div>
+          <div className="w-2.5 h-2.5 bg-primary/60 rounded-full animate-bounce"></div>
           <div
-            className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce"
-            style={{ animationDelay: "0.1s" }}
+            className="w-2.5 h-2.5 bg-primary/60 rounded-full animate-bounce"
+            style={{ animationDelay: "0.15s" }}
           ></div>
           <div
-            className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce"
-            style={{ animationDelay: "0.2s" }}
+            className="w-2.5 h-2.5 bg-primary/60 rounded-full animate-bounce"
+            style={{ animationDelay: "0.3s" }}
           ></div>
         </div>
-        <span className="text-sm text-muted-foreground">Thinking...</span>
+        <span className="text-sm text-muted-foreground font-medium">AI is thinking...</span>
       </div>
     </div>
   </div>
