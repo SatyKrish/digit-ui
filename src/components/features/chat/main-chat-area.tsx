@@ -228,6 +228,42 @@ export function MainChatArea({
     }
   }, [retryCount, maxRetries, reload, handleError])
 
+  // Handler for reopening artifacts from message indicator
+  const handleReopenArtifacts = useCallback((messageContent: string) => {
+    console.log('Reopening artifacts for message...')
+    
+    try {
+      // Validate message content
+      if (!messageContent || !messageContent.trim()) {
+        toast.error('No message content available')
+        return
+      }
+
+      // Extract artifacts from the clicked message
+      const artifacts = extractArtifacts(messageContent)
+      console.log('Extracted artifacts for reopening:', artifacts)
+      
+      if (artifacts.length > 0) {
+        setCurrentArtifacts(artifacts)
+        setIsGeneratingArtifacts(false)
+        
+        // Provide user feedback
+        const artifactCount = artifacts.length
+        const artifactWord = artifactCount === 1 ? 'artifact' : 'artifacts'
+        toast.success(`Reopened ${artifactCount} ${artifactWord}`)
+        
+        // Log for debugging
+        console.log(`Successfully reopened ${artifactCount} artifact(s)`)
+      } else {
+        console.warn('No artifacts found in message content')
+        toast.warning('No artifacts found in this message')
+      }
+    } catch (error) {
+      console.error('Failed to reopen artifacts:', error)
+      toast.error('Failed to reopen artifacts. Please try again.')
+    }
+  }, [])
+
   // Determine if we should show the artifact panel
   const showArtifactPanel = currentArtifacts.length > 0 || isGeneratingArtifacts
   
@@ -280,6 +316,7 @@ export function MainChatArea({
                   messages={mappedMessages} 
                   isLoading={isLoading} 
                   user={user} 
+                  onReopenArtifacts={handleReopenArtifacts}
                 />
               </div>
               <div className="flex-shrink-0 p-4">

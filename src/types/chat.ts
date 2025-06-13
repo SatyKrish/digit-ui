@@ -49,6 +49,7 @@ export interface ChatMessagesProps {
     name: string
     avatar?: string
   }
+  onReopenArtifacts?: (messageContent: string) => void
 }
 
 export interface ChatInputProps {

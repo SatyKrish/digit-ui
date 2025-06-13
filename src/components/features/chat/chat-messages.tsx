@@ -14,11 +14,12 @@ import type { ChatMessage } from "@/types/chat"
 import type { ChatMessagesProps } from "@/types/chat"
 
 // Memoized individual message component for better performance
-const ChatMessageItem = memo(({ message, user, index, isStreaming = false }: { 
+const ChatMessageItem = memo(({ message, user, index, isStreaming = false, onReopenArtifacts }: { 
   message: ChatMessage; 
   user?: { name: string; avatar?: string }; 
   index: number;
   isStreaming?: boolean;
+  onReopenArtifacts?: (messageContent: string) => void;
 }) => {
   const { theme } = useTheme()
   const userInitials = generateInitials(user?.name || "User")
@@ -75,14 +76,27 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false }: {
 
         {/* Show artifact indicators for assistant messages */}
         {message.role === "assistant" && hasArtifacts(message.content) && (
-          <div className="flex items-center gap-2 text-xs bg-gradient-to-r from-primary/10 to-primary/5 text-primary border border-primary/20 rounded-lg px-3 py-2 animate-fade-in shadow-soft">
+          <div 
+            className="flex items-center gap-2 text-xs bg-gradient-to-r from-primary/10 to-primary/5 text-primary border border-primary/20 rounded-lg px-3 py-2 animate-fade-in shadow-soft cursor-pointer hover:bg-primary/20 hover:border-primary/30 hover:shadow-medium transition-all duration-200 group"
+            onClick={() => onReopenArtifacts?.(message.content)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onReopenArtifacts?.(message.content)
+              }
+            }}
+            aria-label="Click to reopen artifacts panel"
+            title="Click to reopen artifacts panel"
+          >
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-              <span className="font-medium">
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse group-hover:animate-none group-hover:bg-primary/80"></div>
+              <span className="font-medium group-hover:text-primary/90">
                 {countArtifacts(message.content)} interactive artifact{countArtifacts(message.content) > 1 ? "s" : ""} generated
               </span>
             </div>
-            <svg className="w-4 h-4 text-primary/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-primary/70 group-hover:text-primary/90 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
@@ -130,7 +144,7 @@ const LoadingIndicator = memo(() => (
 
 LoadingIndicator.displayName = 'LoadingIndicator'
 
-export const ChatMessages = memo(({ messages, isLoading = false, user }: ChatMessagesProps) => {
+export const ChatMessages = memo(({ messages, isLoading = false, user, onReopenArtifacts }: ChatMessagesProps) => {
   // Use optimized scroll hook to reduce flickering during streaming
   const scrollRef = useScrollToBottom(messages, true)
   
@@ -159,6 +173,7 @@ export const ChatMessages = memo(({ messages, isLoading = false, user }: ChatMes
                 user={user} 
                 index={index}
                 isStreaming={Boolean(isStreamingMessage || isActivelyStreaming)}
+                onReopenArtifacts={onReopenArtifacts}
               />
             </div>
           );
