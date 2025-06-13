@@ -2,7 +2,7 @@ import { streamText, convertToCoreMessages } from "ai"
 import { mcpClient } from "@/client/mcp-client"
 import { chatService } from "@/services/chat/chat-service"
 import { env } from "@/config/env"
-import { getOpenAIModel, openaiConfig } from "@/config/openai"
+import { getAzureOpenAIModel, azureOpenAIConfig } from "@/config/azure-openai"
 import { z } from "zod"
 
 /**
@@ -112,68 +112,89 @@ async function prepareMcpTools() {
   const connectedServers = mcpClient.getConnectedServers()
   const availableTools = mcpClient.getAllTools()
 
-  console.log(`MCP Status: ${connectedServers.length}/${servers.length} servers connected, ${availableTools.length} tools available`)
+    console.log(`MCP Status: ${connectedServers.length}/${servers.length} servers connected, ${availableTools.length} tools available`)
   
-  const tools: Record<string, any> = {}
+    const tools: Record<string, any> = {}
 
-  // Only create tools for connected servers and their available tools
-  for (const tool of availableTools) {
-    // Check if the server is connected
-    const server = servers.find(s => s.id === tool.serverId)
-    if (!server || server.status !== 'connected') {
-      console.log(`Skipping tool ${tool.name} from ${tool.serverId} - server not connected (status: ${server?.status})`)
-      continue
-    }
+    // Only create tools for connected servers and their available tools
+    for (const tool of availableTools) {
+      // Check if the server is connected
+      const server = servers.find(s => s.id === tool.serverId)
+      if (!server || server.status !== 'connected') {
+        continue
+      }
 
-    tools[tool.name] = {
-      description: tool.description,
-      parameters: jsonSchemaToZod(tool.inputSchema),
-      execute: async (args: any) => {
-        try {
-          console.log(`Executing tool ${tool.name} on ${tool.serverId} with args:`, args)
-          const result = await mcpClient.callTool(tool.serverId, tool.name, args)
-          if (!result.success) {
-            console.error(`Tool execution failed for ${tool.name}:`, result.error)
-            return { error: result.error }
+      tools[tool.name] = {
+        description: tool.description,
+        parameters: jsonSchemaToZod(tool.inputSchema),
+        execute: async (args: any) => {
+          try {
+            const result = await mcpClient.callTool(tool.serverId, tool.name, args)
+            if (!result.success) {
+              console.error(`Tool execution failed for ${tool.name}:`, result.error)
+              return { error: result.error }
+            }
+            return result.data
+          } catch (error) {
+            console.error(`Error executing tool ${tool.name}:`, error)
+            return { error: error instanceof Error ? error.message : 'Unknown error' }
           }
-          return result.data
-        } catch (error) {
-          console.error(`Error executing tool ${tool.name}:`, error)
-          return { error: error instanceof Error ? error.message : 'Unknown error' }
-        }
-      },
+        },
+      }
     }
-  }
 
-  console.log(`Created ${Object.keys(tools).length} dynamic tools from ${connectedServers.length} connected servers`)
-  if (Object.keys(tools).length === 0 && connectedServers.length === 0) {
-    console.warn('No connected MCP servers found - no tools will be available to the AI model')
-  }
+    if (Object.keys(tools).length === 0 && connectedServers.length === 0) {
+      console.warn('No connected MCP servers found - no tools will be available to the AI model')
+    }
 
   return { tools, servers, connectedServers, availableTools }
 }
 
 export async function POST(req: Request) {
-  const { messages, id, userId } = await req.json()
+  try {
+    const { messages, id, userId } = await req.json()
 
-  // Initialize chat service for user if userId is provided
-  if (userId) {
-    await chatService.initializeForUser({
-      id: userId,
-      email: userId,
-      name: 'User'
-    })
-  }
+    // Initialize chat service for user if userId is provided
+    if (userId) {
+      try {
+        await chatService.initializeForUser({
+          id: userId,
+          email: userId,
+          name: 'User'
+        })
+      } catch (userInitError) {
+        console.error('Failed to initialize user:', userInitError)
+        // Continue anyway - this shouldn't block the chat
+      }
+    }
 
-  // Ensure MCP client is properly initialized before processing the request
-  if (!mcpClient.isReady()) {
-    console.log('MCP client not ready, initializing...')
-    await mcpClient.initialize()
-  }
+    // Ensure MCP client is properly initialized before processing the request
+    if (!mcpClient.isReady()) {
+      await mcpClient.initialize()
+    }
 
-  const { tools, servers, connectedServers, availableTools } = await prepareMcpTools()
+    const { tools, servers, connectedServers, availableTools } = await prepareMcpTools()
 
-  const systemPrompt = `You are DIGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol). You help data analysts and product owners discover insights from their data.
+    // Validate Azure OpenAI configuration before proceeding
+    try {
+      getAzureOpenAIModel()
+    } catch (llmError) {
+      console.error('Azure OpenAI configuration error:', llmError)
+      const errorMessage = llmError instanceof Error ? llmError.message : 'Unknown Azure OpenAI configuration error'
+      return new Response(
+        JSON.stringify({ 
+          error: 'Azure OpenAI configuration error', 
+          details: errorMessage,
+          provider: 'azure'
+        }), 
+        { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+  const systemPrompt = `You are DIGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI. You help data analysts and product owners discover insights from their data.
 
 You have access to MCP servers that provide real data access:
 
@@ -237,50 +258,114 @@ ${connectedServers.length > 0
   : 'No data domains available - servers disconnected'
 }`
 
-  const result = await streamText({
-    model: getOpenAIModel(openaiConfig.model),
-    system: systemPrompt,
-    messages: convertToCoreMessages(messages),
-    tools,
-    maxSteps: 5,
-    onFinish: async ({ response, finishReason, usage, text }) => {
-      // Save messages to database if userId is provided
-      if (userId && id) {
-        try {
-          // Initialize user and get or create session
-          await chatService.initializeForUser({
-            id: userId,
-            email: userId,
-            name: 'User'
-          })
+    console.log('Chat API: Starting streamText with Azure OpenAI...')
+    
+    let result;
+    try {
+      result = await streamText({
+        model: getAzureOpenAIModel(),
+        system: systemPrompt,
+        messages: convertToCoreMessages(messages),
+        tools,
+        maxSteps: 5,
+        onFinish: async ({ response, finishReason, usage, text }) => {
+          // Save messages to database if userId is provided
+          if (userId && id) {
+            try {
+              // Initialize user and get or create session
+              await chatService.initializeForUser({
+                id: userId,
+                email: userId,
+                name: 'User'
+              })
 
-          // Use the getOrCreateSession method which handles both cases
-          await chatService.getOrCreateSession(id)
+              // Use the getOrCreateSession method which handles both cases
+              await chatService.getOrCreateSession(id)
 
-          // Save the user message (last message in the input)
-          const userMessage = messages[messages.length - 1]
-          if (userMessage && userMessage.role === 'user') {
-            await chatService.addMessage({
-              role: 'user',
-              content: userMessage.content,
-              model: 'gpt-4o'
-            })
+              // Save the user message (last message in the input)
+              const userMessage = messages[messages.length - 1]
+              if (userMessage && userMessage.role === 'user') {
+                await chatService.addMessage({
+                  role: 'user',
+                  content: userMessage.content,
+                  model: 'gpt-4o'
+                })
+              }
+
+              // Save the assistant response using the text content
+              if (text) {
+                await chatService.addMessage({
+                  role: 'assistant',
+                  content: text,
+                  model: 'gpt-4o'
+                })
+              }
+            } catch (error) {
+              console.error('Failed to save messages to database:', error)
+            }
           }
-
-          // Save the assistant response using the text content
-          if (text) {
-            await chatService.addMessage({
-              role: 'assistant',
-              content: text,
-              model: 'gpt-4o'
-            })
-          }
-        } catch (error) {
-          console.error('Failed to save messages to database:', error)
         }
+      })
+      
+      return result.toDataStreamResponse()
+      
+    } catch (streamError) {
+      console.error('StreamText error:', streamError)
+      
+      // Analyze the error type for better user feedback
+      const errorMessage = streamError instanceof Error ? streamError.message : 'Unknown streaming error'
+      let statusCode = 500
+      let userFriendlyMessage = 'An error occurred while processing your request'
+      
+      if (errorMessage.toLowerCase().includes('azure')) {
+        if (errorMessage.toLowerCase().includes('quota')) {
+          userFriendlyMessage = 'Azure OpenAI quota exceeded. Please try again later.'
+          statusCode = 429
+        } else if (errorMessage.toLowerCase().includes('authentication') || errorMessage.toLowerCase().includes('unauthorized')) {
+          userFriendlyMessage = 'Azure OpenAI authentication failed. Please check your configuration.'
+          statusCode = 401
+        } else if (errorMessage.toLowerCase().includes('deployment')) {
+          userFriendlyMessage = 'Azure OpenAI deployment not found. Please verify your deployment name.'
+          statusCode = 404
+        } else {
+          userFriendlyMessage = 'Azure OpenAI service error. Please try again.'
+        }
+      } else if (errorMessage.toLowerCase().includes('network') || errorMessage.toLowerCase().includes('fetch')) {
+        userFriendlyMessage = 'Network error connecting to Azure OpenAI. Please check your connection.'
+        statusCode = 503
+      } else if (errorMessage.toLowerCase().includes('timeout')) {
+        userFriendlyMessage = 'Request timed out. Please try again with a shorter message.'
+        statusCode = 408
       }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: userFriendlyMessage,
+          details: errorMessage,
+          provider: 'azure',
+          timestamp: new Date().toISOString()
+        }), 
+        { 
+          status: statusCode, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      )
     }
-  })
-
-  return result.toDataStreamResponse()
+    
+  } catch (outerError) {
+    console.error('Chat API error:', outerError)
+    const errorMessage = outerError instanceof Error ? outerError.message : 'Unknown error'
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      }), 
+      { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    )
+  }
 }

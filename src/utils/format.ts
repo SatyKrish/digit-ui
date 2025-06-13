@@ -58,9 +58,6 @@ export function generateInitials(name: string): string {
     .substring(0, 2)
 }
 
-// Alias for backward compatibility
-export const getInitials = generateInitials
-
 /**
  * Time period for grouping chats
  */

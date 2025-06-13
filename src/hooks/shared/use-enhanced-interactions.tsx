@@ -150,6 +150,3 @@ export function useStaggeredAnimation(itemCount: number, baseDelay: number = 100
     getStaggerClasses,
   }
 }
-
-// Alias for backward compatibility
-export const useEnhancedInteractions = useInteractiveState

@@ -104,7 +104,9 @@ async function fetchConfigFromServer(): Promise<Configuration> {
  * Used when server configuration is not available (e.g., development)
  */
 function getFallbackConfig(): Configuration {
-  console.warn('Using fallback MSAL configuration. Consider setting up server-side config for production.');
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('Using fallback MSAL configuration. Consider setting up server-side config for production.');
+  }
   
   return {
     auth: {
