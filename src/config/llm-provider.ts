@@ -1,15 +1,13 @@
-import { openai } from "@ai-sdk/openai"
 import { env } from "./env"
 import { getAzureOpenAIModel, validateAzureOpenAIConfig, azureOpenAIConfig } from "./azure-openai"
-import { openaiConfig } from "./openai"
 
 /**
- * LLM Provider types
+ * LLM Provider type - Only Azure OpenAI supported
  */
-export type LLMProvider = 'openai' | 'azure'
+export type LLMProvider = 'azure'
 
 /**
- * Unified LLM configuration that supports multiple providers
+ * Unified LLM configuration that supports Azure OpenAI
  * Following Azure best practices for provider selection and configuration
  */
 export interface LLMConfig {
@@ -24,14 +22,15 @@ export interface LLMConfig {
 
 /**
  * Get the current LLM provider from environment
+ * Always returns 'azure' as it's the only supported provider
  */
 export const getCurrentProvider = (): LLMProvider => {
   const provider = env.LLM_PROVIDER?.toLowerCase() as LLMProvider
   
-  // Validate provider value
-  if (provider !== 'openai' && provider !== 'azure') {
-    console.warn(`Invalid LLM_PROVIDER: ${env.LLM_PROVIDER}. Defaulting to 'openai'`)
-    return 'openai'
+  // Validate provider value - only 'azure' is supported
+  if (provider !== 'azure') {
+    console.warn(`Invalid LLM_PROVIDER: ${env.LLM_PROVIDER}. Only 'azure' is supported. Defaulting to 'azure'`)
+    return 'azure'
   }
   
   return provider
@@ -39,75 +38,47 @@ export const getCurrentProvider = (): LLMProvider => {
 
 /**
  * Get unified LLM configuration based on current provider
+ * Only supports Azure OpenAI
  */
 export const getLLMConfig = (): LLMConfig => {
-  const provider = getCurrentProvider()
-  
-  if (provider === 'azure') {
-    return {
-      provider: 'azure',
-      ...azureOpenAIConfig
-    }
-  }
-  
   return {
-    provider: 'openai',
-    ...openaiConfig
+    provider: 'azure',
+    ...azureOpenAIConfig
   }
 }
 
 /**
- * Get configured LLM model based on current provider
+ * Get configured LLM model based on Azure OpenAI provider
  * This is the main function to use throughout the application
  */
 export const getLLMModel = (modelName?: string) => {
-  const provider = getCurrentProvider()
   const config = getLLMConfig()
   
-  if (provider === 'azure') {
-    // Validate Azure OpenAI configuration
-    if (!validateAzureOpenAIConfig()) {
-      throw new Error(
-        'Azure OpenAI provider is selected but configuration is incomplete. ' +
-        'Please ensure AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and AZURE_OPENAI_DEPLOYMENT_NAME are set.'
-      )
-    }
-    
-    return getAzureOpenAIModel(modelName || config.model)
-  }
-  
-  // OpenAI provider
-  if (!env.OPENAI_API_KEY) {
+  // Validate Azure OpenAI configuration
+  if (!validateAzureOpenAIConfig()) {
     throw new Error(
-      'OpenAI provider is selected but OPENAI_API_KEY is not set. ' +
-      'Please set OPENAI_API_KEY or switch to Azure OpenAI provider.'
+      'Azure OpenAI provider configuration is incomplete. ' +
+      'Please ensure AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, and AZURE_OPENAI_DEPLOYMENT_NAME are set.'
     )
   }
   
-  return openai(modelName || config.model)
+  return getAzureOpenAIModel(modelName || config.model)
 }
 
 /**
- * Validate current LLM provider configuration
+ * Validate Azure OpenAI provider configuration
  */
 export const validateLLMConfig = (): { isValid: boolean; errors: string[] } => {
-  const provider = getCurrentProvider()
   const errors: string[] = []
   
-  if (provider === 'azure') {
-    if (!env.AZURE_OPENAI_ENDPOINT) {
-      errors.push('AZURE_OPENAI_ENDPOINT is required for Azure OpenAI provider')
-    }
-    if (!env.AZURE_OPENAI_API_KEY) {
-      errors.push('AZURE_OPENAI_API_KEY is required for Azure OpenAI provider')
-    }
-    if (!env.AZURE_OPENAI_DEPLOYMENT_NAME) {
-      errors.push('AZURE_OPENAI_DEPLOYMENT_NAME is required for Azure OpenAI provider')
-    }
-  } else {
-    if (!env.OPENAI_API_KEY) {
-      errors.push('OPENAI_API_KEY is required for OpenAI provider')
-    }
+  if (!env.AZURE_OPENAI_ENDPOINT) {
+    errors.push('AZURE_OPENAI_ENDPOINT is required for Azure OpenAI provider')
+  }
+  if (!env.AZURE_OPENAI_API_KEY) {
+    errors.push('AZURE_OPENAI_API_KEY is required for Azure OpenAI provider')
+  }
+  if (!env.AZURE_OPENAI_DEPLOYMENT_NAME) {
+    errors.push('AZURE_OPENAI_DEPLOYMENT_NAME is required for Azure OpenAI provider')
   }
   
   return {
@@ -118,35 +89,23 @@ export const validateLLMConfig = (): { isValid: boolean; errors: string[] } => {
 
 /**
  * Get LLM provider status for health checks and debugging
+ * Only supports Azure OpenAI
  */
 export const getLLMProviderStatus = () => {
   const provider = getCurrentProvider()
   const config = getLLMConfig()
   const validation = validateLLMConfig()
   
-  const baseStatus = {
+  return {
     currentProvider: provider,
     model: config.model,
     configured: validation.isValid,
     errors: validation.errors,
-  }
-  
-  if (provider === 'azure') {
-    return {
-      ...baseStatus,
-      azure: {
-        endpoint: env.AZURE_OPENAI_ENDPOINT ? '***configured***' : 'not set',
-        apiKey: env.AZURE_OPENAI_API_KEY ? '***configured***' : 'not set',
-        deploymentName: env.AZURE_OPENAI_DEPLOYMENT_NAME || 'not set',
-                apiVersion: env.AZURE_OPENAI_API_VERSION,
-      }
-    }
-  }
-  
-  return {
-    ...baseStatus,
-    openai: {
-      apiKey: env.OPENAI_API_KEY ? '***configured***' : 'not set',
+    azure: {
+      endpoint: env.AZURE_OPENAI_ENDPOINT ? '***configured***' : 'not set',
+      apiKey: env.AZURE_OPENAI_API_KEY ? '***configured***' : 'not set',
+      deploymentName: env.AZURE_OPENAI_DEPLOYMENT_NAME || 'not set',
+      apiVersion: env.AZURE_OPENAI_API_VERSION,
     }
   }
 }

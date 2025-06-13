@@ -83,18 +83,7 @@ cp .env.example .env.local
 2. Default permissions include `User.Read` - this is sufficient for basic authentication
 3. For enhanced features, you may add: `email`, `profile`, `openid`
 
-#### OpenAI Setup
-
-**Get your OpenAI API Key**:
-1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Sign in or create an account
-3. Click **"Create new secret key"**
-4. Copy the API key - this is your `OPENAI_API_KEY`
-5. **Important**: Store this securely - you won't be able to see it again!
-
-> **💡 Note**: You'll need OpenAI credits in your account for the LLM to work. Check your [usage and billing](https://platform.openai.com/usage) in the OpenAI dashboard.
-
-#### Azure OpenAI Setup (Enterprise Alternative)
+#### Azure OpenAI Setup (Required)
 
 **For organizations using Azure OpenAI Service**:
 
@@ -120,7 +109,7 @@ cp .env.example .env.local
 **4. Configure Application**
 Set `LLM_PROVIDER=azure` in your environment variables and provide the Azure OpenAI configuration.
 
-> **🏢 Enterprise Benefits**: Azure OpenAI provides enhanced security, compliance, and data residency controls compared to OpenAI directly.
+> **🏢 Enterprise Benefits**: Azure OpenAI provides enhanced security, compliance, and data residency controls for enterprise use.
 
 #### Environment Variables
 
@@ -140,9 +129,6 @@ AZURE_TENANT_ID=your-azure-tenant-id-here
 AZURE_REDIRECT_URI=http://localhost:3000
 AZURE_POST_LOGOUT_REDIRECT_URI=http://localhost:3000
 
-# OpenAI Configuration (Required for LLM integration)
-OPENAI_API_KEY=your-openai-api-key-here
-
 # Environment
 NODE_ENV=development
 
@@ -157,7 +143,7 @@ MCP_ANALYTICS_SERVER_URL=http://localhost:3002
 MCP_FILE_SERVER_URL=http://localhost:3003
 ```
 
-**Azure OpenAI Configuration** (Alternative to OpenAI):
+**Azure OpenAI Configuration** (Required):
 ```env
 # Azure AD Configuration (Server-side)
 AZURE_CLIENT_ID=your-azure-client-id-here
@@ -166,7 +152,7 @@ AZURE_TENANT_ID=your-azure-tenant-id-here
 AZURE_REDIRECT_URI=http://localhost:3000
 AZURE_POST_LOGOUT_REDIRECT_URI=http://localhost:3000
 
-# Azure OpenAI Configuration (Alternative to OpenAI)
+# Azure OpenAI Configuration (Required)
 LLM_PROVIDER=azure
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here
@@ -184,9 +170,6 @@ AZURE_REDIRECT_URI=https://yourdomain.com
 AZURE_POST_LOGOUT_REDIRECT_URI=https://yourdomain.com
 NEXTAUTH_URL=https://yourdomain.com
 
-# OpenAI Configuration (Required for LLM integration)
-OPENAI_API_KEY=your-openai-api-key-here
-
 # Environment
 NODE_ENV=production
 
@@ -195,7 +178,7 @@ DATABASE_PATH=./data/chat.db
 DATABASE_TIMEOUT=30000
 ```
 
-**Azure OpenAI Production Configuration** (Alternative to OpenAI):
+**Azure OpenAI Production Configuration**:
 ```env
 # Azure AD Configuration (Server-side for security)
 AZURE_CLIENT_ID=your-azure-client-id-here
@@ -205,7 +188,7 @@ AZURE_REDIRECT_URI=https://yourdomain.com
 AZURE_POST_LOGOUT_REDIRECT_URI=https://yourdomain.com
 NEXTAUTH_URL=https://yourdomain.com
 
-# Azure OpenAI Configuration (Enterprise-recommended)
+# Azure OpenAI Configuration (Required)
 LLM_PROVIDER=azure
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
 AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here

@@ -39,7 +39,7 @@ src/
 │   └── index.ts          # Module exports
 └── app/
     ├── api/artifacts/streaming/route.ts  # RSC streaming server actions
-    └── artifacts-demo/page.tsx          # Demo page showcasing features
+    └── demo/page.tsx                     # Demo page showcasing features
 ```
 
 ## 🛠 Usage
@@ -297,7 +297,7 @@ Key dependencies used by the artifacts system:
 
 ## 🚀 Demo
 
-Visit `/artifacts-demo` to see the complete system in action:
+Visit `/demo` to see the complete system in action:
 
 - **Workspace View**: Full Canvas-like interface
 - **Individual Artifacts**: Create and manage single artifacts

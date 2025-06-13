@@ -27,12 +27,9 @@ export const env = {
   NODE_ENV: getEnvVar('NODE_ENV', 'development'),
   NEXTAUTH_URL: getEnvVar('NEXTAUTH_URL', 'http://localhost:3000'),
 
-  // Provider selection: 'openai' or 'azure'
-  LLM_PROVIDER: getEnvVar('LLM_PROVIDER', 'openai'),
+  // LLM Configuration - Only Azure OpenAI supported
+  LLM_PROVIDER: getEnvVar('LLM_PROVIDER', 'azure'),
   
-  // OpenAI Configuration
-  OPENAI_API_KEY: getOptionalEnvVar('OPENAI_API_KEY'),
-
   // Azure OpenAI Configuration
   AZURE_OPENAI_ENDPOINT: getOptionalEnvVar('AZURE_OPENAI_ENDPOINT'),
   AZURE_OPENAI_API_KEY: getOptionalEnvVar('AZURE_OPENAI_API_KEY'),

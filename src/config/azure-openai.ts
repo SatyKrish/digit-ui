@@ -16,7 +16,7 @@ export const azureOpenAIConfig = {
 
 /**
  * Get configured Azure OpenAI model with proper authentication
- * Uses Azure-specific authentication and endpoints
+ * Uses Azure-specific authentication and endpoints following Vercel AI SDK patterns
  */
 export const getAzureOpenAIModel = (deploymentName?: string) => {
   // Validate required Azure OpenAI configuration
@@ -27,25 +27,25 @@ export const getAzureOpenAIModel = (deploymentName?: string) => {
   if (!env.AZURE_OPENAI_API_KEY) {
     throw new Error('AZURE_OPENAI_API_KEY is required for Azure OpenAI provider')
   }
-
+  
   if (!env.AZURE_OPENAI_DEPLOYMENT_NAME && !deploymentName) {
     throw new Error('AZURE_OPENAI_DEPLOYMENT_NAME is required for Azure OpenAI provider')
   }
 
-  // Create Azure OpenAI client with proper configuration
+  // Create Azure OpenAI client with proper configuration following Vercel AI SDK patterns
   const azure = createAzure({
     // Use explicit API key for authentication
-    // In production, consider using managed identity or service principal
+    // In production, consider using managed identity or service principal for enhanced security
     apiKey: env.AZURE_OPENAI_API_KEY,
     
-    // Azure OpenAI endpoint (e.g., https://your-resource.openai.azure.com)
-    baseURL: `${env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${deploymentName || env.AZURE_OPENAI_DEPLOYMENT_NAME}`,
+    // Azure OpenAI resource name (extracted from endpoint)
+    resourceName: env.AZURE_OPENAI_ENDPOINT.replace('https://', '').replace('.openai.azure.com', ''),
     
     // API version for Azure OpenAI
     apiVersion: env.AZURE_OPENAI_API_VERSION,
   })
 
-  // Return the configured model
+  // Return the configured model using the deployment name
   return azure(deploymentName || env.AZURE_OPENAI_DEPLOYMENT_NAME!)
 }
 
