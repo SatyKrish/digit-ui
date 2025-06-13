@@ -138,7 +138,7 @@ export const getLLMProviderStatus = () => {
         endpoint: env.AZURE_OPENAI_ENDPOINT ? '***configured***' : 'not set',
         apiKey: env.AZURE_OPENAI_API_KEY ? '***configured***' : 'not set',
         deploymentName: env.AZURE_OPENAI_DEPLOYMENT_NAME || 'not set',
-        apiVersion: env.AZURE_OPENAI_API_VERSION,
+                apiVersion: env.AZURE_OPENAI_API_VERSION,
       }
     }
   }
@@ -150,6 +150,3 @@ export const getLLMProviderStatus = () => {
     }
   }
 }
-
-// For backward compatibility, export the previous function name
-export const getOpenAIModel = getLLMModel

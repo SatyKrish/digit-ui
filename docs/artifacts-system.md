@@ -141,7 +141,7 @@ export const customDocumentHandler = createDocumentHandler({
     let content = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4"),
+      model: getLLMModel("gpt-4"),
       system: "Custom system prompt",
       prompt: title,
     })

@@ -303,29 +303,6 @@ export class ChatService {
   }
 
   /**
-   * Send message to chat API
-   * @deprecated Use the /api/chat/messages endpoint directly instead
-   */
-  async sendMessage(content: string, model?: string): Promise<ChatMessage> {
-    console.warn('chatService.sendMessage is deprecated. Use /api/chat/messages endpoint directly.')
-    
-    const userMessage = await this.addMessage({
-      role: 'user',
-      content,
-      model: model || 'gpt-4'
-    });
-
-    // For backward compatibility, return a simple response
-    const assistantMessage = await this.addMessage({
-      role: 'assistant',
-      content: 'Please use the updated chat API for proper MCP integration.',
-      model: model || 'gpt-4'
-    });
-
-    return assistantMessage;
-  }
-
-  /**
    * Clear all chat history for current user
    */
   async clearHistory(): Promise<void> {
