@@ -22,29 +22,37 @@ export const cacheConfig = {
 }
 
 /**
- * MSAL system configuration
+ * MSAL system configuration with environment-appropriate logging
  */
 export const systemConfig = {
   loggerOptions: {
     loggerCallback: (level: any, message: string, containsPii: boolean) => {
       if (containsPii) return
       
-      switch (level) {
-        case 0: // LogLevel.Error
-          console.error(message)
-          break
-        case 1: // LogLevel.Warning
-          console.warn(message)
-          break
-        case 2: // LogLevel.Info
-          console.info(message)
-          break
-        case 3: // LogLevel.Verbose
-          console.debug(message)
-          break
+      // Only log in development or when explicitly needed
+      if (process.env.NODE_ENV === 'development') {
+        switch (level) {
+          case 0: // LogLevel.Error
+            console.error(message)
+            break
+          case 1: // LogLevel.Warning
+            console.warn(message)
+            break
+          case 2: // LogLevel.Info
+            console.info(message)
+            break
+          case 3: // LogLevel.Verbose
+            console.debug(message)
+            break
+        }
+      } else {
+        // Production: Only log errors and warnings
+        if (level <= 1) {
+          level === 0 ? console.error(message) : console.warn(message)
+        }
       }
     },
-    logLevel: (process.env.NODE_ENV || 'development') === 'development' ? 3 : 1, // Verbose in dev, Warning in prod
+    logLevel: process.env.NODE_ENV === 'development' ? 3 : 1, // Verbose in dev, Warning+ in prod
     piiLoggingEnabled: false
   }
 }

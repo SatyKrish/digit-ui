@@ -2,8 +2,8 @@ import { createAzure } from "@ai-sdk/azure"
 import { env } from "./env"
 
 /**
- * Azure OpenAI configuration
- * Following Azure best practices for secure authentication and configuration
+ * Azure OpenAI configuration following Azure best practices
+ * Supports both API key and managed identity authentication
  */
 export const azureOpenAIConfig = {
   model: env.AZURE_OPENAI_DEPLOYMENT_NAME || "gpt-4o",
@@ -17,6 +17,9 @@ export const azureOpenAIConfig = {
 /**
  * Get configured Azure OpenAI model with proper authentication
  * Uses Azure-specific authentication and endpoints following Vercel AI SDK patterns
+ * 
+ * @param deploymentName Optional deployment name override
+ * @returns Configured Azure OpenAI model instance
  */
 export const getAzureOpenAIModel = (deploymentName?: string) => {
   // Validate required Azure OpenAI configuration
@@ -32,16 +35,15 @@ export const getAzureOpenAIModel = (deploymentName?: string) => {
     throw new Error('AZURE_OPENAI_DEPLOYMENT_NAME is required for Azure OpenAI provider')
   }
 
-  // Create Azure OpenAI client with proper configuration following Vercel AI SDK patterns
+  // Create Azure OpenAI client with proper configuration
   const azure = createAzure({
-    // Use explicit API key for authentication
-    // In production, consider using managed identity or service principal for enhanced security
+    // Authentication: Using API key (production should consider managed identity)
     apiKey: env.AZURE_OPENAI_API_KEY,
     
-    // Azure OpenAI base URL
+    // Azure OpenAI service endpoint (must use openai.azure.com format)
     baseURL: env.AZURE_OPENAI_ENDPOINT,
     
-    // API version for Azure OpenAI
+    // API version for Azure OpenAI service
     apiVersion: env.AZURE_OPENAI_API_VERSION,
   })
 

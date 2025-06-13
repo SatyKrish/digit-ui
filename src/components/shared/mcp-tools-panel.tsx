@@ -50,11 +50,6 @@ export function MCPToolsPanel() {
       setServers(data.servers || [])
       setTools(data.tools || [])
       setLastUpdate(Date.now())
-      console.log('MCP data loaded:', {
-        servers: data.servers?.length || 0,
-        tools: data.tools?.length || 0,
-        connected: data.connected || 0
-      })
     } catch (error) {
       console.error('Failed to load MCP data:', error)
     } finally {

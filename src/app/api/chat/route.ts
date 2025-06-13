@@ -112,58 +112,47 @@ async function prepareMcpTools() {
   const connectedServers = mcpClient.getConnectedServers()
   const availableTools = mcpClient.getAllTools()
 
-  console.log(`MCP Status: ${connectedServers.length}/${servers.length} servers connected, ${availableTools.length} tools available`)
+    console.log(`MCP Status: ${connectedServers.length}/${servers.length} servers connected, ${availableTools.length} tools available`)
   
-  const tools: Record<string, any> = {}
+    const tools: Record<string, any> = {}
 
-  // Only create tools for connected servers and their available tools
-  for (const tool of availableTools) {
-    // Check if the server is connected
-    const server = servers.find(s => s.id === tool.serverId)
-    if (!server || server.status !== 'connected') {
-      console.log(`Skipping tool ${tool.name} from ${tool.serverId} - server not connected (status: ${server?.status})`)
-      continue
-    }
+    // Only create tools for connected servers and their available tools
+    for (const tool of availableTools) {
+      // Check if the server is connected
+      const server = servers.find(s => s.id === tool.serverId)
+      if (!server || server.status !== 'connected') {
+        continue
+      }
 
-    tools[tool.name] = {
-      description: tool.description,
-      parameters: jsonSchemaToZod(tool.inputSchema),
-      execute: async (args: any) => {
-        try {
-          console.log(`Executing tool ${tool.name} on ${tool.serverId} with args:`, args)
-          const result = await mcpClient.callTool(tool.serverId, tool.name, args)
-          if (!result.success) {
-            console.error(`Tool execution failed for ${tool.name}:`, result.error)
-            return { error: result.error }
+      tools[tool.name] = {
+        description: tool.description,
+        parameters: jsonSchemaToZod(tool.inputSchema),
+        execute: async (args: any) => {
+          try {
+            const result = await mcpClient.callTool(tool.serverId, tool.name, args)
+            if (!result.success) {
+              console.error(`Tool execution failed for ${tool.name}:`, result.error)
+              return { error: result.error }
+            }
+            return result.data
+          } catch (error) {
+            console.error(`Error executing tool ${tool.name}:`, error)
+            return { error: error instanceof Error ? error.message : 'Unknown error' }
           }
-          return result.data
-        } catch (error) {
-          console.error(`Error executing tool ${tool.name}:`, error)
-          return { error: error instanceof Error ? error.message : 'Unknown error' }
-        }
-      },
+        },
+      }
     }
-  }
 
-  console.log(`Created ${Object.keys(tools).length} dynamic tools from ${connectedServers.length} connected servers`)
-  if (Object.keys(tools).length === 0 && connectedServers.length === 0) {
-    console.warn('No connected MCP servers found - no tools will be available to the AI model')
-  }
+    if (Object.keys(tools).length === 0 && connectedServers.length === 0) {
+      console.warn('No connected MCP servers found - no tools will be available to the AI model')
+    }
 
   return { tools, servers, connectedServers, availableTools }
 }
 
 export async function POST(req: Request) {
   try {
-    console.log('Chat API: Processing request...')
-    
     const { messages, id, userId } = await req.json()
-    console.log('Chat API: Received data:', { 
-      messageCount: messages?.length, 
-      id, 
-      userId,
-      lastMessagePreview: messages?.[messages.length - 1]?.content?.substring(0, 100) 
-    })
 
     // Initialize chat service for user if userId is provided
     if (userId) {
@@ -173,36 +162,24 @@ export async function POST(req: Request) {
           email: userId,
           name: 'User'
         })
-        console.log('Chat API: User initialized successfully')
       } catch (userInitError) {
-        console.error('Chat API: Failed to initialize user:', userInitError)
+        console.error('Failed to initialize user:', userInitError)
         // Continue anyway - this shouldn't block the chat
       }
     }
 
     // Ensure MCP client is properly initialized before processing the request
     if (!mcpClient.isReady()) {
-      console.log('Chat API: MCP client not ready, initializing...')
       await mcpClient.initialize()
     }
 
-    console.log('Chat API: Preparing MCP tools...')
     const { tools, servers, connectedServers, availableTools } = await prepareMcpTools()
-    console.log('Chat API: MCP tools prepared:', { 
-      toolCount: Object.keys(tools).length, 
-      serverCount: servers.length, 
-      connectedCount: connectedServers.length 
-    })
-
-    console.log('Chat API: Getting LLM configuration...')
-    console.log('Chat API: Using Azure OpenAI provider')
 
     // Validate Azure OpenAI configuration before proceeding
     try {
-      const llmModel = getAzureOpenAIModel()
-      console.log('Chat API: Azure OpenAI model obtained successfully')
+      getAzureOpenAIModel()
     } catch (llmError) {
-      console.error('Chat API: Azure OpenAI configuration error:', llmError)
+      console.error('Azure OpenAI configuration error:', llmError)
       const errorMessage = llmError instanceof Error ? llmError.message : 'Unknown Azure OpenAI configuration error'
       return new Response(
         JSON.stringify({ 
@@ -292,19 +269,9 @@ ${connectedServers.length > 0
         tools,
         maxSteps: 5,
         onFinish: async ({ response, finishReason, usage, text }) => {
-          console.log('Chat API: Stream finished:', { 
-            finishReason, 
-            usage: usage ? { 
-              promptTokens: usage.promptTokens, 
-              completionTokens: usage.completionTokens 
-            } : null,
-            textLength: text?.length || 0
-          })
-          
           // Save messages to database if userId is provided
           if (userId && id) {
             try {
-              console.log('Chat API: Saving messages to database...')
               // Initialize user and get or create session
               await chatService.initializeForUser({
                 id: userId,
@@ -333,19 +300,17 @@ ${connectedServers.length > 0
                   model: 'gpt-4o'
                 })
               }
-              console.log('Chat API: Messages saved successfully')
             } catch (error) {
-              console.error('Chat API: Failed to save messages to database:', error)
+              console.error('Failed to save messages to database:', error)
             }
           }
         }
       })
       
-      console.log('Chat API: StreamText completed successfully')
       return result.toDataStreamResponse()
       
     } catch (streamError) {
-      console.error('Chat API: StreamText error:', streamError)
+      console.error('StreamText error:', streamError)
       
       // Analyze the error type for better user feedback
       const errorMessage = streamError instanceof Error ? streamError.message : 'Unknown streaming error'
@@ -388,7 +353,7 @@ ${connectedServers.length > 0
     }
     
   } catch (outerError) {
-    console.error('Chat API: Outer error:', outerError)
+    console.error('Chat API error:', outerError)
     const errorMessage = outerError instanceof Error ? outerError.message : 'Unknown error'
     
     return new Response(
