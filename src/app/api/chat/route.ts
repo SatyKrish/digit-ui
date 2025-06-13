@@ -154,26 +154,74 @@ async function prepareMcpTools() {
 }
 
 export async function POST(req: Request) {
-  const { messages, id, userId } = await req.json()
-
-  // Initialize chat service for user if userId is provided
-  if (userId) {
-    await chatService.initializeForUser({
-      id: userId,
-      email: userId,
-      name: 'User'
+  try {
+    console.log('Chat API: Processing request...')
+    
+    const { messages, id, userId } = await req.json()
+    console.log('Chat API: Received data:', { 
+      messageCount: messages?.length, 
+      id, 
+      userId,
+      lastMessagePreview: messages?.[messages.length - 1]?.content?.substring(0, 100) 
     })
-  }
 
-  // Ensure MCP client is properly initialized before processing the request
-  if (!mcpClient.isReady()) {
-    console.log('MCP client not ready, initializing...')
-    await mcpClient.initialize()
-  }
+    // Initialize chat service for user if userId is provided
+    if (userId) {
+      try {
+        await chatService.initializeForUser({
+          id: userId,
+          email: userId,
+          name: 'User'
+        })
+        console.log('Chat API: User initialized successfully')
+      } catch (userInitError) {
+        console.error('Chat API: Failed to initialize user:', userInitError)
+        // Continue anyway - this shouldn't block the chat
+      }
+    }
 
-  const { tools, servers, connectedServers, availableTools } = await prepareMcpTools()
-  const llmConfig = getLLMConfig()
-  const currentProvider = getCurrentProvider()
+    // Ensure MCP client is properly initialized before processing the request
+    if (!mcpClient.isReady()) {
+      console.log('Chat API: MCP client not ready, initializing...')
+      await mcpClient.initialize()
+    }
+
+    console.log('Chat API: Preparing MCP tools...')
+    const { tools, servers, connectedServers, availableTools } = await prepareMcpTools()
+    console.log('Chat API: MCP tools prepared:', { 
+      toolCount: Object.keys(tools).length, 
+      serverCount: servers.length, 
+      connectedCount: connectedServers.length 
+    })
+
+    console.log('Chat API: Getting LLM configuration...')
+    const llmConfig = getLLMConfig()
+    const currentProvider = getCurrentProvider()
+    console.log('Chat API: LLM config:', { 
+      provider: currentProvider, 
+      model: llmConfig.model,
+      configured: llmConfig ? 'yes' : 'no'
+    })
+
+    // Validate LLM configuration before proceeding
+    try {
+      const llmModel = getLLMModel(llmConfig.model)
+      console.log('Chat API: LLM model obtained successfully')
+    } catch (llmError) {
+      console.error('Chat API: LLM model configuration error:', llmError)
+      const errorMessage = llmError instanceof Error ? llmError.message : 'Unknown LLM configuration error'
+      return new Response(
+        JSON.stringify({ 
+          error: 'LLM configuration error', 
+          details: errorMessage,
+          provider: currentProvider
+        }), 
+        { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      )
+    }
 
   const systemPrompt = `You are DIGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and ${currentProvider.toUpperCase()} AI. You help data analysts and product owners discover insights from their data.
 
@@ -239,50 +287,126 @@ ${connectedServers.length > 0
   : 'No data domains available - servers disconnected'
 }`
 
-  const result = await streamText({
-    model: getLLMModel(llmConfig.model),
-    system: systemPrompt,
-    messages: convertToCoreMessages(messages),
-    tools,
-    maxSteps: 5,
-    onFinish: async ({ response, finishReason, usage, text }) => {
-      // Save messages to database if userId is provided
-      if (userId && id) {
-        try {
-          // Initialize user and get or create session
-          await chatService.initializeForUser({
-            id: userId,
-            email: userId,
-            name: 'User'
+    console.log('Chat API: Starting streamText with Azure OpenAI...')
+    
+    let result;
+    try {
+      result = await streamText({
+        model: getLLMModel(llmConfig.model),
+        system: systemPrompt,
+        messages: convertToCoreMessages(messages),
+        tools,
+        maxSteps: 5,
+        onFinish: async ({ response, finishReason, usage, text }) => {
+          console.log('Chat API: Stream finished:', { 
+            finishReason, 
+            usage: usage ? { 
+              promptTokens: usage.promptTokens, 
+              completionTokens: usage.completionTokens 
+            } : null,
+            textLength: text?.length || 0
           })
+          
+          // Save messages to database if userId is provided
+          if (userId && id) {
+            try {
+              console.log('Chat API: Saving messages to database...')
+              // Initialize user and get or create session
+              await chatService.initializeForUser({
+                id: userId,
+                email: userId,
+                name: 'User'
+              })
 
-          // Use the getOrCreateSession method which handles both cases
-          await chatService.getOrCreateSession(id)
+              // Use the getOrCreateSession method which handles both cases
+              await chatService.getOrCreateSession(id)
 
-          // Save the user message (last message in the input)
-          const userMessage = messages[messages.length - 1]
-          if (userMessage && userMessage.role === 'user') {
-            await chatService.addMessage({
-              role: 'user',
-              content: userMessage.content,
-              model: 'gpt-4o'
-            })
+              // Save the user message (last message in the input)
+              const userMessage = messages[messages.length - 1]
+              if (userMessage && userMessage.role === 'user') {
+                await chatService.addMessage({
+                  role: 'user',
+                  content: userMessage.content,
+                  model: 'gpt-4o'
+                })
+              }
+
+              // Save the assistant response using the text content
+              if (text) {
+                await chatService.addMessage({
+                  role: 'assistant',
+                  content: text,
+                  model: 'gpt-4o'
+                })
+              }
+              console.log('Chat API: Messages saved successfully')
+            } catch (error) {
+              console.error('Chat API: Failed to save messages to database:', error)
+            }
           }
-
-          // Save the assistant response using the text content
-          if (text) {
-            await chatService.addMessage({
-              role: 'assistant',
-              content: text,
-              model: 'gpt-4o'
-            })
-          }
-        } catch (error) {
-          console.error('Failed to save messages to database:', error)
         }
+      })
+      
+      console.log('Chat API: StreamText completed successfully')
+      return result.toDataStreamResponse()
+      
+    } catch (streamError) {
+      console.error('Chat API: StreamText error:', streamError)
+      
+      // Analyze the error type for better user feedback
+      const errorMessage = streamError instanceof Error ? streamError.message : 'Unknown streaming error'
+      let statusCode = 500
+      let userFriendlyMessage = 'An error occurred while processing your request'
+      
+      if (errorMessage.toLowerCase().includes('azure')) {
+        if (errorMessage.toLowerCase().includes('quota')) {
+          userFriendlyMessage = 'Azure OpenAI quota exceeded. Please try again later.'
+          statusCode = 429
+        } else if (errorMessage.toLowerCase().includes('authentication') || errorMessage.toLowerCase().includes('unauthorized')) {
+          userFriendlyMessage = 'Azure OpenAI authentication failed. Please check your configuration.'
+          statusCode = 401
+        } else if (errorMessage.toLowerCase().includes('deployment')) {
+          userFriendlyMessage = 'Azure OpenAI deployment not found. Please verify your deployment name.'
+          statusCode = 404
+        } else {
+          userFriendlyMessage = 'Azure OpenAI service error. Please try again.'
+        }
+      } else if (errorMessage.toLowerCase().includes('network') || errorMessage.toLowerCase().includes('fetch')) {
+        userFriendlyMessage = 'Network error connecting to Azure OpenAI. Please check your connection.'
+        statusCode = 503
+      } else if (errorMessage.toLowerCase().includes('timeout')) {
+        userFriendlyMessage = 'Request timed out. Please try again with a shorter message.'
+        statusCode = 408
       }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: userFriendlyMessage,
+          details: errorMessage,
+          provider: currentProvider,
+          timestamp: new Date().toISOString()
+        }), 
+        { 
+          status: statusCode, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      )
     }
-  })
-
-  return result.toDataStreamResponse()
+    
+  } catch (outerError) {
+    console.error('Chat API: Outer error:', outerError)
+    const errorMessage = outerError instanceof Error ? outerError.message : 'Unknown error'
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      }), 
+      { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    )
+  }
 }
