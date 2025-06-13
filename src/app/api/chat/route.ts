@@ -2,7 +2,7 @@ import { streamText, convertToCoreMessages } from "ai"
 import { mcpClient } from "@/client/mcp-client"
 import { chatService } from "@/services/chat/chat-service"
 import { env } from "@/config/env"
-import { getLLMModel, getLLMConfig, getCurrentProvider } from "@/config/llm-provider"
+import { getAzureOpenAIModel, azureOpenAIConfig } from "@/config/azure-openai"
 import { z } from "zod"
 
 /**
@@ -195,26 +195,20 @@ export async function POST(req: Request) {
     })
 
     console.log('Chat API: Getting LLM configuration...')
-    const llmConfig = getLLMConfig()
-    const currentProvider = getCurrentProvider()
-    console.log('Chat API: LLM config:', { 
-      provider: currentProvider, 
-      model: llmConfig.model,
-      configured: llmConfig ? 'yes' : 'no'
-    })
+    console.log('Chat API: Using Azure OpenAI provider')
 
-    // Validate LLM configuration before proceeding
+    // Validate Azure OpenAI configuration before proceeding
     try {
-      const llmModel = getLLMModel(llmConfig.model)
-      console.log('Chat API: LLM model obtained successfully')
+      const llmModel = getAzureOpenAIModel()
+      console.log('Chat API: Azure OpenAI model obtained successfully')
     } catch (llmError) {
-      console.error('Chat API: LLM model configuration error:', llmError)
-      const errorMessage = llmError instanceof Error ? llmError.message : 'Unknown LLM configuration error'
+      console.error('Chat API: Azure OpenAI configuration error:', llmError)
+      const errorMessage = llmError instanceof Error ? llmError.message : 'Unknown Azure OpenAI configuration error'
       return new Response(
         JSON.stringify({ 
-          error: 'LLM configuration error', 
+          error: 'Azure OpenAI configuration error', 
           details: errorMessage,
-          provider: currentProvider
+          provider: 'azure'
         }), 
         { 
           status: 500, 
@@ -223,7 +217,7 @@ export async function POST(req: Request) {
       )
     }
 
-  const systemPrompt = `You are DIGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and ${currentProvider.toUpperCase()} AI. You help data analysts and product owners discover insights from their data.
+  const systemPrompt = `You are DIGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI. You help data analysts and product owners discover insights from their data.
 
 You have access to MCP servers that provide real data access:
 
@@ -292,7 +286,7 @@ ${connectedServers.length > 0
     let result;
     try {
       result = await streamText({
-        model: getLLMModel(llmConfig.model),
+        model: getAzureOpenAIModel(),
         system: systemPrompt,
         messages: convertToCoreMessages(messages),
         tools,
@@ -383,7 +377,7 @@ ${connectedServers.length > 0
         JSON.stringify({ 
           error: userFriendlyMessage,
           details: errorMessage,
-          provider: currentProvider,
+          provider: 'azure',
           timestamp: new Date().toISOString()
         }), 
         { 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getLLMProviderStatus, validateLLMConfig } from '@/config/llm-provider';
+import { getAzureOpenAIStatus, validateAzureOpenAIConfig } from '@/config/azure-openai';
 
 export async function GET() {
   try {
@@ -50,26 +50,25 @@ export async function GET() {
       apiStatus = 'error';
     }
 
-    // Test LLM provider configuration and health
+    // Test Azure OpenAI configuration and health
     let llmStatus = 'ok';
     let llmDetails = {};
     try {
-      const providerStatus = getLLMProviderStatus();
-      const validation = validateLLMConfig();
+      const azureStatus = getAzureOpenAIStatus();
+      const isConfigured = validateAzureOpenAIConfig();
       
-      llmStatus = validation.isValid ? 'ok' : 'error';
+      llmStatus = isConfigured ? 'ok' : 'error';
       llmDetails = {
-        ...providerStatus,
-        healthy: validation.isValid,
-        errors: validation.errors
+        ...azureStatus,
+        healthy: isConfigured,
       };
     } catch (llmError) {
-      console.error('LLM health check failed:', llmError);
+      console.error('Azure OpenAI health check failed:', llmError);
       llmStatus = 'error';
       llmDetails = {
         healthy: false,
         configured: false,
-        error: llmError instanceof Error ? llmError.message : 'Unknown LLM error'
+        error: llmError instanceof Error ? llmError.message : 'Unknown Azure OpenAI error'
       };
     }
 
