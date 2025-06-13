@@ -1,5 +1,5 @@
 import { streamText } from "ai"
-import { getOpenAIModel } from "@/config/openai"
+import { getLLMModel } from "@/config/llm-provider"
 import type { ArtifactKind, ArtifactDocument, StreamPart, CreateArtifactOptions } from "./types"
 
 export interface DataStream {
@@ -66,7 +66,7 @@ export const textDocumentHandler = createDocumentHandler({
     let content = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.text,
       prompt: `Create a well-structured text document with the title: "${title}". Make it engaging and informative.`
     })
@@ -93,7 +93,7 @@ export const textDocumentHandler = createDocumentHandler({
     let updatedContent = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.text,
       prompt: `Update the following text document based on this request: "${description}"\n\nCurrent content:\n${document.content}`,
     })
@@ -120,7 +120,7 @@ export const codeDocumentHandler = createDocumentHandler({
     const language = metadata?.language || "javascript"
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.code,
       prompt: `Create ${language} code for: "${title}". Include proper documentation and examples.`,
     })
@@ -152,7 +152,7 @@ export const codeDocumentHandler = createDocumentHandler({
     let updatedContent = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.code,
       prompt: `Update this ${document.metadata.language || 'code'}: "${description}"\n\nCurrent code:\n${document.content}`,
     })
@@ -178,7 +178,7 @@ export const chartDocumentHandler = createDocumentHandler({
     let content = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.chart,
       prompt: `Create a chart configuration and sample data for: "${title}". Return valid JSON configuration for Chart.js or similar libraries.`,
     })
@@ -217,7 +217,7 @@ export const chartDocumentHandler = createDocumentHandler({
     let updatedContent = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.chart,
       prompt: `Update this chart configuration: "${description}"\n\nCurrent config:\n${document.content}`,
     })
@@ -243,7 +243,7 @@ export const visualizationDocumentHandler = createDocumentHandler({
     let content = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.visualization,
       prompt: `Create an interactive data visualization for: "${title}". Include HTML, CSS, and JavaScript for a complete visualization.`,
     })
@@ -265,7 +265,7 @@ export const visualizationDocumentHandler = createDocumentHandler({
     let updatedContent = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.visualization,
       prompt: `Update this visualization: "${description}"\n\nCurrent code:\n${document.content}`,
     })
@@ -291,7 +291,7 @@ export const documentDocumentHandler = createDocumentHandler({
     let content = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.document,
       prompt: `Create comprehensive documentation for: "${title}". Use markdown formatting and include proper structure.`,
     })
@@ -325,7 +325,7 @@ export const documentDocumentHandler = createDocumentHandler({
     let updatedContent = ""
     
     const { fullStream } = await streamText({
-      model: getOpenAIModel("gpt-4o"),
+      model: getLLMModel("gpt-4o"),
       system: SYSTEM_PROMPTS.document,
       prompt: `Update this documentation: "${description}"\n\nCurrent documentation:\n${document.content}`,
     })

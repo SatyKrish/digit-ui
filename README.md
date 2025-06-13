@@ -94,6 +94,34 @@ cp .env.example .env.local
 
 > **💡 Note**: You'll need OpenAI credits in your account for the LLM to work. Check your [usage and billing](https://platform.openai.com/usage) in the OpenAI dashboard.
 
+#### Azure OpenAI Setup (Enterprise Alternative)
+
+**For organizations using Azure OpenAI Service**:
+
+**1. Create Azure OpenAI Resource**
+1. Visit [Azure Portal](https://portal.azure.com)
+2. Create a new **Azure OpenAI** resource
+3. Choose your subscription, resource group, and region
+4. Select appropriate pricing tier
+
+**2. Deploy a Model**
+1. Go to **Azure OpenAI Studio** from your resource
+2. Navigate to **Deployments** > **Create new deployment**
+3. Select model (e.g., `gpt-4o`, `gpt-4`, `gpt-35-turbo`)
+4. Choose deployment name (this will be your `AZURE_OPENAI_DEPLOYMENT_NAME`)
+5. Configure capacity and settings
+
+**3. Get Connection Details**
+1. In Azure Portal, go to your OpenAI resource
+2. Navigate to **Keys and Endpoint**
+3. Copy **Endpoint** - this is your `AZURE_OPENAI_ENDPOINT`
+4. Copy **Key1** or **Key2** - this is your `AZURE_OPENAI_API_KEY`
+
+**4. Configure Application**
+Set `LLM_PROVIDER=azure` in your environment variables and provide the Azure OpenAI configuration.
+
+> **🏢 Enterprise Benefits**: Azure OpenAI provides enhanced security, compliance, and data residency controls compared to OpenAI directly.
+
 #### Environment Variables
 
 > **🔐 Security Architecture**  
@@ -117,6 +145,33 @@ OPENAI_API_KEY=your-openai-api-key-here
 
 # Environment
 NODE_ENV=development
+
+# Optional: Database Configuration
+DATABASE_PATH=./data/chat.db
+DATABASE_TIMEOUT=30000
+
+# Optional: MCP Server Configuration
+ENABLE_MCP=true
+MCP_DATABASE_SERVER_URL=http://localhost:3001
+MCP_ANALYTICS_SERVER_URL=http://localhost:3002
+MCP_FILE_SERVER_URL=http://localhost:3003
+```
+
+**Azure OpenAI Configuration** (Alternative to OpenAI):
+```env
+# Azure AD Configuration (Server-side)
+AZURE_CLIENT_ID=your-azure-client-id-here
+AZURE_CLIENT_SECRET=your-azure-client-secret-here 
+AZURE_TENANT_ID=your-azure-tenant-id-here
+AZURE_REDIRECT_URI=http://localhost:3000
+AZURE_POST_LOGOUT_REDIRECT_URI=http://localhost:3000
+
+# Azure OpenAI Configuration (Alternative to OpenAI)
+LLM_PROVIDER=azure
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here
+AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
 ```
 
 **Production Configuration**:
@@ -134,6 +189,28 @@ OPENAI_API_KEY=your-openai-api-key-here
 
 # Environment
 NODE_ENV=production
+
+# Optional: Database Configuration
+DATABASE_PATH=./data/chat.db
+DATABASE_TIMEOUT=30000
+```
+
+**Azure OpenAI Production Configuration** (Alternative to OpenAI):
+```env
+# Azure AD Configuration (Server-side for security)
+AZURE_CLIENT_ID=your-azure-client-id-here
+AZURE_CLIENT_SECRET=your-azure-client-secret-here 
+AZURE_TENANT_ID=your-azure-tenant-id-here
+AZURE_REDIRECT_URI=https://yourdomain.com
+AZURE_POST_LOGOUT_REDIRECT_URI=https://yourdomain.com
+NEXTAUTH_URL=https://yourdomain.com
+
+# Azure OpenAI Configuration (Enterprise-recommended)
+LLM_PROVIDER=azure
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here
+AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
 ```
 
 5. Run the development server:

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getLLMProviderStatus, validateLLMConfig } from '@/config/llm-provider';
 
 export async function GET() {
   try {
@@ -49,8 +50,31 @@ export async function GET() {
       apiStatus = 'error';
     }
 
+    // Test LLM provider configuration and health
+    let llmStatus = 'ok';
+    let llmDetails = {};
+    try {
+      const providerStatus = getLLMProviderStatus();
+      const validation = validateLLMConfig();
+      
+      llmStatus = validation.isValid ? 'ok' : 'error';
+      llmDetails = {
+        ...providerStatus,
+        healthy: validation.isValid,
+        errors: validation.errors
+      };
+    } catch (llmError) {
+      console.error('LLM health check failed:', llmError);
+      llmStatus = 'error';
+      llmDetails = {
+        healthy: false,
+        configured: false,
+        error: llmError instanceof Error ? llmError.message : 'Unknown LLM error'
+      };
+    }
+
     // Determine overall status
-    const hasErrors = databaseStatus === 'error' || apiStatus === 'error';
+    const hasErrors = databaseStatus === 'error' || apiStatus === 'error' || llmStatus === 'error';
     const overallStatus = hasErrors ? 'degraded' : 'healthy';
 
     // Comprehensive system health check
@@ -63,8 +87,10 @@ export async function GET() {
         auth_config: 'ok',
         environment_vars: 'ok',
         database: databaseStatus,
-        api: apiStatus
-      }
+        api: apiStatus,
+        llm: llmStatus
+      },
+      llm: llmDetails
     };
 
     const statusCode = hasErrors ? 503 : 200;

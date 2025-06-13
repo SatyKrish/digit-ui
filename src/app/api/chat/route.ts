@@ -2,7 +2,7 @@ import { streamText, convertToCoreMessages } from "ai"
 import { mcpClient } from "@/client/mcp-client"
 import { chatService } from "@/services/chat/chat-service"
 import { env } from "@/config/env"
-import { getOpenAIModel, openaiConfig } from "@/config/openai"
+import { getLLMModel, getLLMConfig, getCurrentProvider } from "@/config/llm-provider"
 import { z } from "zod"
 
 /**
@@ -172,8 +172,10 @@ export async function POST(req: Request) {
   }
 
   const { tools, servers, connectedServers, availableTools } = await prepareMcpTools()
+  const llmConfig = getLLMConfig()
+  const currentProvider = getCurrentProvider()
 
-  const systemPrompt = `You are DIGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol). You help data analysts and product owners discover insights from their data.
+  const systemPrompt = `You are DIGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and ${currentProvider.toUpperCase()} AI. You help data analysts and product owners discover insights from their data.
 
 You have access to MCP servers that provide real data access:
 
@@ -238,7 +240,7 @@ ${connectedServers.length > 0
 }`
 
   const result = await streamText({
-    model: getOpenAIModel(openaiConfig.model),
+    model: getLLMModel(llmConfig.model),
     system: systemPrompt,
     messages: convertToCoreMessages(messages),
     tools,

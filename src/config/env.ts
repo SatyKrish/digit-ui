@@ -27,8 +27,17 @@ export const env = {
   NODE_ENV: getEnvVar('NODE_ENV', 'development'),
   NEXTAUTH_URL: getEnvVar('NEXTAUTH_URL', 'http://localhost:3000'),
 
-  // OpenAI Configuration (Required for LLM integration)
-  OPENAI_API_KEY: getEnvVar('OPENAI_API_KEY'),
+  // Provider selection: 'openai' or 'azure'
+  LLM_PROVIDER: getEnvVar('LLM_PROVIDER', 'openai'),
+  
+  // OpenAI Configuration
+  OPENAI_API_KEY: getOptionalEnvVar('OPENAI_API_KEY'),
+
+  // Azure OpenAI Configuration
+  AZURE_OPENAI_ENDPOINT: getOptionalEnvVar('AZURE_OPENAI_ENDPOINT'),
+  AZURE_OPENAI_API_KEY: getOptionalEnvVar('AZURE_OPENAI_API_KEY'),
+  AZURE_OPENAI_API_VERSION: getEnvVar('AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
+  AZURE_OPENAI_DEPLOYMENT_NAME: getOptionalEnvVar('AZURE_OPENAI_DEPLOYMENT_NAME'),
 
   // Database Configuration
   DATABASE_PATH: getEnvVar('DATABASE_PATH', './data/chat.db'),
