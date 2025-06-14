@@ -138,6 +138,16 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false, onReo
                               )}
                             </div>
                           )
+                        case 'step-start':
+                          // Only show processing steps during streaming, hide when complete
+                          return isStreaming ? (
+                            <div key={partIndex} className="bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg p-2 my-1">
+                              <div className="text-xs font-semibold text-cyan-700 dark:text-cyan-300 flex items-center gap-2">
+                                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
+                                Processing Step
+                              </div>
+                            </div>
+                          ) : null
                         default:
                           return (
                             <div key={partIndex} className="text-sm text-muted-foreground italic">
