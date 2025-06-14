@@ -171,7 +171,7 @@ export function MainChatArea({
   const artifactPanelClass = isChatMinimized 
     ? 'flex-1 min-w-0 artifact-panel' 
     : isArtifactFullScreen
-    ? 'w-full h-full artifact-panel'
+    ? 'fixed inset-0 z-50 w-screen h-screen artifact-panel bg-background'
     : 'flex-[7] min-w-0 artifact-panel'
 
   return (

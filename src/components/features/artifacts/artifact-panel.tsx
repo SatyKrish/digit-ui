@@ -75,7 +75,7 @@ export function ArtifactPanel({
       isFullScreen ? 'fixed inset-0 z-50 bg-background' : ''
     }`}>
       {/* Enhanced Header */}
-      <div className="flex-shrink-0 border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background/95 backdrop-blur-sm">
+      <div className={`flex-shrink-0 border-b border-border/50 shadow-soft bg-background/95 backdrop-blur-sm ${isFullScreen ? 'p-6 lg:p-8' : 'p-4 lg:p-6'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -89,7 +89,7 @@ export function ArtifactPanel({
               </div>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground tracking-tight">Interactive Artifacts</h2>
+              <h2 className={`font-bold text-foreground tracking-tight ${isFullScreen ? 'text-2xl' : 'text-xl'}`}>Interactive Artifacts</h2>
               <p className="text-xs text-muted-foreground font-medium">
                 {artifacts.length} {artifacts.length === 1 ? 'visualization' : 'visualizations'} ready
               </p>
@@ -127,7 +127,7 @@ export function ArtifactPanel({
       <div className="flex-1 min-h-0 overflow-hidden">
         {artifacts.length === 1 ? (
           <ScrollArea className="h-full">
-            <div className="p-4 lg:p-6 space-y-4">
+            <div className={`space-y-4 ${isFullScreen ? 'p-8 lg:p-12' : 'p-4 lg:p-6'}`}>
               <div className="flex items-center gap-2 mb-4">
                 <Badge variant="secondary" className="text-xs font-medium">
                   {artifacts[0].type.charAt(0).toUpperCase() + artifacts[0].type.slice(1)}
@@ -138,7 +138,7 @@ export function ArtifactPanel({
                   </span>
                 )}
               </div>
-              <ArtifactRenderer artifact={artifacts[0]} />
+              <ArtifactRenderer artifact={artifacts[0]} isFullScreen={isFullScreen} />
             </div>
           </ScrollArea>
         ) : (
@@ -148,7 +148,7 @@ export function ArtifactPanel({
             className="flex flex-col h-full"
           >
             {/* Enhanced Tab Navigation */}
-            <div className="flex-shrink-0 px-4 lg:px-6 pt-4 pb-2">
+            <div className={`flex-shrink-0 pt-4 pb-2 ${isFullScreen ? 'px-8 lg:px-12' : 'px-4 lg:px-6'}`}>
               <TabsList className="grid w-full bg-muted/30 p-1 rounded-xl" style={{ gridTemplateColumns: `repeat(${Math.min(artifacts.length, 4)}, 1fr)` }}>
                 {artifacts.slice(0, 4).map((artifact, index) => (
                   <TabsTrigger 
@@ -187,7 +187,7 @@ export function ArtifactPanel({
                   className="h-full m-0 data-[state=active]:flex data-[state=active]:flex-col"
                 >
                   <ScrollArea className="flex-1">
-                    <div className="p-4 lg:p-6 space-y-4">
+                    <div className={`space-y-4 ${isFullScreen ? 'p-8 lg:p-12' : 'p-4 lg:p-6'}`}>
                       <div className="flex items-center gap-2 mb-4">
                         <Badge variant="secondary" className="text-xs font-medium">
                           {artifact.type.charAt(0).toUpperCase() + artifact.type.slice(1)}
@@ -198,7 +198,7 @@ export function ArtifactPanel({
                           </span>
                         )}
                       </div>
-                      <ArtifactRenderer artifact={artifact} />
+                      <ArtifactRenderer artifact={artifact} isFullScreen={isFullScreen} />
                     </div>
                   </ScrollArea>
                 </TabsContent>

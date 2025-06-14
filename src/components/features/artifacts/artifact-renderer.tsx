@@ -135,7 +135,7 @@ function MarkdownRenderer({ content }: { content: string }) {
   )
 }
 
-export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
+export function ArtifactRenderer({ artifact, isFullScreen = false }: ArtifactRendererProps) {
   const [isLoading, setIsLoading] = useState(true)
   const { theme } = useTheme()
 
@@ -215,9 +215,9 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
 
   return (
     <TooltipProvider>
-      <div className="group bg-card hover:bg-card/80 rounded-xl border border-border hover:border-border/80 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+      <div className={`group bg-card hover:bg-card/80 rounded-xl border border-border hover:border-border/80 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden ${isFullScreen ? 'min-h-[80vh]' : ''}`}>
         {/* Enhanced Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/20">
+        <div className={`flex items-center justify-between border-b border-border/50 bg-muted/20 ${isFullScreen ? 'px-8 py-6' : 'px-6 py-4'}`}>
           <div className="flex items-center gap-3">
             <div className="relative">
               <span className="text-lg transition-transform group-hover:scale-110">{getArtifactIcon()}</span>
@@ -259,7 +259,7 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
         </div>
 
         {/* Enhanced Content Area */}
-        <div className="p-6 bg-gradient-to-br from-background/50 to-muted/5">
+        <div className={`bg-gradient-to-br from-background/50 to-muted/5 ${isFullScreen ? 'p-8 lg:p-12' : 'p-6'}`}>
           {artifact.type === "code" && <CodeBlock content={artifact.content} language={artifact.language} />}
 
           {artifact.type === "markdown" && <MarkdownRenderer content={artifact.content} />}

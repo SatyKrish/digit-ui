@@ -477,4 +477,23 @@
   .scroll-horizontal-auto::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /* Fullscreen artifact panel styles */
+  .artifact-panel.fixed {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: auto;
+  }
+
+  /* Ensure fullscreen content uses full space */
+  .artifact-panel.fixed .artifact-renderer {
+    min-height: calc(100vh - 120px);
+  }
+
+  /* Remove any container constraints in fullscreen mode */
+  .artifact-panel.fixed * {
+    max-width: none !important;
+  }
 }

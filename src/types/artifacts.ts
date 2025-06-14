@@ -20,6 +20,7 @@ export interface ArtifactPanelProps {
 
 export interface ArtifactRendererProps {
   artifact: Artifact
+  isFullScreen?: boolean
 }
 
 export interface ChartData {
