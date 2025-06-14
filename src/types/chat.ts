@@ -7,6 +7,16 @@ export interface ChatMessage {
   timestamp: Date
   model: string
   isError?: boolean
+  // AI SDK v4+ parts for advanced rendering
+  parts?: Array<{
+    type: 'text' | 'tool-invocation' | 'reasoning' | 'source' | 'step-start' | 'file'
+    text?: string
+    toolInvocation?: any
+    reasoning?: string
+    source?: any
+    mimeType?: string
+    data?: string
+  }>
 }
 
 export interface ChatSession {

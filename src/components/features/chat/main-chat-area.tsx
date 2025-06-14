@@ -50,7 +50,13 @@ export function MainChatArea({
   // Extract artifacts when message is finished
   const handleFinish = useCallback((message: Message) => {
     if (message.role === 'assistant') {
-      const artifacts = extractArtifacts(message.content)
+      // Extract content from all text parts in AI SDK v4+ format
+      const textContent = message.parts
+        ?.filter(part => part.type === 'text')
+        .map(part => part.text)
+        .join('\n') || message.content || ''
+      
+      const artifacts = extractArtifacts(textContent)
       setCurrentArtifacts(artifacts)
     }
   }, [])
@@ -78,14 +84,24 @@ export function MainChatArea({
 
   // Transform messages for display
   const mappedMessages = useMemo(() => 
-    messages.map(msg => ({
-      id: msg.id,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      content: msg.content,
-      timestamp: msg.createdAt || new Date(),
-      model: 'gpt-4',
-      isError: false
-    })), [messages]
+    messages.map(msg => {
+      // Extract content from parts for AI SDK v4+ compatibility
+      const content = msg.parts
+        ?.filter(part => part.type === 'text')
+        .map(part => part.text)
+        .join('\n') || msg.content || ''
+      
+      return {
+        id: msg.id,
+        role: msg.role as 'user' | 'assistant' | 'system',
+        content,
+        timestamp: msg.createdAt || new Date(),
+        model: 'gpt-4',
+        isError: false,
+        // Preserve parts for advanced rendering
+        parts: msg.parts
+      }
+    }), [messages]
   )
 
   // Check if we're on the initial welcome screen
