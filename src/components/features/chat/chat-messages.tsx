@@ -233,7 +233,6 @@ const LoadingIndicator = memo(() => (
             style={{ animationDelay: "0.3s" }}
           ></div>
         </div>
-        <span className="text-sm text-muted-foreground font-medium">AI is thinking...</span>
       </div>
     </div>
   </div>
