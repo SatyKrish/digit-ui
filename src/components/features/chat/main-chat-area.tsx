@@ -7,38 +7,21 @@ import { ChatMessages } from "./chat-messages"
 import { ChatInput } from "./chat-input"
 import { InitialWelcomeScreen } from "./initial-welcome-screen"
 import { ArtifactPanel } from "../artifacts/artifact-panel"
-import { StreamableArtifact } from "../artifacts/streamable-artifact"
 import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
-import { useSidebar } from "@/components/ui/sidebar"
-import { extractArtifacts, hasArtifacts } from "@/services/artifacts/artifact-extractor"
-import { useResponsiveLayout, getResponsiveLayoutClasses } from "@/hooks/shared/use-responsive-layout"
+import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
 import { useChat } from "@ai-sdk/react"
 import { toast } from "sonner"
 import type { MainChatAreaProps, Artifact } from "@/types"
 import type { Message } from "ai"
 
-interface EnhancedMainChatAreaProps extends MainChatAreaProps {
-  // Enhanced functionality props
-  enableSmootherStreaming?: boolean;
-  enableThrottling?: boolean;
-  maxRetries?: number;
-}
-
 export function MainChatArea({ 
   user, 
   currentChatId, 
   onLogout, 
-  onNewChat,
-  enableSmootherStreaming = true,
-  enableThrottling = true,
-  maxRetries = 3
-}: EnhancedMainChatAreaProps) {
+  onNewChat
+}: MainChatAreaProps) {
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
-  const [isGeneratingArtifacts, setIsGeneratingArtifacts] = useState(false)
-  const [retryCount, setRetryCount] = useState(0)
   const [isChatMinimized, setIsChatMinimized] = useState(false)
-  const [mobileViewMode, setMobileViewMode] = useState<'chat' | 'artifacts'>('chat')
-  const { open: sidebarOpen } = useSidebar()
   
   // Initialize user in chat service via API
   useEffect(() => {
@@ -63,94 +46,36 @@ export function MainChatArea({
     initializeUser()
   }, [user?.email, user?.name])
 
-  // Enhanced error handling with retry logic
-  const handleError = useCallback((error: Error) => {
-    console.error('Chat error:', error)
-    
-    if (retryCount < maxRetries) {
-      setRetryCount(prev => prev + 1)
-      toast.error(`Connection error. Retrying... (${retryCount + 1}/${maxRetries})`)
-    } else {
-      toast.error('Unable to connect to chat service. Please refresh the page.')
-    }
-  }, [retryCount, maxRetries])
-
-  // Enhanced finish handler with better artifact processing
+  // Extract artifacts when message is finished
   const handleFinish = useCallback((message: Message) => {
-    console.log('Message finished:', message.id, 'Content preview:', message.content.substring(0, 100))
-    
-    // Update artifacts from the completed message
     if (message.role === 'assistant') {
-      try {
-        // First check if the message has artifacts before doing expensive extraction
-        if (hasArtifacts(message.content)) {
-          console.log('Message has artifacts, extracting...')
-          const artifacts = extractArtifacts(message.content)
-          console.log('Extracted artifacts:', artifacts)
-          
-          if (artifacts.length > 0) {
-            setIsGeneratingArtifacts(true)
-            
-            // Simulate artifact processing time for better UX
-            setTimeout(() => {
-              setCurrentArtifacts(artifacts)
-              setIsGeneratingArtifacts(false)
-              
-              // Show success toast if artifacts were generated
-              toast.success(`Generated ${artifacts.length} artifact${artifacts.length > 1 ? 's' : ''}`)
-            }, 800)
-          } else {
-            console.log('hasArtifacts returned true but extractArtifacts found none')
-            setCurrentArtifacts([])
-            setIsGeneratingArtifacts(false)
-          }
-        } else {
-          console.log('Message has no artifacts')
-          // No artifacts found, clear any existing ones
-          setCurrentArtifacts([])
-          setIsGeneratingArtifacts(false)
-        }
-      } catch (error) {
-        console.error('Failed to extract artifacts:', error)
-        setIsGeneratingArtifacts(false)
-        setCurrentArtifacts([])
-        // Don't show user error for artifact extraction failures
-      }
+      const artifacts = extractArtifacts(message.content)
+      setCurrentArtifacts(artifacts)
     }
   }, [])
 
-  // Use Vercel AI SDK's useChat hook with enhanced configuration
+  // Use Vercel AI SDK's useChat hook
   const { 
     messages, 
-    input, 
-    handleInputChange, 
-    handleSubmit, 
     isLoading, 
     error,
     setMessages,
-    reload,
-    setInput,
-    append,
-    status // Enhanced connection status tracking
+    append
   } = useChat({
     id: currentChatId || undefined,
     api: '/api/chat',
     body: {
       userId: user?.email,
-      id: currentChatId || undefined,
-      enableSmootherStreaming,
-      enableThrottling
+      id: currentChatId || undefined
     },
-    // Load initial messages for existing chats
-    initialMessages: useMemo(() => {
-      // This will be populated by the API route when currentChatId is provided
-      return []
-    }, [currentChatId]),
     onFinish: handleFinish,
-    onError: handleError
+    onError: (error) => {
+      console.error('Chat error:', error)
+      toast.error('Failed to send message. Please try again.')
+    }
   })
 
-  // Memoize the mapped messages to prevent unnecessary re-renders
+  // Transform messages for display
   const mappedMessages = useMemo(() => 
     messages.map(msg => ({
       id: msg.id,
@@ -165,7 +90,7 @@ export function MainChatArea({
   // Check if we're on the initial welcome screen
   const isInitialState = !currentChatId && messages.length === 0
 
-  // Enhanced message sending with better error handling
+  // Send message handler
   const handleSendMessage = useCallback(async (content: string, selectedHints: string[] = []) => {
     if (isLoading) {
       toast.warning('Please wait for the current message to complete')
@@ -179,7 +104,6 @@ export function MainChatArea({
 
     // Clear artifacts when starting a new message
     setCurrentArtifacts([])
-    setIsGeneratingArtifacts(false)
 
     const fullContent = selectedHints.length > 0 
       ? `${content}\n\nDomain context: ${selectedHints.join(", ")}` 
@@ -191,7 +115,6 @@ export function MainChatArea({
         onNewChat()
       }
 
-      // Use AI SDK's append function
       await append({
         role: 'user',
         content: fullContent
@@ -202,113 +125,55 @@ export function MainChatArea({
     }
   }, [isLoading, currentChatId, onNewChat, append])
 
-  // Enhanced navigation with cleanup
+  // Navigate to home/new chat
   const handleNavigateHome = useCallback(() => {
-    // Clear current state
     setMessages([])
     setCurrentArtifacts([])
-    setRetryCount(0)
-    
-    // Navigate to welcome screen
     onNewChat?.()
   }, [setMessages, onNewChat])
 
-  // Enhanced retry functionality
-  const handleRetry = useCallback(async () => {
-    if (retryCount >= maxRetries) {
-      toast.error('Maximum retries reached. Please refresh the page.')
-      return
-    }
-
-    try {
-      await reload()
-    } catch (error) {
-      console.error('Retry failed:', error)
-      handleError(error as Error)
-    }
-  }, [retryCount, maxRetries, reload, handleError])
-
-  // Handler for reopening artifacts from message indicator
+  // Reopen artifacts from a previous message
   const handleReopenArtifacts = useCallback((messageContent: string) => {
-    console.log('Reopening artifacts for message...')
+    const artifacts = extractArtifacts(messageContent)
     
-    try {
-      // Validate message content
-      if (!messageContent || !messageContent.trim()) {
-        toast.error('No message content available')
-        return
-      }
-
-      // Extract artifacts from the clicked message
-      const artifacts = extractArtifacts(messageContent)
-      console.log('Extracted artifacts for reopening:', artifacts)
-      
-      if (artifacts.length > 0) {
-        setCurrentArtifacts(artifacts)
-        setIsGeneratingArtifacts(false)
-        
-        // Provide user feedback
-        const artifactCount = artifacts.length
-        const artifactWord = artifactCount === 1 ? 'artifact' : 'artifacts'
-        toast.success(`Reopened ${artifactCount} ${artifactWord}`)
-        
-        // Log for debugging
-        console.log(`Successfully reopened ${artifactCount} artifact(s)`)
-      } else {
-        console.warn('No artifacts found in message content')
-        toast.warning('No artifacts found in this message')
-      }
-    } catch (error) {
-      console.error('Failed to reopen artifacts:', error)
-      toast.error('Failed to reopen artifacts. Please try again.')
+    if (artifacts.length > 0) {
+      setCurrentArtifacts(artifacts)
+      toast.success(`Reopened ${artifacts.length} artifact${artifacts.length > 1 ? 's' : ''}`)
+    } else {
+      toast.warning('No artifacts found in this message')
     }
   }, [])
 
   // Determine if we should show the artifact panel
-  const showArtifactPanel = currentArtifacts.length > 0 || isGeneratingArtifacts
-  
-  // Use responsive layout hook for better viewport handling
-  const layoutDimensions = useResponsiveLayout(showArtifactPanel, isChatMinimized)
-  const { chatClasses, artifactClasses } = getResponsiveLayoutClasses(
-    showArtifactPanel,
-    isChatMinimized,
-    layoutDimensions.isMobile,
-    layoutDimensions.isTablet
-  )
-  
-  // Debug logging for artifact panel visibility
-  useEffect(() => {
-    console.log('Artifact panel state:', {
-      showArtifactPanel,
-      currentArtifactsCount: currentArtifacts.length,
-      isGeneratingArtifacts,
-      messagesCount: messages.length
-    })
-  }, [showArtifactPanel, currentArtifacts.length, isGeneratingArtifacts, messages.length])
+  const showArtifactPanel = currentArtifacts.length > 0
 
-  // Connection status indicator
-  const connectionStatus = useMemo(() => {
-    if (status === 'streaming') return 'Thinking...'
-    if (error) return 'Connection error'
-    if (status === 'ready') return 'Ready'
-    return ''
-  }, [status, error])
+  // Simple layout: full width chat when no artifacts, split when artifacts present
+  const chatContainerClass = showArtifactPanel 
+    ? (isChatMinimized ? 'w-80 min-w-80' : 'flex-1 min-w-96')
+    : 'w-full'
+
+  const artifactPanelClass = isChatMinimized 
+    ? 'flex-1' 
+    : 'w-96 min-w-96 max-w-[50%]'
 
   return (
-    <SidebarInset className="flex flex-col relative transition-all duration-300 ease-in-out chat-layout-container">
+    <SidebarInset className="flex flex-col relative">
       <SidebarHoverTrigger />
       <ChatHeader 
         user={user} 
         onLogout={onLogout} 
         onNavigateHome={handleNavigateHome}
-        connectionStatus={connectionStatus}
         artifactCount={currentArtifacts.length}
       />
 
-      <div className="flex-1 flex min-h-0 max-w-full overflow-hidden transition-all duration-500 ease-in-out chat-flex-container">
-        <div className={`flex flex-col min-h-0 overflow-hidden transition-all duration-300 chat-area ${chatClasses}`}>
+      <div className="flex-1 flex min-h-0">
+        {/* Chat Area */}
+        <div className={`flex flex-col min-h-0 ${chatContainerClass}`}>
           {isInitialState ? (
-            <InitialWelcomeScreen user={user} onSendMessage={handleSendMessage} />
+            <InitialWelcomeScreen 
+              user={user} 
+              onSendMessage={handleSendMessage} 
+            />
           ) : (
             <>
               <div className="flex-1 min-h-0 overflow-hidden">
@@ -323,52 +188,21 @@ export function MainChatArea({
                 <ChatInput 
                   onSendMessage={handleSendMessage} 
                   isLoading={isLoading}
-                  placeholder={isGeneratingArtifacts ? "Generating artifacts..." : undefined}
                 />
               </div>
             </>
           )}
         </div>
 
+        {/* Artifact Panel */}
         {showArtifactPanel && (
-          <div 
-            className={`flex flex-col min-h-0 overflow-hidden transition-all duration-500 ease-in-out border-l border-border/50 artifact-panel ${artifactClasses}`}
-          >
-            {isGeneratingArtifacts ? (
-              <div className="flex-1 flex flex-col bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in overflow-hidden">
-                <div className="flex-shrink-0 border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-10 h-10 bg-gradient-to-br from-primary/15 to-primary/5 rounded-xl flex items-center justify-center">
-                        <div className="w-5 h-5 border-2 border-primary/60 border-t-primary rounded-full animate-spin" />
-                      </div>
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-foreground">Generating Artifacts</h2>
-                      <p className="text-xs text-muted-foreground">
-                        Creating interactive content...
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-1 min-h-0 p-6">
-                  <StreamableArtifact 
-                    artifact={null} 
-                    isStreaming={true}
-                  />
-                </div>
-              </div>
-            ) : (
-              <ArtifactPanel 
-                artifacts={currentArtifacts} 
-                isChatMinimized={isChatMinimized}
-                onToggleChatMinimized={() => setIsChatMinimized(!isChatMinimized)}
-                onClose={() => {
-                  setCurrentArtifacts([])
-                  setIsGeneratingArtifacts(false)
-                }}
-              />
-            )}
+          <div className={`border-l border-border/50 flex flex-col min-h-0 ${artifactPanelClass}`}>
+            <ArtifactPanel 
+              artifacts={currentArtifacts} 
+              isChatMinimized={isChatMinimized}
+              onToggleChatMinimized={() => setIsChatMinimized(!isChatMinimized)}
+              onClose={() => setCurrentArtifacts([])}
+            />
           </div>
         )}
       </div>
