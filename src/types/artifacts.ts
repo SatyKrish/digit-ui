@@ -14,10 +14,13 @@ export interface ArtifactPanelProps {
   onClose?: () => void
   isChatMinimized?: boolean
   onToggleChatMinimized?: () => void
+  isFullScreen?: boolean
+  onToggleFullScreen?: () => void
 }
 
 export interface ArtifactRendererProps {
   artifact: Artifact
+  isFullScreen?: boolean
 }
 
 export interface ChartData {

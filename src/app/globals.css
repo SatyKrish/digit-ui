@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import streaming optimizations */
+@import '../styles/streaming-optimizations.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -15,7 +18,7 @@
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted-foreground: 240 3.8% 40.1%;
     --accent: 240 4.8% 95.9%;
     --accent-foreground: 240 5.9% 10%;
     --destructive: 0 84.2% 60.2%;
@@ -427,5 +430,70 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Responsive layout utilities */
+@layer utilities {
+  /* Viewport-aware layout utilities */
+  .layout-max-viewport {
+    max-width: 100vw;
+    overflow: hidden;
+  }
+  
+  .content-fit-viewport {
+    max-width: calc(100vw - 2rem);
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+  
+  /* Chat-specific responsive utilities */
+  .chat-responsive-width {
+    min-width: 280px;
+    max-width: 100%;
+  }
+  
+  .artifact-responsive-width {
+    min-width: 320px;
+    max-width: 45vw;
+  }
+  
+  /* Horizontal scrolling utilities */
+  .scroll-horizontal-auto {
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: thin;
+  }
+  
+  .scroll-horizontal-auto::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .scroll-horizontal-auto::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+  
+  .scroll-horizontal-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Fullscreen artifact panel styles */
+  .artifact-panel.fixed {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: auto;
+  }
+
+  /* Ensure fullscreen content uses full space */
+  .artifact-panel.fixed .artifact-renderer {
+    min-height: calc(100vh - 120px);
+  }
+
+  /* Remove any container constraints in fullscreen mode */
+  .artifact-panel.fixed * {
+    max-width: none !important;
   }
 }

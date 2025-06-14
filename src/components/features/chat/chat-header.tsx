@@ -25,9 +25,12 @@ interface ChatHeaderProps {
   onNavigateHome?: () => void
   connectionStatus?: string
   artifactCount?: number
+  isMobile?: boolean
+  showArtifacts?: boolean
+  onToggleView?: () => void
 }
 
-export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, artifactCount }: ChatHeaderProps) {
+export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, artifactCount, isMobile, showArtifacts, onToggleView }: ChatHeaderProps) {
   const { theme, setTheme } = useTheme()
 
   // Get user initials (first character of first name)
@@ -80,27 +83,59 @@ export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, a
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Mobile view toggle for artifacts */}
+        {isMobile && artifactCount && artifactCount > 0 && onToggleView && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleView}
+            className="h-9 px-3 shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={showArtifacts ? "Show chat" : "Show artifacts"}
+          >
+            {showArtifacts ? (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Chat
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Artifacts ({artifactCount})
+              </>
+            )}
+          </Button>
+        )}
+
         {/* Theme Toggle Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-10 w-10 shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-10 w-10 shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Toggle theme settings"
+            >
               <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setTheme("light")}>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
               <Sun className="mr-2 h-4 w-4" />
-              <span>Light</span>
+              <span>Light theme</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("dark")}>
+            <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
               <Moon className="mr-2 h-4 w-4" />
-              <span>Dark</span>
+              <span>Dark theme</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("system")}>
+            <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
               <Monitor className="mr-2 h-4 w-4" />
-              <span>System</span>
+              <span>System theme</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

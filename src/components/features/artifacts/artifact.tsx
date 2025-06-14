@@ -195,6 +195,20 @@ export function Artifact({
     }
   }, [createArtifact, title, state.status, state.document])
 
+  // Handle escape key when expanded
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && state.isExpanded) {
+        setState(prev => ({ ...prev, isExpanded: false }))
+      }
+    }
+
+    if (state.isExpanded) {
+      document.addEventListener("keydown", handleEscape)
+      return () => document.removeEventListener("keydown", handleEscape)
+    }
+  }, [state.isExpanded])
+
   // Built-in actions
   const builtInActions: ArtifactToolbarAction[] = [
     {
@@ -228,7 +242,21 @@ export function Artifact({
   const isLoading = ["creating", "updating", "streaming"].includes(state.status)
 
   return (
-    <Card className={`artifact-container transition-all duration-200 ${state.isExpanded ? 'fixed inset-4 z-50' : ''} ${className}`}>
+    <Card 
+      className={`artifact-container transition-all duration-200 ${className}`}
+      style={state.isExpanded ? {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 50,
+        margin: 0,
+        borderRadius: 0,
+        maxHeight: '100vh',
+        overflow: 'auto'
+      } : {}}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

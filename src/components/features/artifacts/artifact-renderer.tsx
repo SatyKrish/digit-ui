@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Copy, Check, Download, Maximize2, ExternalLink, Zap } from "lucide-react"
+import { Copy, Download, Maximize2, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -96,19 +96,28 @@ function CodeBlock({ content, language }: { content: string; language?: string }
   }
 
   return (
-    <div className="group relative">
+    <div className="group relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-muted/20 to-muted/5">
       <div className="absolute top-3 right-3 z-10">
-        <Badge variant="secondary" className="text-xs font-mono">
+        <Badge variant="secondary" className="text-xs font-mono backdrop-blur-sm bg-background/80">
           {language || "text"}
         </Badge>
       </div>
-      <div className="relative rounded-xl border border-border/50 overflow-hidden bg-gradient-to-br from-muted/30 to-muted/10">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent"></div>
-        <pre className="relative text-sm overflow-x-auto p-6 font-mono leading-relaxed">
-          <code className={`language-${language || "text"} text-foreground`}>
-            {content}
-          </code>
-        </pre>
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent"></div>
+      <pre className="relative text-sm overflow-x-auto p-6 font-mono leading-[1.6] selection:bg-primary/20">
+        <code className={`language-${language || "text"} text-foreground`}>
+          {content}
+        </code>
+      </pre>
+      {/* Copy button overlay */}
+      <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-8 w-8 p-0 backdrop-blur-sm bg-background/80 hover:bg-background/90"
+          onClick={() => navigator.clipboard.writeText(content)}
+        >
+          <Copy className="h-3 w-3" />
+        </Button>
       </div>
     </div>
   )
@@ -126,8 +135,7 @@ function MarkdownRenderer({ content }: { content: string }) {
   )
 }
 
-export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
-  const [copied, setCopied] = useState(false)
+export function ArtifactRenderer({ artifact, isFullScreen = false }: ArtifactRendererProps) {
   const [isLoading, setIsLoading] = useState(true)
   const { theme } = useTheme()
 
@@ -135,13 +143,6 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
     const timer = setTimeout(() => setIsLoading(false), 300)
     return () => clearTimeout(timer)
   }, [artifact])
-
-  const copyToClipboard = async () => {
-    const textToCopy = artifact.data ? JSON.stringify(artifact.data, null, 2) : artifact.content
-    await navigator.clipboard.writeText(textToCopy)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   const downloadArtifact = () => {
     const textToDownload = artifact.data ? JSON.stringify(artifact.data, null, 2) : artifact.content
@@ -214,9 +215,9 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
 
   return (
     <TooltipProvider>
-      <div className="group bg-card hover:bg-card/80 rounded-xl border border-border hover:border-border/80 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+      <div className={`group bg-card hover:bg-card/80 rounded-xl border border-border hover:border-border/80 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden ${isFullScreen ? 'min-h-[80vh]' : ''}`}>
         {/* Enhanced Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/20">
+        <div className={`flex items-center justify-between border-b border-border/50 bg-muted/20 ${isFullScreen ? 'px-8 py-6' : 'px-6 py-4'}`}>
           <div className="flex items-center gap-3">
             <div className="relative">
               <span className="text-lg transition-transform group-hover:scale-110">{getArtifactIcon()}</span>
@@ -246,31 +247,6 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {(artifact.type === "mermaid" ||
-              artifact.type === "chart" ||
-              artifact.type === "visualization" ||
-              artifact.type === "heatmap" ||
-              artifact.type === "treemap" ||
-              artifact.type === "geospatial") && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-muted/50">
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Open in fullscreen</TooltipContent>
-              </Tooltip>
-            )}
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 w-8 p-0 hover:bg-muted/50">
-                  {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{copied ? "Copied!" : "Copy content"}</TooltipContent>
-            </Tooltip>
-
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" onClick={downloadArtifact} className="h-8 w-8 p-0 hover:bg-muted/50">
@@ -283,7 +259,7 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
         </div>
 
         {/* Enhanced Content Area */}
-        <div className="p-6 bg-gradient-to-br from-background/50 to-muted/5">
+        <div className={`bg-gradient-to-br from-background/50 to-muted/5 ${isFullScreen ? 'p-8 lg:p-12' : 'p-6'}`}>
           {artifact.type === "code" && <CodeBlock content={artifact.content} language={artifact.language} />}
 
           {artifact.type === "markdown" && <MarkdownRenderer content={artifact.content} />}
