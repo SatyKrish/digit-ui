@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Copy, Check, Download, Maximize2, ExternalLink, Zap } from "lucide-react"
+import { Copy, Download, Maximize2, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -136,7 +136,6 @@ function MarkdownRenderer({ content }: { content: string }) {
 }
 
 export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
-  const [copied, setCopied] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const { theme } = useTheme()
 
@@ -144,13 +143,6 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
     const timer = setTimeout(() => setIsLoading(false), 300)
     return () => clearTimeout(timer)
   }, [artifact])
-
-  const copyToClipboard = async () => {
-    const textToCopy = artifact.data ? JSON.stringify(artifact.data, null, 2) : artifact.content
-    await navigator.clipboard.writeText(textToCopy)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   const downloadArtifact = () => {
     const textToDownload = artifact.data ? JSON.stringify(artifact.data, null, 2) : artifact.content
@@ -255,31 +247,6 @@ export function ArtifactRenderer({ artifact }: ArtifactRendererProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {(artifact.type === "mermaid" ||
-              artifact.type === "chart" ||
-              artifact.type === "visualization" ||
-              artifact.type === "heatmap" ||
-              artifact.type === "treemap" ||
-              artifact.type === "geospatial") && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-muted/50">
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Open in fullscreen</TooltipContent>
-              </Tooltip>
-            )}
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={copyToClipboard} className="h-8 w-8 p-0 hover:bg-muted/50">
-                  {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{copied ? "Copied!" : "Copy content"}</TooltipContent>
-            </Tooltip>
-
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" onClick={downloadArtifact} className="h-8 w-8 p-0 hover:bg-muted/50">
