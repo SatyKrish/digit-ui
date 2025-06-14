@@ -151,12 +151,12 @@ export function MainChatArea({
   const chatContainerClass = showArtifactPanel 
     ? (isChatMinimized 
         ? 'w-80 min-w-80 max-w-80 flex-shrink-0' 
-        : 'flex-1 min-w-0 chat-area')
+        : 'flex-[3] min-w-0 chat-area')
     : 'w-full'
 
   const artifactPanelClass = isChatMinimized 
     ? 'flex-1 min-w-0 artifact-panel' 
-    : 'w-96 min-w-96 max-w-[45vw] flex-shrink-0 artifact-panel'
+    : 'flex-[7] min-w-0 artifact-panel'
 
   return (
     <SidebarInset className="flex flex-col relative chat-layout-container">
