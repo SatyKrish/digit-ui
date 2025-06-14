@@ -6,13 +6,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Maximize2, Minimize2, Pin, PinOff, SidebarClose, SidebarOpen, X } from "lucide-react"
+import { Maximize2, Minimize2, Pin, PinOff, X } from "lucide-react"
 import type { Artifact, ArtifactPanelProps } from "@/types/artifacts"
 
 export function ArtifactPanel({ 
   artifacts, 
-  isChatMinimized = false, 
-  onToggleChatMinimized, 
   onClose,
   isFullScreen = false,
   onToggleFullScreen
@@ -108,17 +106,6 @@ export function ArtifactPanel({
                 title={isFullScreen ? "Exit full screen" : "Enter full screen"}
               >
                 {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
-            )}
-            {onToggleChatMinimized && !isFullScreen && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggleChatMinimized}
-                className="h-8 w-8 p-0 hover:bg-muted/50"
-                title={isChatMinimized ? "Minimize artifacts" : "Expand artifacts"}
-              >
-                {isChatMinimized ? <SidebarOpen className="h-4 w-4" /> : <SidebarClose className="h-4 w-4" />}
               </Button>
             )}
             {onClose && (
