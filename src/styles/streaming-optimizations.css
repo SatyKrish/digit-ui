@@ -36,6 +36,9 @@
   overflow-wrap: break-word;
   max-width: 100%;
   min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 /* Reduce reflow during streaming */
@@ -157,6 +160,75 @@
 .chat-container::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--border) / 0.8);
   background-clip: content-box;
+}
+
+/* Enhanced code block handling for horizontal scroll fix */
+.prose pre {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
+  scrollbar-width: thin;
+}
+
+.prose pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+.prose pre::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+
+.prose pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prose code {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Prevent inline code from breaking layout */
+.prose :not(pre) > code {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* Responsive text handling for different screen sizes */
+@media (max-width: 640px) {
+  .message-content {
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+  
+  .prose pre {
+    font-size: 0.75rem;
+  }
+}
+
+/* Table responsiveness in markdown */
+.prose table {
+  max-width: 100%;
+  overflow-x: auto;
+  display: block;
+  white-space: nowrap;
+}
+
+.prose thead,
+.prose tbody,
+.prose tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.prose td,
+.prose th {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* Mobile-specific adjustments */

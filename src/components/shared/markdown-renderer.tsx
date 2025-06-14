@@ -89,11 +89,17 @@ const CodeBlock = memo(({ node, inline, className, children, ...props }: CodeBlo
           borderTopRightRadius: 0,
           borderBottomLeftRadius: '0.5rem',
           borderBottomRightRadius: '0.5rem',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          fontSize: '0.875rem',
         }}
         codeTagProps={{
           style: {
             fontSize: '0.875rem',
             fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+            whiteSpace: 'pre',
+            wordWrap: 'normal',
+            overflowWrap: 'normal',
           },
         }}
         {...props}
@@ -115,7 +121,7 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
         rehypePlugins={[rehypeKatex]}
         components={{
           code: CodeBlock,
-          pre: ({ children }) => <div className="overflow-hidden rounded-lg">{children}</div>,
+          pre: ({ children }) => <div className="overflow-x-auto rounded-lg max-w-full">{children}</div>,
           h1: ({ children }) => (
             <h1 className="text-2xl font-bold tracking-tight">{children}</h1>
           ),
@@ -150,8 +156,8 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
             </blockquote>
           ),
           table: ({ children }) => (
-            <div className="my-6 w-full overflow-y-auto">
-              <table className="w-full border-collapse border border-border">
+            <div className="my-6 w-full overflow-x-auto">
+              <table className="w-full border-collapse border border-border min-w-[600px]">
                 {children}
               </table>
             </div>

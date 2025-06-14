@@ -276,7 +276,7 @@ export function MainChatArea({
 
       <div className={`flex-1 flex min-h-0 max-w-full overflow-hidden chat-flex-container ${isArtifactFullScreen ? 'p-0' : ''}`}>
         {/* Chat Area */}
-        <div className={`flex flex-col min-h-0 ${chatContainerClass}`}>
+        <div className={`flex flex-col min-h-0 overflow-hidden ${chatContainerClass}`}>
           {isInitialState ? (
             <InitialWelcomeScreen 
               user={user} 
