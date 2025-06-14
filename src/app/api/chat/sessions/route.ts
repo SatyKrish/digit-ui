@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { aiSdkChatService } from '@/services/chat/ai-sdk-chat-service'
+import { chatPersistence } from '@/services/chat/chat-persistence'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,10 +13,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get chats using the AI SDK service (more efficient)
-    const chats = await aiSdkChatService.getUserChats(userId)
+    // Get chats using the simplified persistence service
+    const chats = await chatPersistence.getUserChats(userId)
     
     // Transform to match the expected format for compatibility
+    // Note: Gradually migrating from "sessions" to "chats" terminology
     const sessions = chats.map(chat => ({
       id: chat.id,
       userId: chat.userId,
@@ -28,9 +29,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ sessions })
   } catch (error) {
-    console.error('Failed to get sessions:', error)
+    console.error('Failed to get chats:', error)
     return NextResponse.json(
-      { error: 'Failed to get sessions' },
+      { error: 'Failed to get chats' },
       { status: 500 }
     )
   }
@@ -47,8 +48,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create new chat using AI SDK service
-    const newChat = await aiSdkChatService.createChat(userId, title)
+    // Create new chat using simplified persistence service
+    const newChat = await chatPersistence.createChat(userId, title)
     
     // Transform to match expected format
     const session = {
@@ -62,9 +63,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ session })
   } catch (error) {
-    console.error('Failed to create session:', error)
+    console.error('Failed to create chat:', error)
     return NextResponse.json(
-      { error: 'Failed to create session' },
+      { error: 'Failed to create chat' },
       { status: 500 }
     )
   }
@@ -81,14 +82,14 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Update chat title using AI SDK service
-    await aiSdkChatService.updateChatTitle(sessionId, title)
+    // Update chat title using simplified persistence service
+    await chatPersistence.updateChatTitle(sessionId, title)
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Failed to update session title:', error)
+    console.error('Failed to update chat title:', error)
     return NextResponse.json(
-      { error: 'Failed to update session title' },
+      { error: 'Failed to update chat title' },
       { status: 500 }
     )
   }
@@ -106,14 +107,14 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Delete chat using AI SDK service
-    await aiSdkChatService.deleteChat(sessionId)
+    // Delete chat using simplified persistence service
+    await chatPersistence.deleteChat(sessionId)
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Failed to delete session:', error)
+    console.error('Failed to delete chat:', error)
     return NextResponse.json(
-      { error: 'Failed to delete session' },
+      { error: 'Failed to delete chat' },
       { status: 500 }
     )
   }

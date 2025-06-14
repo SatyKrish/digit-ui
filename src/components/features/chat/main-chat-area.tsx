@@ -23,6 +23,36 @@ export function MainChatArea({
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
   const [isChatMinimized, setIsChatMinimized] = useState(false)
   const [isArtifactFullScreen, setIsArtifactFullScreen] = useState(false)
+  const [initialMessages, setInitialMessages] = useState<Message[]>([])
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+  
+  // Load initial messages when currentChatId changes
+  useEffect(() => {
+    async function loadMessages() {
+      if (!currentChatId) {
+        setInitialMessages([])
+        return
+      }
+
+      setIsLoadingMessages(true)
+      try {
+        const response = await fetch(`/api/chat/messages?chatId=${encodeURIComponent(currentChatId)}`)
+        if (!response.ok) {
+          throw new Error('Failed to load messages')
+        }
+        const data = await response.json()
+        setInitialMessages(data.messages || [])
+      } catch (error) {
+        console.error('Failed to load initial messages:', error)
+        toast.error('Failed to load chat history')
+        setInitialMessages([])
+      } finally {
+        setIsLoadingMessages(false)
+      }
+    }
+
+    loadMessages()
+  }, [currentChatId])
   
   // Initialize user in chat service via API
   useEffect(() => {
@@ -48,7 +78,7 @@ export function MainChatArea({
   }, [user?.email, user?.name])
 
   // Extract artifacts when message is finished
-  const handleFinish = useCallback((message: Message) => {
+  const handleFinish = useCallback(async (message: Message) => {
     if (message.role === 'assistant') {
       // Extract content from all text parts in AI SDK v4+ format
       const textContent = message.parts
@@ -58,10 +88,27 @@ export function MainChatArea({
       
       const artifacts = extractArtifacts(textContent)
       setCurrentArtifacts(artifacts)
-    }
-  }, [])
 
-  // Use Vercel AI SDK's useChat hook
+      // Persist the message if we have a chat ID - now via API
+      if (currentChatId) {
+        try {
+          await fetch('/api/chat/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chatId: currentChatId,
+              message: message
+            })
+          })
+        } catch (error) {
+          console.error('Failed to persist message:', error)
+          // Don't show error to user as this is background operation
+        }
+      }
+    }
+  }, [currentChatId])
+
+  // Use Vercel AI SDK's useChat hook with proper initial messages
   const { 
     messages, 
     isLoading, 
@@ -71,6 +118,7 @@ export function MainChatArea({
   } = useChat({
     id: currentChatId || undefined,
     api: '/api/chat',
+    initialMessages, // Use loaded initial messages
     body: {
       userId: user?.email,
       id: currentChatId || undefined
@@ -127,15 +175,39 @@ export function MainChatArea({
       : content
 
     try {
-      // If no current chat ID, this will be a new chat
+      // Create a new chat if we don't have one
       if (!currentChatId && onNewChat) {
         onNewChat()
       }
 
-      await append({
-        role: 'user',
+      const userMessage = {
+        role: 'user' as const,
         content: fullContent
-      })
+      }
+
+      // Persist user message immediately if we have a chat ID - now via API
+      if (currentChatId) {
+        try {
+          await fetch('/api/chat/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chatId: currentChatId,
+              message: {
+                id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                role: 'user',
+                content: fullContent,
+                createdAt: new Date()
+              }
+            })
+          })
+        } catch (error) {
+          console.error('Failed to persist user message:', error)
+          // Don't show error to user as this is background operation
+        }
+      }
+
+      await append(userMessage)
     } catch (error) {
       console.error('Failed to send message:', error)
       toast.error('Failed to send message. Please try again.')

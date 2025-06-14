@@ -1,5 +1,4 @@
 export { useMessageArtifacts } from './use-message-artifacts';
-export { useAutoSave } from './use-auto-save';
 export { useGroupedChatSessions } from './use-grouped-sessions';
 
 // Export the simplified session management hook

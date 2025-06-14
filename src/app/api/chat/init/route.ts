@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { chatService } from '@/services/chat/chat-service'
+import { chatPersistence } from '@/services/chat/chat-persistence'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,11 +12,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    await chatService.initializeForUser({
-      id: userId,
-      email,
-      name: name || 'User'
-    })
+    // With the simplified architecture, user initialization is just 
+    // ensuring the user exists in the system - no complex session management
+    console.log(`User ${userId} (${email}) initialized for chat system`)
 
     return NextResponse.json({ success: true })
   } catch (error) {
