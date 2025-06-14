@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArtifactRenderer } from "./artifact-renderer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -9,8 +9,29 @@ import { Button } from "@/components/ui/button"
 import { Maximize2, Minimize2, Pin, PinOff, SidebarClose, SidebarOpen, X } from "lucide-react"
 import type { Artifact, ArtifactPanelProps } from "@/types/artifacts"
 
-export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChatMinimized, onClose }: ArtifactPanelProps) {
+export function ArtifactPanel({ 
+  artifacts, 
+  isChatMinimized = false, 
+  onToggleChatMinimized, 
+  onClose,
+  isFullScreen = false,
+  onToggleFullScreen
+}: ArtifactPanelProps) {
   const [selectedArtifact, setSelectedArtifact] = useState(0)
+
+  // Handle escape key to exit full-screen mode
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullScreen && onToggleFullScreen) {
+        onToggleFullScreen()
+      }
+    }
+
+    if (isFullScreen) {
+      document.addEventListener("keydown", handleEscape)
+      return () => document.removeEventListener("keydown", handleEscape)
+    }
+  }, [isFullScreen, onToggleFullScreen])
 
   if (artifacts.length === 0) {
     return (
@@ -52,7 +73,9 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in artifact-panel">
+    <div className={`flex flex-col h-full overflow-hidden bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in artifact-panel ${
+      isFullScreen ? 'fixed inset-0 z-50 bg-background' : ''
+    }`}>
       {/* Enhanced Header */}
       <div className="flex-shrink-0 border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background/95 backdrop-blur-sm">
         <div className="flex items-center justify-between">
@@ -76,7 +99,18 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
           </div>
           
           <div className="flex items-center gap-2">
-            {onToggleChatMinimized && (
+            {onToggleFullScreen && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleFullScreen}
+                className="h-8 w-8 p-0 hover:bg-muted/50"
+                title={isFullScreen ? "Exit full screen" : "Enter full screen"}
+              >
+                {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+            )}
+            {onToggleChatMinimized && !isFullScreen && (
               <Button
                 variant="ghost"
                 size="sm"

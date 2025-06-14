@@ -22,6 +22,7 @@ export function MainChatArea({
 }: MainChatAreaProps) {
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
   const [isChatMinimized, setIsChatMinimized] = useState(false)
+  const [isArtifactFullScreen, setIsArtifactFullScreen] = useState(false)
   
   // Initialize user in chat service via API
   useEffect(() => {
@@ -132,6 +133,11 @@ export function MainChatArea({
     onNewChat?.()
   }, [setMessages, onNewChat])
 
+  // Toggle full-screen mode for artifacts
+  const handleToggleFullScreen = useCallback(() => {
+    setIsArtifactFullScreen(prev => !prev)
+  }, [])
+
   // Reopen artifacts from a previous message
   const handleReopenArtifacts = useCallback((messageContent: string) => {
     const artifacts = extractArtifacts(messageContent)
@@ -147,28 +153,40 @@ export function MainChatArea({
   // Determine if we should show the artifact panel
   const showArtifactPanel = currentArtifacts.length > 0
 
+  // Handle closing artifacts (also exits full-screen)
+  const handleCloseArtifacts = useCallback(() => {
+    setCurrentArtifacts([])
+    setIsArtifactFullScreen(false)
+  }, [])
+
   // Responsive layout: ensure both chat and artifacts fit within viewport
   const chatContainerClass = showArtifactPanel 
-    ? (isChatMinimized 
+    ? (isArtifactFullScreen
+        ? 'hidden'
+        : isChatMinimized 
         ? 'w-80 min-w-80 max-w-80 flex-shrink-0' 
         : 'flex-[3] min-w-0 chat-area')
     : 'w-full'
 
   const artifactPanelClass = isChatMinimized 
     ? 'flex-1 min-w-0 artifact-panel' 
+    : isArtifactFullScreen
+    ? 'w-full h-full artifact-panel'
     : 'flex-[7] min-w-0 artifact-panel'
 
   return (
     <SidebarInset className="flex flex-col relative chat-layout-container">
       <SidebarHoverTrigger />
-      <ChatHeader 
-        user={user} 
-        onLogout={onLogout} 
-        onNavigateHome={handleNavigateHome}
-        artifactCount={currentArtifacts.length}
-      />
+      {!isArtifactFullScreen && (
+        <ChatHeader 
+          user={user} 
+          onLogout={onLogout} 
+          onNavigateHome={handleNavigateHome}
+          artifactCount={currentArtifacts.length}
+        />
+      )}
 
-      <div className="flex-1 flex min-h-0 max-w-full overflow-hidden chat-flex-container">
+      <div className={`flex-1 flex min-h-0 max-w-full overflow-hidden chat-flex-container ${isArtifactFullScreen ? 'p-0' : ''}`}>
         {/* Chat Area */}
         <div className={`flex flex-col min-h-0 ${chatContainerClass}`}>
           {isInitialState ? (
@@ -198,12 +216,14 @@ export function MainChatArea({
 
         {/* Artifact Panel */}
         {showArtifactPanel && (
-          <div className={`border-l border-border/50 flex flex-col min-h-0 ${artifactPanelClass}`}>
+          <div className={`${isArtifactFullScreen ? '' : 'border-l border-border/50'} flex flex-col min-h-0 ${artifactPanelClass}`}>
             <ArtifactPanel 
               artifacts={currentArtifacts} 
               isChatMinimized={isChatMinimized}
               onToggleChatMinimized={() => setIsChatMinimized(!isChatMinimized)}
-              onClose={() => setCurrentArtifacts([])}
+              onClose={handleCloseArtifacts}
+              isFullScreen={isArtifactFullScreen}
+              onToggleFullScreen={handleToggleFullScreen}
             />
           </div>
         )}
