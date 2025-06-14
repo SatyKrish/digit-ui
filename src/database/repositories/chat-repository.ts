@@ -119,7 +119,10 @@ export class ChatRepository {
    */
   async getMessages(chatId: string): Promise<DbMessage[]> {
     const stmt = this.db.prepare(`
-      SELECT id, chat_id, role, content, name, tool_call_id, tool_invocations, experimental_attachments, annotations, created_at
+      SELECT 
+        id, chat_id, role, content, name, tool_call_id, 
+        tool_invocations, experimental_attachments, annotations, 
+        parts, reasoning, finish_reason, usage_stats, created_at
       FROM messages
       WHERE chat_id = ?
       ORDER BY created_at ASC
@@ -136,6 +139,10 @@ export class ChatRepository {
       toolInvocations: row.tool_invocations,
       experimentalAttachments: row.experimental_attachments,
       annotations: row.annotations,
+      parts: row.parts,
+      reasoning: row.reasoning,
+      finishReason: row.finish_reason,
+      usageStats: row.usage_stats,
       createdAt: new Date(row.created_at)
     }));
   }
@@ -145,12 +152,27 @@ export class ChatRepository {
    */
   async saveMessages(chatId: string, messages: DbMessage[]): Promise<void> {
     const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO messages (id, chat_id, role, content, name, tool_call_id, tool_invocations, experimental_attachments, annotations, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO messages (
+        id, chat_id, role, content, name, tool_call_id, 
+        tool_invocations, experimental_attachments, annotations, 
+        parts, reasoning, finish_reason, usage_stats, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     const transaction = this.db.transaction((msgs: DbMessage[]) => {
       for (const msg of msgs) {
+        // Handle createdAt conversion to ISO string for database storage
+        let createdAtISO: string;
+        if (msg.createdAt instanceof Date) {
+          createdAtISO = msg.createdAt.toISOString();
+        } else if (typeof msg.createdAt === 'string') {
+          const date = new Date(msg.createdAt);
+          createdAtISO = isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+        } else {
+          createdAtISO = new Date().toISOString();
+        }
+        
         stmt.run(
           msg.id,
           chatId,
@@ -161,12 +183,19 @@ export class ChatRepository {
           msg.toolInvocations || null,
           msg.experimentalAttachments || null,
           msg.annotations || null,
-          msg.createdAt.toISOString()
+          msg.parts || null,
+          msg.reasoning || null,
+          msg.finishReason || null,
+          msg.usageStats || null,
+          createdAtISO
         );
       }
     });
     
     transaction(messages);
+    
+    // Update chat's last_message_at and message_count
+    await this.updateChatMetadata(chatId);
   }
 
   /**
@@ -174,9 +203,26 @@ export class ChatRepository {
    */
   async addMessage(chatId: string, message: DbMessage): Promise<void> {
     const stmt = this.db.prepare(`
-      INSERT INTO messages (id, chat_id, role, content, name, tool_call_id, tool_invocations, experimental_attachments, annotations, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO messages (
+        id, chat_id, role, content, name, tool_call_id, 
+        tool_invocations, experimental_attachments, annotations, 
+        parts, reasoning, finish_reason, usage_stats, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
+    
+    // Handle createdAt conversion to ISO string for database storage
+    let createdAtISO: string;
+    if (message.createdAt instanceof Date) {
+      createdAtISO = message.createdAt.toISOString();
+    } else if (typeof message.createdAt === 'string') {
+      // If it's already a string, validate it's a proper date
+      const date = new Date(message.createdAt);
+      createdAtISO = isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+    } else {
+      // Fallback to current time
+      createdAtISO = new Date().toISOString();
+    }
     
     stmt.run(
       message.id,
@@ -188,8 +234,15 @@ export class ChatRepository {
       message.toolInvocations || null,
       message.experimentalAttachments || null,
       message.annotations || null,
-      message.createdAt.toISOString()
+      message.parts || null,
+      message.reasoning || null,
+      message.finishReason || null,
+      message.usageStats || null,
+      createdAtISO
     );
+    
+    // Update chat's last_message_at and message_count
+    await this.updateChatMetadata(chatId);
   }
 
   /**
@@ -289,5 +342,21 @@ export class ChatRepository {
     return (start > 0 ? '...' : '') + 
            content.slice(start, end) + 
            (end < content.length ? '...' : '');
+  }
+
+  /**
+   * Update chat metadata (message count and last message timestamp)
+   */
+  private async updateChatMetadata(chatId: string): Promise<void> {
+    const stmt = this.db.prepare(`
+      UPDATE chats 
+      SET 
+        message_count = (SELECT COUNT(*) FROM messages WHERE chat_id = ?),
+        last_message_at = (SELECT created_at FROM messages WHERE chat_id = ? ORDER BY created_at DESC LIMIT 1),
+        updated_at = ?
+      WHERE id = ?
+    `);
+    
+    stmt.run(chatId, chatId, new Date().toISOString(), chatId);
   }
 }

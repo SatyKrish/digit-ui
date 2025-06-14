@@ -1,36 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { chatService } from '@/services/chat/chat-service'
+import { chatPersistence } from '@/services/chat/chat-persistence'
+
+/**
+ * Handle chat messages - loading and saving
+ * Updated to use simplified ChatPersistence service
+ */
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sessionId = searchParams.get('sessionId')
-    const userId = searchParams.get('userId')
+    const chatId = searchParams.get('chatId')
+    const sessionId = searchParams.get('sessionId') // Backward compatibility
 
-    if (!sessionId || !userId) {
+    // Support both chatId and sessionId for backward compatibility
+    const id = chatId || sessionId
+
+    if (!id) {
       return NextResponse.json(
-        { error: 'Session ID and User ID are required' },
+        { error: 'Chat ID is required' },
         { status: 400 }
       )
     }
 
-    // Initialize chat service for user
-    await chatService.initializeForUser({
-      id: userId,
-      email: userId,
-      name: 'User'
-    })
+    // Load initial messages for the chat
+    const messages = await chatPersistence.loadInitialMessages(id)
 
-    const messages = await chatService.getSessionMessages(sessionId)
     return NextResponse.json({ messages })
   } catch (error) {
-    console.error('Failed to get messages:', error)
+    console.error('Failed to load messages:', error)
     return NextResponse.json(
-      { error: 'Failed to get messages' },
+      { error: 'Failed to load messages' },
       { status: 500 }
     )
   }
 }
 
-// Remove the old POST endpoint since we now use /api/chat directly with useChat
-// This simplifies the architecture and leverages the AI SDK's built-in streaming
+export async function POST(request: NextRequest) {
+  try {
+    const { chatId, message } = await request.json()
+
+    if (!chatId || !message) {
+      return NextResponse.json(
+        { error: 'Chat ID and message are required' },
+        { status: 400 }
+      )
+    }
+
+    // Persist the message
+    await chatPersistence.persistMessage(chatId, message)
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Failed to persist message:', error)
+    return NextResponse.json(
+      { error: 'Failed to persist message' },
+      { status: 500 }
+    )
+  }
+}

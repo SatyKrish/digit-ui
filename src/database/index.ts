@@ -160,6 +160,38 @@ function runMigrations(db: Database.Database): void {
         CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at ASC);
         CREATE INDEX IF NOT EXISTS idx_messages_role ON messages(role);
       `
+    },
+    {
+      name: '002_ai_sdk_enhancements',
+      sql: `
+        -- Add support for AI SDK v4+ message parts and additional fields
+        ALTER TABLE messages ADD COLUMN parts TEXT; -- JSON array for AI SDK v4+ parts
+        ALTER TABLE messages ADD COLUMN reasoning TEXT; -- For reasoning traces
+        ALTER TABLE messages ADD COLUMN finish_reason TEXT; -- AI completion finish reason
+        ALTER TABLE messages ADD COLUMN usage_stats TEXT; -- JSON object for token usage
+        
+        -- Update chats table with additional metadata
+        ALTER TABLE chats ADD COLUMN message_count INTEGER DEFAULT 0;
+        ALTER TABLE chats ADD COLUMN last_message_at DATETIME;
+        
+        -- Create indexes for new fields
+        CREATE INDEX IF NOT EXISTS idx_messages_finish_reason ON messages(finish_reason);
+        CREATE INDEX IF NOT EXISTS idx_chats_message_count ON chats(message_count);
+        CREATE INDEX IF NOT EXISTS idx_chats_last_message_at ON chats(last_message_at DESC);
+        
+        -- Create a view for chat summaries (useful for sidebar)
+        CREATE VIEW IF NOT EXISTS chat_summaries AS
+        SELECT 
+          c.id,
+          c.user_id,
+          c.title,
+          c.created_at,
+          c.updated_at,
+          c.message_count,
+          c.last_message_at,
+          (SELECT content FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_preview
+        FROM chats c;
+      `
     }
   ];
 

@@ -25,12 +25,9 @@ export const chatConfig = {
     'geospatial'
   ] as const,
 
-  // Auto-save settings
-  autoSaveInterval: 30000, // 30 seconds
-  
-  // Session management
-  sessionCacheTime: 300000, // 5 minutes
-  maxCachedSessions: 50,
+  // Chat management (renamed from session management)
+  chatCacheTime: 300000, // 5 minutes
+  maxCachedChats: 50,
   
   // Database optimization
   batchInsertSize: 10,

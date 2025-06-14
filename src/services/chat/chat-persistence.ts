@@ -1,17 +1,19 @@
-import { Message, CreateMessage } from 'ai';
+import { Message } from 'ai';
 import { ChatRepository } from '@/database/repositories/chat-repository';
-import { Chat, DbMessage, convertMessageToDb, convertDbToMessage } from '@/database/types-ai-sdk';
+import { Chat, convertMessageToDb, convertDbToMessage } from '@/database/types-ai-sdk';
 
 /**
- * Simplified chat service aligned with AI SDK patterns
- * Removes complex session management and focuses on chat-level operations
+ * Simplified chat persistence service aligned with AI SDK patterns
+ * Focuses on chat-level operations and persistence, not complex session management
  */
-export class AiSdkChatService {
+export class ChatPersistence {
   private chatRepository: ChatRepository;
 
   constructor() {
     this.chatRepository = new ChatRepository();
   }
+
+  // === Core Chat Operations ===
 
   /**
    * Create a new chat
@@ -48,18 +50,20 @@ export class AiSdkChatService {
     await this.chatRepository.deleteChat(chatId);
   }
 
+  // === AI SDK Integration ===
+
   /**
-   * Get initial messages for AI SDK useChat hook
-   * This replaces the complex session loading logic
+   * Load initial messages for AI SDK useChat hook
+   * This is the primary integration point with AI SDK
    */
-  async getInitialMessages(chatId: string): Promise<Message[]> {
+  async loadInitialMessages(chatId: string): Promise<Message[]> {
     const messages = await this.chatRepository.getMessages(chatId);
     return messages.map(convertDbToMessage);
   }
 
   /**
-   * Save messages after AI SDK conversation
-   * This should be called periodically or on conversation end
+   * Save messages from AI SDK conversation
+   * Call this periodically or on conversation end
    */
   async saveMessages(chatId: string, messages: Message[]): Promise<void> {
     const dbMessages = messages.map(convertMessageToDb);
@@ -67,18 +71,46 @@ export class AiSdkChatService {
   }
 
   /**
-   * Add a single message (for real-time updates)
+   * Add a single message (for real-time persistence)
    */
-  async addMessage(chatId: string, message: Message): Promise<void> {
+  async persistMessage(chatId: string, message: Message): Promise<void> {
     const dbMessage = convertMessageToDb(message);
     await this.chatRepository.addMessage(chatId, dbMessage);
   }
 
+  // === Utility Methods ===
+
   /**
-   * Update the last message in a chat (useful for streaming updates)
+   * Auto-generate chat title from conversation
    */
-  async updateLastMessage(chatId: string, content: string): Promise<void> {
-    await this.chatRepository.updateLastMessage(chatId, content);
+  async generateChatTitle(messages: Message[]): Promise<string> {
+    if (messages.length === 0) return 'New Chat';
+    
+    // Find first meaningful user message
+    const firstUserMessage = messages.find(m => m.role === 'user');
+    if (!firstUserMessage) return 'New Chat';
+    
+    // Extract text content from parts or fallback to content
+    let content = '';
+    if (firstUserMessage.parts) {
+      content = firstUserMessage.parts
+        .filter(part => part.type === 'text')
+        .map(part => part.text)
+        .join(' ');
+    } else {
+      content = firstUserMessage.content || '';
+    }
+    
+    if (!content.trim()) return 'New Chat';
+    
+    // Create a meaningful title
+    const title = content
+      .slice(0, 50)
+      .trim()
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ');
+      
+    return title.length < content.length ? `${title}...` : title;
   }
 
   /**
@@ -92,7 +124,7 @@ export class AiSdkChatService {
   }
 
   /**
-   * Search messages across all user chats
+   * Search messages across user chats
    */
   async searchMessages(userId: string, query: string, limit = 10): Promise<{
     chatId: string;
@@ -110,33 +142,7 @@ export class AiSdkChatService {
   }
 
   /**
-   * Auto-generate chat title based on first few messages
-   * This can be called after the first exchange
-   */
-  async generateChatTitle(chatId: string, messages: Message[]): Promise<string> {
-    if (messages.length === 0) return 'New Chat';
-    
-    // Simple title generation based on first user message
-    const firstUserMessage = messages.find(m => m.role === 'user');
-    if (!firstUserMessage) return 'New Chat';
-    
-    const content = firstUserMessage.content;
-    if (typeof content === 'string') {
-      // Take first 50 characters and clean up
-      const title = content
-        .slice(0, 50)
-        .trim()
-        .replace(/\n/g, ' ')
-        .replace(/\s+/g, ' ');
-      
-      return title.length < content.length ? `${title}...` : title;
-    }
-    
-    return 'New Chat';
-  }
-
-  /**
-   * Clean up old chats (useful for maintenance)
+   * Clean up old chats (maintenance operation)
    */
   async cleanupOldChats(userId: string, daysOld = 30): Promise<number> {
     const cutoffDate = new Date();
@@ -156,5 +162,5 @@ export class AiSdkChatService {
   }
 }
 
-// Export singleton instance
-export const aiSdkChatService = new AiSdkChatService();
+// Export singleton instance 
+export const chatPersistence = new ChatPersistence();

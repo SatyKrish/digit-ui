@@ -1,7 +1,6 @@
 import { streamText, convertToCoreMessages } from "ai"
 import { mcpClient } from "@/client/mcp-client"
-import { chatService } from "@/services/chat/chat-service"
-import { aiSdkChatService } from "@/services/chat/ai-sdk-chat-service"
+import { chatPersistence } from "@/services/chat/chat-persistence"
 import { env } from "@/config/env"
 import { getAzureOpenAIModel, azureOpenAIConfig } from "@/config/azure-openai"
 import { z } from "zod"
@@ -155,20 +154,6 @@ export async function POST(req: Request) {
   try {
     const { messages, id, userId } = await req.json()
 
-    // Initialize chat service for user if userId is provided
-    if (userId) {
-      try {
-        await chatService.initializeForUser({
-          id: userId,
-          email: userId,
-          name: 'User'
-        })
-      } catch (userInitError) {
-        console.error('Failed to initialize user:', userInitError)
-        // Continue anyway - this shouldn't block the chat
-      }
-    }
-
     // Ensure MCP client is properly initialized before processing the request
     if (!mcpClient.isReady()) {
       await mcpClient.initialize()
@@ -270,43 +255,9 @@ ${connectedServers.length > 0
         tools,
         maxSteps: 5,
         onFinish: async ({ response, finishReason, usage, text }) => {
-          // Save messages to database if userId is provided
-          if (userId && id) {
-            try {
-              // Initialize user and get or create session
-              await chatService.initializeForUser({
-                id: userId,
-                email: userId,
-                name: 'User'
-              })
-
-              // Use the getOrCreateSession method which handles both cases
-              await chatService.getOrCreateSession(id)
-
-              // Save the user message (last message in the input)
-              const userMessage = messages[messages.length - 1]
-              if (userMessage && userMessage.role === 'user') {
-                await aiSdkChatService.addMessage(id, {
-                  id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                  role: 'user',
-                  content: userMessage.content,
-                  createdAt: new Date()
-                })
-              }
-
-              // Save the assistant response using the text content
-              if (text) {
-                await aiSdkChatService.addMessage(id, {
-                  id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                  role: 'assistant',
-                  content: text,
-                  createdAt: new Date()
-                })
-              }
-            } catch (error) {
-              console.error('Failed to save messages to database:', error)
-            }
-          }
+          // AI SDK now handles message persistence automatically via the useChat hook
+          // No need for manual persistence here as it's handled client-side
+          console.log('Message completed:', { finishReason, usage: usage?.totalTokens })
         }
       })
       
