@@ -52,7 +52,7 @@ export function ArtifactPanel({ artifacts, isChatMinimized = false, onToggleChat
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in">
+    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-background/50 to-muted/5 animate-fade-in artifact-panel">
       {/* Enhanced Header */}
       <div className="flex-shrink-0 border-b border-border/50 p-4 lg:p-6 shadow-soft bg-background/95 backdrop-blur-sm">
         <div className="flex items-center justify-between">

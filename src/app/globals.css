@@ -432,3 +432,49 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Responsive layout utilities */
+@layer utilities {
+  /* Viewport-aware layout utilities */
+  .layout-max-viewport {
+    max-width: 100vw;
+    overflow: hidden;
+  }
+  
+  .content-fit-viewport {
+    max-width: calc(100vw - 2rem);
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+  
+  /* Chat-specific responsive utilities */
+  .chat-responsive-width {
+    min-width: 280px;
+    max-width: 100%;
+  }
+  
+  .artifact-responsive-width {
+    min-width: 320px;
+    max-width: 45vw;
+  }
+  
+  /* Horizontal scrolling utilities */
+  .scroll-horizontal-auto {
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: thin;
+  }
+  
+  .scroll-horizontal-auto::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .scroll-horizontal-auto::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+  
+  .scroll-horizontal-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

@@ -45,7 +45,7 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false, onReo
         </Avatar>
       )}
 
-      <div className={`max-w-[80%] space-y-3 ${message.role === "user" ? "order-first" : ""}`}>
+      <div className={`max-w-[80%] min-w-0 space-y-3 ${message.role === "user" ? "order-first" : ""}`}>
         <div
           className={`message-bubble rounded-lg px-5 py-4 transition-all duration-200 ${
             isStreaming ? 'streaming' : ''
@@ -156,7 +156,7 @@ export const ChatMessages = memo(({ messages, isLoading = false, user, onReopenA
       ref={scrollRef}
       className={`h-full w-full chat-scroll-area ${optimizedLoading ? 'streaming' : ''}`}
     >
-      <div className={`p-6 space-y-8 min-h-full chat-container ${optimizedLoading ? 'streaming-container' : ''}`}>
+      <div className={`p-6 space-y-8 min-h-full chat-container overflow-x-auto ${optimizedLoading ? 'streaming-container' : ''}`}>
         {messages.map((message, index) => {
           // Check if this is a streaming message (last assistant message while loading)
           const isStreamingMessage = optimizedLoading && 
