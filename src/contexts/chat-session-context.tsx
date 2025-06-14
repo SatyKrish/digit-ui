@@ -1,13 +1,13 @@
 import React, { createContext, useContext, ReactNode } from 'react'
 import { useChatSessions as useBaseChatSessions } from '@/hooks/chat'
-import type { ChatSession } from '@/types/chat'
+import type { Chat, ChatSession } from '@/types/chat'
 
 interface ChatSessionContextType {
-  sessions: ChatSession[]
-  currentSession: ChatSession | null
+  sessions: Chat[]
+  currentSession: Chat | null
   isLoading: boolean
-  createSession: (title?: string) => Promise<ChatSession>
-  switchToSession: (sessionId: string) => Promise<ChatSession | null>
+  createSession: (title?: string) => Promise<Chat>
+  switchToSession: (sessionId: string) => Promise<Chat | null>
   deleteSession: (sessionId: string) => Promise<boolean>
   updateSessionTitle: (sessionId: string, title: string) => Promise<boolean>
   clearAllSessions: () => Promise<void>

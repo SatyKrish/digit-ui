@@ -1,2 +1,2 @@
-export { ChatService, chatService } from './chat-service';
-export { AiSdkChatService, aiSdkChatService } from './ai-sdk-chat-service';
+// Legacy services removed - using ChatPersistence API-based approach
+export { ChatPersistence, chatPersistence } from './chat-persistence';

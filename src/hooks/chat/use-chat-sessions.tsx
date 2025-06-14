@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ChatSession } from '@/types/chat';
+import { Chat, ChatSession } from '@/types/chat'; // Chat is the new type, ChatSession is for backward compatibility
 import { sessionCache } from '@/services/chat/session-cache';
 import { toast } from 'sonner';
 
 /**
- * Enhanced chat session management hook with better error handling
- * Focuses on session list management while letting useChat handle messages
+ * Enhanced chat management hook with better error handling
+ * Focuses on chat list management while letting useChat handle messages
+ * TODO: Gradually migrate from "sessions" terminology to "chats"
  */
 export function useChatSessions(user?: { id: string; email: string; name: string }) {
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
+  const [sessions, setSessions] = useState<Chat[]>([]);
+  const [currentSession, setCurrentSession] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const userRef = useRef(user);

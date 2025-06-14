@@ -12,6 +12,8 @@ export interface Chat {
   title?: string;
   createdAt: Date;
   updatedAt: Date;
+  messageCount?: number;
+  lastMessageAt?: Date;
 }
 
 // AI SDK-aligned Message type for database storage
@@ -25,7 +27,11 @@ export interface DbMessage {
   toolInvocations?: string; // JSON string
   experimentalAttachments?: string; // JSON string
   annotations?: string; // JSON string
-  createdAt: Date;
+  createdAt: Date | string; // Accept both Date and string for flexibility
+  parts?: string; // JSON string for AI SDK v4+ parts
+  reasoning?: string; // For reasoning traces
+  finishReason?: string; // AI completion finish reason
+  usageStats?: string; // JSON object for token usage
 }
 
 // Input types for creating records
@@ -53,6 +59,21 @@ export interface UpdateChat {
 
 // Conversion helpers between AI SDK Message and DbMessage
 export function convertMessageToDb(message: Message): DbMessage {
+  // Handle createdAt - it could be a Date, string, or undefined
+  let createdAt: Date | string;
+  if (message.createdAt) {
+    // If it's already a Date object, keep it
+    if (message.createdAt instanceof Date) {
+      createdAt = message.createdAt;
+    } else {
+      // If it's a string or number, convert to Date
+      createdAt = new Date(message.createdAt);
+    }
+  } else {
+    // If no createdAt provided, use current time
+    createdAt = new Date();
+  }
+
   return {
     id: message.id,
     chatId: '', // Will be set when saving
@@ -63,20 +84,40 @@ export function convertMessageToDb(message: Message): DbMessage {
     toolInvocations: message.toolInvocations ? JSON.stringify(message.toolInvocations) : undefined,
     experimentalAttachments: (message as any).experimental_attachments ? JSON.stringify((message as any).experimental_attachments) : undefined,
     annotations: message.annotations ? JSON.stringify(message.annotations) : undefined,
-    createdAt: message.createdAt || new Date()
+    createdAt,
+    // AI SDK v4+ fields
+    parts: (message as any).parts ? JSON.stringify((message as any).parts) : undefined,
+    reasoning: (message as any).reasoning,
+    finishReason: (message as any).finishReason,
+    usageStats: (message as any).usage ? JSON.stringify((message as any).usage) : undefined,
   };
 }
 
 export function convertDbToMessage(dbMessage: DbMessage): Message {
-  return {
+  // Ensure createdAt is a Date object for AI SDK
+  const createdAt = dbMessage.createdAt instanceof Date 
+    ? dbMessage.createdAt 
+    : new Date(dbMessage.createdAt);
+
+  const baseMessage: any = {
     id: dbMessage.id,
     role: dbMessage.role,
     content: dbMessage.content,
-    name: dbMessage.name,
-    toolCallId: dbMessage.toolCallId,
-    createdAt: dbMessage.createdAt,
-    toolInvocations: dbMessage.toolInvocations ? JSON.parse(dbMessage.toolInvocations) : undefined,
-    annotations: dbMessage.annotations ? JSON.parse(dbMessage.annotations) : undefined,
-    experimental_attachments: dbMessage.experimentalAttachments ? JSON.parse(dbMessage.experimentalAttachments) : undefined,
-  } as Message;
+    createdAt,
+  };
+
+  // Add optional fields only if they exist
+  if (dbMessage.name) baseMessage.name = dbMessage.name;
+  if (dbMessage.toolCallId) baseMessage.toolCallId = dbMessage.toolCallId;
+  if (dbMessage.toolInvocations) baseMessage.toolInvocations = JSON.parse(dbMessage.toolInvocations);
+  if (dbMessage.annotations) baseMessage.annotations = JSON.parse(dbMessage.annotations);
+  if (dbMessage.experimentalAttachments) baseMessage.experimental_attachments = JSON.parse(dbMessage.experimentalAttachments);
+  
+  // AI SDK v4+ fields
+  if (dbMessage.parts) baseMessage.parts = JSON.parse(dbMessage.parts);
+  if (dbMessage.reasoning) baseMessage.reasoning = dbMessage.reasoning;
+  if (dbMessage.finishReason) baseMessage.finishReason = dbMessage.finishReason;
+  if (dbMessage.usageStats) baseMessage.usage = JSON.parse(dbMessage.usageStats);
+
+  return baseMessage as Message;
 }

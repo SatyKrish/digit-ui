@@ -19,7 +19,8 @@ export interface ChatMessage {
   }>
 }
 
-export interface ChatSession {
+// AI SDK v4+ aligned types
+export interface Chat {
   id: string
   title: string
   timestamp: string
@@ -31,18 +32,23 @@ export interface ChatSession {
   lastMessageAt?: Date
 }
 
+// Backward compatibility alias - gradually migrate away from this
+export type ChatSession = Chat
+
 export type TimePeriod = 'today' | 'yesterday' | 'last-week' | 'last-month' | 'older'
 
-export type GroupedChatSessions = Partial<Record<TimePeriod, ChatSession[]>>
+export type GroupedChats = Partial<Record<TimePeriod, Chat[]>>
+// Backward compatibility alias
+export type GroupedChatSessions = GroupedChats
 
 export interface ChatContextType {
-  currentSession: ChatSession | null
-  sessions: ChatSession[]
-  createSession: (title: string) => Promise<ChatSession>
+  currentSession: Chat | null
+  sessions: Chat[]
+  createSession: (title: string) => Promise<Chat>
   addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => Promise<ChatMessage>
-  getCurrentSession: () => Promise<ChatSession | null>
+  getCurrentSession: () => Promise<Chat | null>
   clearHistory: () => Promise<void>
-  switchToSession: (sessionId: string) => Promise<ChatSession | null>
+  switchToSession: (sessionId: string) => Promise<Chat | null>
   deleteSession: (sessionId: string) => Promise<boolean>
 }
 

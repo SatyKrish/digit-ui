@@ -1,27 +1,28 @@
-import { ChatSession } from '@/types/chat';
+import { Chat } from '@/types/chat';
 import { chatConfig } from '@/config/chat';
 
 interface CacheEntry {
-  data: ChatSession[];
+  data: Chat[];
   timestamp: number;
   userId: string;
 }
 
 /**
- * Simple in-memory cache for chat sessions to reduce database queries
+ * Simple in-memory cache for chats to reduce database queries
+ * TODO: Gradually migrate from "session" terminology to "chat"
  */
-class SessionCache {
+class ChatCache {
   private cache = new Map<string, CacheEntry>();
 
   /**
-   * Get cached sessions for a user
+   * Get cached chats for a user
    */
-  get(userId: string): ChatSession[] | null {
+  get(userId: string): Chat[] | null {
     const entry = this.cache.get(userId);
     if (!entry) return null;
 
     // Check if cache entry is still valid
-    const isExpired = Date.now() - entry.timestamp > chatConfig.sessionCacheTime;
+    const isExpired = Date.now() - entry.timestamp > chatConfig.chatCacheTime;
     if (isExpired) {
       this.cache.delete(userId);
       return null;
@@ -31,11 +32,11 @@ class SessionCache {
   }
 
   /**
-   * Cache sessions for a user
+   * Cache chats for a user
    */
-  set(userId: string, sessions: ChatSession[]): void {
+  set(userId: string, chats: Chat[]): void {
     // Limit cache size
-    if (this.cache.size >= chatConfig.maxCachedSessions) {
+    if (this.cache.size >= chatConfig.maxCachedChats) {
       // Remove oldest entry
       const oldestKey = this.cache.keys().next().value;
       if (oldestKey) {
@@ -44,45 +45,45 @@ class SessionCache {
     }
 
     this.cache.set(userId, {
-      data: [...sessions], // Create a copy to avoid mutations
+      data: [...chats], // Create a copy to avoid mutations
       timestamp: Date.now(),
       userId
     });
   }
 
   /**
-   * Update a specific session in cache
+   * Update a specific chat in cache
    */
-  updateSession(userId: string, sessionId: string, updates: Partial<ChatSession>): void {
+  updateSession(userId: string, chatId: string, updates: Partial<Chat>): void {
     const entry = this.cache.get(userId);
     if (!entry) return;
 
-    const sessionIndex = entry.data.findIndex(s => s.id === sessionId);
-    if (sessionIndex >= 0) {
-      entry.data[sessionIndex] = { ...entry.data[sessionIndex], ...updates };
+    const chatIndex = entry.data.findIndex(s => s.id === chatId);
+    if (chatIndex >= 0) {
+      entry.data[chatIndex] = { ...entry.data[chatIndex], ...updates };
       entry.timestamp = Date.now(); // Update cache timestamp
     }
   }
 
   /**
-   * Add a new session to cache
+   * Add a new chat to cache
    */
-  addSession(userId: string, session: ChatSession): void {
+  addSession(userId: string, chat: Chat): void {
     const entry = this.cache.get(userId);
     if (!entry) return;
 
-    entry.data.unshift(session); // Add to beginning of array
+    entry.data.unshift(chat); // Add to beginning of array
     entry.timestamp = Date.now();
   }
 
   /**
-   * Remove a session from cache
+   * Remove a chat from cache
    */
-  removeSession(userId: string, sessionId: string): void {
+  removeSession(userId: string, chatId: string): void {
     const entry = this.cache.get(userId);
     if (!entry) return;
 
-    entry.data = entry.data.filter(s => s.id !== sessionId);
+    entry.data = entry.data.filter(s => s.id !== chatId);
     entry.timestamp = Date.now();
   }
 
@@ -108,12 +109,12 @@ class SessionCache {
       size: this.cache.size,
       entries: Array.from(this.cache.entries()).map(([userId, entry]) => ({
         userId,
-        sessionCount: entry.data.length,
+        chatCount: entry.data.length,
         cacheAge: Date.now() - entry.timestamp
       }))
     };
   }
 }
 
-// Export singleton instance
-export const sessionCache = new SessionCache();
+// Export singleton instance - keep name for backward compatibility
+export const sessionCache = new ChatCache();

@@ -162,5 +162,5 @@ export class ChatPersistence {
   }
 }
 
-// Export singleton instance
+// Export singleton instance 
 export const chatPersistence = new ChatPersistence();
