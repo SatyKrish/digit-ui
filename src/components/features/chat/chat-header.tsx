@@ -50,7 +50,7 @@ export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, a
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-primary tracking-tight group-hover:text-primary/80 transition-colors duration-200">DIGIT</h1>
+          <h1 className="text-2xl font-bold text-primary tracking-tight group-hover:text-primary/80 transition-colors duration-200">D<span className="text-red-500">i</span>GIT</h1>
         </button>
         
         {/* MCP Status Display */}

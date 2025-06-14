@@ -180,7 +180,7 @@ export async function POST(req: Request) {
       )
     }
 
-  const systemPrompt = `You are DIGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI. You help data analysts and product owners discover insights from their data.
+  const systemPrompt = `You are DiGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI. You help data analysts and product owners discover insights from their data.
 
 You have access to MCP servers that provide real data access:
 
