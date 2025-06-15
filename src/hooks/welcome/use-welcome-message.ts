@@ -4,7 +4,6 @@ import { getWelcomeMessage } from '@/services/welcome/welcome-messages'
 interface User {
   name: string
   email: string
-  avatar: string
 }
 
 interface WelcomeMessageData {

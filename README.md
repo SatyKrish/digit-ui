@@ -78,10 +78,11 @@ cp .env.example .env.local
    - **Application (client) ID** - This is your `AZURE_CLIENT_ID`
    - **Directory (tenant) ID** - This is your `AZURE_TENANT_ID`
 
-**4. Optional: Configure API Permissions**
+**4. Configure API Permissions (Minimal Setup)**
 1. Go to **API permissions** blade
-2. Default permissions include `User.Read` - this is sufficient for basic authentication
-3. For enhanced features, you may add: `email`, `profile`, `openid`
+2. Remove the default `User.Read` permission if present to avoid admin consent requirements
+3. The app will use only standard OpenID Connect claims: `openid`, `profile`, `email`
+4. These permissions do not require admin consent and provide basic user information
 
 #### Azure OpenAI Setup (Required)
 
@@ -320,7 +321,7 @@ docker-compose down -v
 | **"AADSTS50011: The reply URL specified in the request does not match"** | Verify redirect URI in Azure AD matches your domain exactly |
 | **"Failed to initialize authentication system"** | Check that all required environment variables are set correctly |
 | **"AADSTS700016: Application not found"** | Verify `AZURE_CLIENT_ID` is correct and app exists in the tenant |
-| **Login succeeds but user info missing** | Ensure `User.Read` permission is granted and admin consented |
+| **Login succeeds but user info missing** | User info is now extracted from ID token claims automatically |
 
 **Debug Steps:**
 1. Check browser console for detailed MSAL errors

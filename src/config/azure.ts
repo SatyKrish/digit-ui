@@ -8,8 +8,7 @@ export const azureConfig = {
   redirectUri: process.env.AZURE_REDIRECT_URI || 'http://localhost:3000',
   postLogoutRedirectUri: process.env.AZURE_POST_LOGOUT_REDIRECT_URI || 'http://localhost:3000',
   scopes: {
-    default: ["User.Read"],
-    extended: ["User.Read", "email", "profile", "openid"]
+    default: ["openid", "profile", "email"],
   }
 } as const
 

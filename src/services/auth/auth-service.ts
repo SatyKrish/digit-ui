@@ -54,9 +54,6 @@ export class AuthService {
       id: account.localAccountId,
       email: account.username,
       name: account.name || '',
-      avatar: '', // Will be fetched separately from Microsoft Graph
-      tenantId: account.tenantId || '',
-      roles: []
     };
   }
 

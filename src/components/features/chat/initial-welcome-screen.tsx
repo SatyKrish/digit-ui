@@ -13,7 +13,7 @@ import { getSlideInStaggerClass } from "@/utils/animations"
 interface User {
   name: string
   email: string
-  avatar: string
+  // Removed avatar field - not needed for welcome screen
 }
 
 interface InitialWelcomeScreenProps {

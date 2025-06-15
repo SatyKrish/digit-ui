@@ -5,7 +5,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "next-themes"
 import { hasArtifacts, countArtifacts } from "@/services/artifacts/artifact-extractor"
-import { getThemeAwareAvatar } from "@/utils/theme"
 import { generateInitials } from "@/utils/format"
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer"
 import { useScrollToBottom } from "@/hooks/shared/use-scroll-to-bottom"
@@ -259,7 +258,6 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false, onReo
 
       {message.role === "user" && (
         <Avatar className="message-avatar h-10 w-10 shrink-0 ring-2 ring-primary/20 shadow-soft hover:shadow-medium transition-all duration-200">
-          <AvatarImage src={getThemeAwareAvatar(user?.avatar, theme, userInitials) || "/placeholder.svg"} />
           <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
             {userInitials}
           </AvatarFallback>
