@@ -181,22 +181,19 @@ async function prepareMcpTools() {
             content: initialContent,
             kind: kind as ArtifactKind,
             metadata: {
-              createdAt: new Date(),
-              updatedAt: new Date(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
               description: `Created via chat: ${title}`
             }
           }
           
           // Call the document API internally
-          const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/document`, {
+          const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/document?id=${encodeURIComponent(id)}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
-              id,
-              ...documentData 
-            })
+            body: JSON.stringify(documentData)
           })
           
           if (!response.ok) {
@@ -264,7 +261,7 @@ async function prepareMcpTools() {
               content: updatedContent,
               metadata: {
                 ...existingDoc.metadata,
-                updatedAt: new Date(),
+                updatedAt: new Date().toISOString(),
                 description: `Updated via chat: ${description}`
               }
             })

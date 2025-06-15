@@ -10,8 +10,8 @@ const DocumentSchema = z.object({
   metadata: z.object({
     language: z.string().optional(),
     description: z.string().optional(),
-    createdAt: z.date().optional(),
-    updatedAt: z.date().optional(),
+    createdAt: z.string().datetime().optional(),
+    updatedAt: z.string().datetime().optional(),
   }).optional()
 })
 
@@ -147,7 +147,10 @@ export async function PUT(request: NextRequest) {
       metadata: {
         ...latestVersion.metadata,
         title: validatedData.title || latestVersion.title,
-        ...validatedData.metadata,
+        ...(validatedData.metadata && {
+          description: validatedData.metadata.description,
+          language: validatedData.metadata.language,
+        }),
         updatedAt: new Date(),
       }
     }

@@ -1,3 +1,4 @@
+import React from 'react';
 import { Artifact } from '@/lib/artifacts/create-artifact';
 import { ArtifactContent, ArtifactActionContext, ArtifactToolbarContext } from '@/lib/artifacts/types';
 import { ChartArtifact } from '@/components/features/artifacts/visualizations/chart-artifact';
@@ -34,41 +35,37 @@ interface ChartArtifactMetadata {
 function ChartArtifactContent(props: ArtifactContent<ChartArtifactMetadata>) {
   const { content, metadata, setMetadata } = props;
   
-  if (!metadata?.data || metadata.data.length === 0) {
-    // Try to parse chart data from content if metadata is empty
-    try {
-      const parsed = JSON.parse(content);
-      if (parsed.data && Array.isArray(parsed.data)) {
-        const chartData: ChartArtifactMetadata = {
-          chartType: (parsed.chartType as ChartArtifactMetadata['chartType']) || 'bar',
-          title: parsed.title || 'Chart',
-          xKey: parsed.xKey || 'x',
-          yKey: parsed.yKey || 'y',
-          data: parsed.data,
-        };
-        setMetadata(chartData);
-        return (
-          <ChartArtifact
-            data={chartData.data}
-            chartType={chartData.chartType}
-            title={chartData.title}
-            xKey={chartData.xKey}
-            yKey={chartData.yKey}
-          />
-        );
+  // Use useEffect to avoid setState during render
+  React.useEffect(() => {
+    if (!metadata?.data || metadata.data.length === 0) {
+      // Try to parse chart data from content if metadata is empty
+      try {
+        const parsed = JSON.parse(content);
+        if (parsed.data && Array.isArray(parsed.data)) {
+          const chartData: ChartArtifactMetadata = {
+            chartType: (parsed.chartType as ChartArtifactMetadata['chartType']) || 'bar',
+            title: parsed.title || 'Chart',
+            xKey: parsed.xKey || 'x',
+            yKey: parsed.yKey || 'y',
+            data: parsed.data,
+          };
+          setMetadata(chartData);
+        }
+      } catch (error) {
+        // If parsing fails, ignore and show empty state
+        console.warn('Failed to parse chart data:', error);
       }
-    } catch (error) {
-      // If parsing fails, show error state
-      return (
-        <div className="p-4 text-center text-muted-foreground">
-          <ChartIcon className="mx-auto h-8 w-8 mb-2" />
-          <p>Invalid chart data format</p>
-          <pre className="text-xs mt-2 p-2 bg-muted rounded overflow-auto max-h-32">
-            {content}
-          </pre>
-        </div>
-      );
     }
+  }, [content, metadata?.data, setMetadata]);
+
+  if (!metadata?.data || metadata.data.length === 0) {
+    // Show loading/empty state while metadata is being set
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        <ChartIcon className="mx-auto h-8 w-8 mb-2" />
+        <p>Loading chart data...</p>
+      </div>
+    );
   }
 
   return (
