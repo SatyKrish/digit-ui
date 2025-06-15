@@ -1,6 +1,23 @@
-import { streamText } from "ai"
+import { streamText, smoothStream } from "ai"
 import { getAzureOpenAIModel } from "@/config/azure-openai"
 import type { ArtifactKind, ArtifactDocument, StreamPart, CreateArtifactOptions } from "./types"
+
+// MCP client integration for server-side operations
+let mcpClient: any = null;
+
+const getMCPClient = async () => {
+  if (!mcpClient && typeof window === 'undefined') {
+    try {
+      const { mcpClient: client } = await import('@/client/mcp-client');
+      await client.initialize();
+      return client;
+    } catch (error) {
+      console.warn('MCP client not available:', error);
+      return null;
+    }
+  }
+  return mcpClient;
+};
 
 export interface DataStream {
   writeData: (data: StreamPart) => void
@@ -65,17 +82,41 @@ export const textDocumentHandler = createDocumentHandler({
   onCreateDocument: async ({ title, dataStream }) => {
     let content = ""
     
+    // Try MCP integration first
+    const mcp = await getMCPClient();
+    if (mcp) {
+      try {
+        const mcpResult = await mcp.callTool('create_text_document', { title });
+        if (mcpResult.success && mcpResult.data) {
+          content = mcpResult.data.content;
+          dataStream.writeData({
+            type: "content-update",
+            content: content
+          });
+          dataStream.writeData({
+            type: "status-update",
+            status: "completed"
+          });
+          return content;
+        }
+      } catch (error) {
+        console.warn('MCP text creation failed, falling back to AI generation:', error);
+      }
+    }
+    
+    // Fallback to AI generation with streaming
     const { fullStream } = await streamText({
       model: getAzureOpenAIModel("gpt-4o"),
       system: SYSTEM_PROMPTS.text,
-      prompt: `Create a well-structured text document with the title: "${title}". Make it engaging and informative.`
+      prompt: `Create a well-structured text document with the title: "${title}". Make it engaging and informative.`,
+      experimental_transform: smoothStream({ chunking: 'word' })
     })
 
     for await (const delta of fullStream) {
       if (delta.type === "text-delta") {
         content += delta.textDelta
         dataStream.writeData({
-          type: "content-update",
+          type: "text-delta",
           content: delta.textDelta
         })
       }
@@ -92,17 +133,40 @@ export const textDocumentHandler = createDocumentHandler({
   onUpdateDocument: async ({ document, description, dataStream }) => {
     let updatedContent = ""
     
+    // Try MCP integration first
+    const mcp = await getMCPClient();
+    if (mcp) {
+      try {
+        const mcpResult = await mcp.callTool('update_text_document', { 
+          documentId: document.id,
+          content: document.content,
+          description 
+        });
+        if (mcpResult.success && mcpResult.data) {
+          updatedContent = mcpResult.data.content;
+          dataStream.writeData({
+            type: "content-update",
+            content: updatedContent
+          });
+          return updatedContent;
+        }
+      } catch (error) {
+        console.warn('MCP text update failed, falling back to AI generation:', error);
+      }
+    }
+    
     const { fullStream } = await streamText({
       model: getAzureOpenAIModel("gpt-4o"),
       system: SYSTEM_PROMPTS.text,
       prompt: `Update the following text document based on this request: "${description}"\n\nCurrent content:\n${document.content}`,
+      experimental_transform: smoothStream({ chunking: 'word' })
     })
 
     for await (const delta of fullStream) {
       if (delta.type === "text-delta") {
         updatedContent += delta.textDelta
         dataStream.writeData({
-          type: "content-update",
+          type: "text-delta",
           content: delta.textDelta
         })
       }
@@ -119,17 +183,51 @@ export const codeDocumentHandler = createDocumentHandler({
     let content = ""
     const language = metadata?.language || "javascript"
     
+    // Try MCP integration first
+    const mcp = await getMCPClient();
+    if (mcp) {
+      try {
+        const mcpResult = await mcp.callTool('create_code_document', { 
+          title, 
+          language,
+          requirements: metadata?.requirements 
+        });
+        if (mcpResult.success && mcpResult.data) {
+          content = mcpResult.data.content;
+          dataStream.writeData({
+            type: "code-delta",
+            content: content
+          });
+          
+          // Extract metadata
+          const detectedLanguage = detectLanguage(content);
+          dataStream.writeData({
+            type: "metadata-update",
+            metadata: {
+              language: detectedLanguage,
+              lineCount: content.split('\n').length
+            }
+          });
+          
+          return content;
+        }
+      } catch (error) {
+        console.warn('MCP code creation failed, falling back to AI generation:', error);
+      }
+    }
+    
     const { fullStream } = await streamText({
       model: getAzureOpenAIModel("gpt-4o"),
       system: SYSTEM_PROMPTS.code,
       prompt: `Create ${language} code for: "${title}". Include proper documentation and examples.`,
+      experimental_transform: smoothStream({ chunking: 'word' })
     })
 
     for await (const delta of fullStream) {
       if (delta.type === "text-delta") {
         content += delta.textDelta
         dataStream.writeData({
-          type: "content-update",
+          type: "code-delta",
           content: delta.textDelta
         })
       }
@@ -151,17 +249,41 @@ export const codeDocumentHandler = createDocumentHandler({
   onUpdateDocument: async ({ document, description, dataStream }) => {
     let updatedContent = ""
     
+    // Try MCP integration first
+    const mcp = await getMCPClient();
+    if (mcp) {
+      try {
+        const mcpResult = await mcp.callTool('update_code_document', { 
+          documentId: document.id,
+          content: document.content,
+          language: document.metadata.language,
+          description 
+        });
+        if (mcpResult.success && mcpResult.data) {
+          updatedContent = mcpResult.data.content;
+          dataStream.writeData({
+            type: "code-delta",
+            content: updatedContent
+          });
+          return updatedContent;
+        }
+      } catch (error) {
+        console.warn('MCP code update failed, falling back to AI generation:', error);
+      }
+    }
+    
     const { fullStream } = await streamText({
       model: getAzureOpenAIModel("gpt-4o"),
       system: SYSTEM_PROMPTS.code,
       prompt: `Update this ${document.metadata.language || 'code'}: "${description}"\n\nCurrent code:\n${document.content}`,
+      experimental_transform: smoothStream({ chunking: 'word' })
     })
 
     for await (const delta of fullStream) {
       if (delta.type === "text-delta") {
         updatedContent += delta.textDelta
         dataStream.writeData({
-          type: "content-update",
+          type: "code-delta",
           content: delta.textDelta
         })
       }
@@ -344,16 +466,187 @@ export const documentDocumentHandler = createDocumentHandler({
   }
 })
 
+// Add new artifact handlers for image and sheet
+export const imageDocumentHandler = createDocumentHandler({
+  kind: "image" as const,
+  
+  onCreateDocument: async ({ title, dataStream }) => {
+    let content = ""
+    
+    // Try MCP integration first
+    const mcp = await getMCPClient();
+    if (mcp) {
+      try {
+        const mcpResult = await mcp.callTool('generate_image', { 
+          prompt: title,
+          size: '1024x1024',
+          quality: 'standard'
+        });
+        if (mcpResult.success && mcpResult.data) {
+          content = mcpResult.data.base64 || mcpResult.data.url;
+          dataStream.writeData({
+            type: "image-delta",
+            content: content
+          });
+          return content;
+        }
+      } catch (error) {
+        console.warn('MCP image generation failed, using placeholder:', error);
+      }
+    }
+    
+    // Fallback to placeholder or AI image generation
+    content = `data:image/svg+xml;base64,${Buffer.from(`
+      <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+        <rect width="400" height="300" fill="#f3f4f6"/>
+        <text x="200" y="150" text-anchor="middle" font-family="Arial" font-size="16" fill="#6b7280">
+          Generated Image: ${title}
+        </text>
+      </svg>
+    `).toString('base64')}`;
+    
+    dataStream.writeData({
+      type: "image-delta",
+      content: content
+    });
+
+    return content;
+  },
+
+  onUpdateDocument: async ({ document, description, dataStream }) => {
+    let updatedContent = ""
+    
+    // Try MCP integration first
+    const mcp = await getMCPClient();
+    if (mcp) {
+      try {
+        const mcpResult = await mcp.callTool('modify_image', { 
+          imageData: document.content,
+          modification: description
+        });
+        if (mcpResult.success && mcpResult.data) {
+          updatedContent = mcpResult.data.base64 || mcpResult.data.url;
+          dataStream.writeData({
+            type: "image-delta",
+            content: updatedContent
+          });
+          return updatedContent;
+        }
+      } catch (error) {
+        console.warn('MCP image modification failed:', error);
+      }
+    }
+    
+    // Fallback - return original content
+    return document.content;
+  }
+})
+
+export const sheetDocumentHandler = createDocumentHandler({
+  kind: "sheet" as const,
+  
+  onCreateDocument: async ({ title, dataStream, metadata }) => {
+    let content = ""
+    
+    // Try MCP integration first  
+    const mcp = await getMCPClient();
+    if (mcp) {
+      try {
+        const mcpResult = await mcp.callTool('create_spreadsheet', { 
+          title,
+          structure: metadata?.structure || 'basic',
+          sampleData: metadata?.sampleData !== false
+        });
+        if (mcpResult.success && mcpResult.data) {
+          content = mcpResult.data.csv || mcpResult.data.content;
+          dataStream.writeData({
+            type: "sheet-delta",
+            content: content
+          });
+          return content;
+        }
+      } catch (error) {
+        console.warn('MCP sheet creation failed, falling back to AI generation:', error);
+      }
+    }
+    
+    const { fullStream } = await streamText({
+      model: getAzureOpenAIModel("gpt-4o"),
+      system: SYSTEM_PROMPTS.chart,
+      prompt: `Create CSV data for a spreadsheet titled: "${title}". Include headers and sample data.`,
+      experimental_transform: smoothStream({ chunking: 'word' })
+    })
+
+    for await (const delta of fullStream) {
+      if (delta.type === "text-delta") {
+        content += delta.textDelta
+        dataStream.writeData({
+          type: "sheet-delta", 
+          content: delta.textDelta
+        })
+      }
+    }
+
+    return content;
+  },
+
+  onUpdateDocument: async ({ document, description, dataStream }) => {
+    let updatedContent = ""
+    
+    // Try MCP integration first
+    const mcp = await getMCPClient();
+    if (mcp) {
+      try {
+        const mcpResult = await mcp.callTool('update_spreadsheet', { 
+          csvData: document.content,
+          modification: description
+        });
+        if (mcpResult.success && mcpResult.data) {
+          updatedContent = mcpResult.data.csv || mcpResult.data.content;
+          dataStream.writeData({
+            type: "sheet-delta",
+            content: updatedContent
+          });
+          return updatedContent;
+        }
+      } catch (error) {
+        console.warn('MCP sheet update failed, falling back to AI generation:', error);
+      }
+    }
+    
+    const { fullStream } = await streamText({
+      model: getAzureOpenAIModel("gpt-4o"),
+      system: SYSTEM_PROMPTS.chart,
+      prompt: `Update this CSV data: "${description}"\n\nCurrent data:\n${document.content}`,
+      experimental_transform: smoothStream({ chunking: 'word' })
+    })
+
+    for await (const delta of fullStream) {
+      if (delta.type === "text-delta") {
+        updatedContent += delta.textDelta
+        dataStream.writeData({
+          type: "sheet-delta",
+          content: delta.textDelta
+        })
+      }
+    }
+
+    return updatedContent;
+  }
+})
+
 // Registry of all document handlers
 export const documentHandlersByArtifactKind: DocumentHandler[] = [
   textDocumentHandler,
   codeDocumentHandler,
   chartDocumentHandler,
   visualizationDocumentHandler,
-  documentDocumentHandler
+  documentDocumentHandler,
+  imageDocumentHandler,
+  sheetDocumentHandler
 ]
 
-export const artifactKinds = ["text", "code", "chart", "visualization", "document"] as const
+export const artifactKinds = ["text", "code", "chart", "visualization", "document", "image", "sheet"] as const
 
 // Helper functions
 function detectLanguage(code: string): string {
