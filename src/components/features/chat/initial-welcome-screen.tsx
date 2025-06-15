@@ -12,7 +12,6 @@ import { useWelcomeMessage } from "@/hooks/welcome/use-welcome-message"
 interface User {
   name: string
   email: string
-  // Removed avatar field - not needed for welcome screen
 }
 
 interface InitialWelcomeScreenProps {
