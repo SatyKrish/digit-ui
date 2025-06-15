@@ -1,4 +1,4 @@
-import { streamText, convertToCoreMessages, tool, type CoreMessage } from "ai"
+import { streamText, convertToCoreMessages, tool } from "ai"
 import { mcpClient } from "@/client/mcp-client"
 import { chatPersistence } from "@/services/chat/chat-persistence"
 import { env } from "@/config/env"
@@ -9,31 +9,6 @@ import {
 } from "@/lib/artifacts/server"
 import { generateUUID } from "@/lib/utils"
 import type { ArtifactKind } from "@/lib/artifacts/types"
-
-// Vercel Chat SDK aligned request schema
-const chatRequestSchema = z.object({
-  id: z.string().uuid(),
-  message: z.object({
-    id: z.string().uuid(),
-    createdAt: z.coerce.date(),
-    role: z.enum(['user']),
-    content: z.string().min(1).max(10000),
-    parts: z.array(z.object({
-      type: z.enum(['text']),
-      text: z.string()
-    })).optional(),
-    experimental_attachments: z.array(z.object({
-      url: z.string().url(),
-      name: z.string(),
-      contentType: z.string()
-    })).optional()
-  }),
-  userId: z.string(),
-  // Support for custom body fields
-  selectedVisibilityType: z.enum(['public', 'private']).optional().default('private')
-})
-
-type ChatRequest = z.infer<typeof chatRequestSchema>
 
 /**
  * Convert JSON Schema to Zod schema for Vercel AI SDK compatibility
@@ -132,163 +107,207 @@ function jsonSchemaToZod(schema: any): z.ZodType<any> {
 
 /**
  * Dynamically prepare MCP tools from connected servers
- * Following AI SDK v4+ tool patterns
+ * Only includes tools from servers that are actually connected and available
+ * 
+ * This fixes the issue where the chat route was hardcoding tool definitions
+ * instead of dynamically retrieving them from MCP servers
  */
 async function prepareMcpTools() {
   const servers = mcpClient.getAvailableServers()
   const connectedServers = mcpClient.getConnectedServers()
   const availableTools = mcpClient.getAllTools()
 
-  console.log(`MCP Status: ${connectedServers.length}/${servers.length} servers connected, ${availableTools.length} tools available`)
+    console.log(`MCP Status: ${connectedServers.length}/${servers.length} servers connected, ${availableTools.length} tools available`)
   
-  const tools: Record<string, any> = {}
+    const tools: Record<string, any> = {}
 
-  // Only create tools for connected servers and their available tools
-  for (const tool of availableTools) {
-    // Check if the server is connected
-    const server = servers.find(s => s.id === tool.serverId)
-    if (!server || server.status !== 'connected') {
-      continue
-    }
+    // Only create tools for connected servers and their available tools
+    for (const tool of availableTools) {
+      // Check if the server is connected
+      const server = servers.find(s => s.id === tool.serverId)
+      if (!server || server.status !== 'connected') {
+        continue
+      }
 
-    tools[tool.name] = {
-      description: tool.description,
-      parameters: jsonSchemaToZod(tool.inputSchema),
-      execute: async (args: any) => {
-        try {
-          const result = await mcpClient.callTool(tool.serverId, tool.name, args)
-          if (!result.success) {
-            console.error(`Tool execution failed for ${tool.name}:`, result.error)
-            return { error: result.error }
+      tools[tool.name] = {
+        description: tool.description,
+        parameters: jsonSchemaToZod(tool.inputSchema),
+        execute: async (args: any) => {
+          try {
+            const result = await mcpClient.callTool(tool.serverId, tool.name, args)
+            if (!result.success) {
+              console.error(`Tool execution failed for ${tool.name}:`, result.error)
+              return { error: result.error }
+            }
+            return result.data
+          } catch (error) {
+            console.error(`Error executing tool ${tool.name}:`, error)
+            return { error: error instanceof Error ? error.message : 'Unknown error' }
           }
-          return result.data
+        },
+      }
+    }
+
+    // Add artifact tools for document creation and updating
+    tools.createDocument = tool({
+      description: 'Create a document in the artifact workspace for writing, code, or content creation activities',
+      parameters: z.object({
+        title: z.string().describe('The title of the document'),
+        kind: z.enum(artifactKinds).describe('The type of artifact to create (text, code, chart, etc.)'),
+      }),
+      execute: async ({ title, kind }) => {
+        try {
+          const id = generateUUID()
+          
+          // Create initial content based on kind
+          let initialContent = ''
+          switch (kind) {
+            case 'text':
+              initialContent = `# ${title}\n\nStart writing your content here...`
+              break
+            case 'code':
+              initialContent = `// ${title}\n\n// Add your code here`
+              break
+            case 'chart':
+              initialContent = `{\n  "title": "${title}",\n  "type": "bar",\n  "data": []\n}`
+              break
+            default:
+              initialContent = title
+          }
+          
+          // Create document via document API
+          const documentData = {
+            title,
+            content: initialContent,
+            kind: kind as ArtifactKind,
+            metadata: {
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              description: `Created via chat: ${title}`
+            }
+          }
+          
+          // Call the document API internally
+          const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/document?id=${encodeURIComponent(id)}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(documentData)
+          })
+          
+          if (!response.ok) {
+            throw new Error(`Document API error: ${response.statusText}`)
+          }
+          
+          const createdDocument = await response.json()
+          
+          return {
+            id: createdDocument.id,
+            title: createdDocument.title,
+            kind: createdDocument.kind,
+            success: true,
+            message: `Document "${title}" created successfully`
+          }
         } catch (error) {
-          console.error(`Error executing tool ${tool.name}:`, error)
-          return { error: error instanceof Error ? error.message : 'Unknown error' }
+          console.error('Error creating document:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to create document'
+          }
         }
-      },
-    }
-  }
-
-  // Add artifact tools for document creation and updating
-  tools.createDocument = tool({
-    description: 'Create a new document, code file, chart, or other content in the artifact workspace. Use this when users ask you to create or generate content.',
-    parameters: z.object({
-      kind: z.enum(artifactKinds as readonly [ArtifactKind, ...ArtifactKind[]]).describe('The type of artifact to create'),
-      title: z.string().describe('A clear, descriptive title for the artifact'),
-      content: z.string().describe('The content of the artifact (code, markdown, data, etc.)'),
-      language: z.string().optional().describe('Programming language for code artifacts')
-    }),
-    execute: async ({ kind, title, content, language }) => {
-      const artifactId = generateUUID()
-      console.log(`Creating ${kind} artifact: ${title}`)
-      
-      return {
-        id: artifactId,
-        kind,
-        title,
-        content,
-        language,
-        success: true,
-        message: `Created ${kind} artifact: ${title}`
       }
-    }
-  })
+    })
 
-  tools.updateDocument = tool({
-    description: 'Update an existing document or artifact with new content or modifications.',
-    parameters: z.object({
-      artifactId: z.string().describe('The ID of the artifact to update'),
-      content: z.string().describe('The new content for the artifact'),
-      title: z.string().optional().describe('Updated title for the artifact')
-    }),
-    execute: async ({ artifactId, content, title }) => {
-      console.log(`Updating artifact: ${artifactId}`)
-      
-      return {
-        id: artifactId,
-        content,
-        title,
-        success: true,
-        message: `Updated artifact: ${title || artifactId}`
+    tools.updateDocument = tool({
+      description: 'Update an existing document in the artifact workspace',
+      parameters: z.object({
+        id: z.string().describe('The ID of the document to update'),
+        description: z.string().describe('Description of the changes or new content to add to the document'),
+      }),
+      execute: async ({ id, description }) => {
+        try {
+          // Get the existing document first
+          const getResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/document?id=${id}`)
+          
+          if (!getResponse.ok) {
+            return {
+              success: false,
+              error: `Document with ID "${id}" not found`
+            }
+          }
+          
+          const documentVersions = await getResponse.json()
+          if (!documentVersions || documentVersions.length === 0) {
+            return {
+              success: false,
+              error: `Document with ID "${id}" not found`
+            }
+          }
+          
+          const existingDoc = documentVersions[documentVersions.length - 1] // Get latest version
+          
+          // Update the document content based on the description
+          const updatedContent = `${existingDoc.content}\n\n<!-- Updated: ${new Date().toISOString()} -->\n${description}`
+          
+          // Update via document API
+          const updateResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/document`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              id,
+              content: updatedContent,
+              metadata: {
+                ...existingDoc.metadata,
+                updatedAt: new Date().toISOString(),
+                description: `Updated via chat: ${description}`
+              }
+            })
+          })
+          
+          if (!updateResponse.ok) {
+            throw new Error(`Document API error: ${updateResponse.statusText}`)
+          }
+          
+          const updatedDoc = await updateResponse.json()
+          
+          return {
+            id: updatedDoc.id,
+            title: updatedDoc.title,
+            success: true,
+            message: `Document "${updatedDoc.title}" updated successfully`
+          }
+        } catch (error) {
+          console.error('Error updating document:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update document'
+          }
+        }
       }
+    })
+
+    if (Object.keys(tools).length === 2 && connectedServers.length === 0) {
+      console.warn('No connected MCP servers found - only artifact tools will be available to the AI model')
     }
-  })
 
   return { tools, servers, connectedServers, availableTools }
 }
 
-/**
- * Load previous messages for chat context
- * Following AI SDK patterns for message loading
- */
-async function loadChatMessages(chatId: string): Promise<CoreMessage[]> {
-  try {
-    const chat = await chatPersistence.getChat(chatId)
-    if (!chat) {
-      return []
-    }
-
-    const messages = await chatPersistence.getMessages(chatId)
-    return messages.map(msg => ({
-      id: msg.id,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      content: msg.content,
-      createdAt: msg.createdAt
-    }))
-  } catch (error) {
-    console.error('Failed to load chat messages:', error)
-    return []
-  }
-}
-
-/**
- * Save messages using Chat SDK patterns
- * Supports sendExtraMessageFields for persistence
- */
-async function saveChatMessage(chatId: string, message: any) {
-  try {
-    await chatPersistence.saveMessage(chatId, {
-      id: message.id,
-      role: message.role,
-      content: message.content,
-      createdAt: message.createdAt || new Date()
-    })
-  } catch (error) {
-    console.error('Failed to save message:', error)
-  }
-}
-
 export async function POST(req: Request) {
   try {
-    // Parse and validate request using Chat SDK schema
-    const body = await req.json()
-    const parsed = chatRequestSchema.safeParse(body)
-    
-    if (!parsed.success) {
-      console.error('Invalid request schema:', parsed.error)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid request format',
-          details: parsed.error.flatten()
-        }), 
-        { 
-          status: 400, 
-          headers: { 'Content-Type': 'application/json' } 
-        }
-      )
-    }
+    const { messages, id, userId } = await req.json()
 
-    const { id: chatId, message, userId, selectedVisibilityType } = parsed.data
-
-    // Ensure MCP client is properly initialized
+    // Ensure MCP client is properly initialized before processing the request
     if (!mcpClient.isReady()) {
       await mcpClient.initialize()
     }
 
     const { tools, servers, connectedServers, availableTools } = await prepareMcpTools()
 
-    // Validate Azure OpenAI configuration
+    // Validate Azure OpenAI configuration before proceeding
     try {
       getAzureOpenAIModel()
     } catch (llmError) {
@@ -307,19 +326,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // Load previous messages for context
-    const previousMessages = await loadChatMessages(chatId)
-    
-    // Create the new user message as CoreMessage
-    const userMessage: CoreMessage = {
-      role: message.role,
-      content: message.content
-    }
-
-    // Save the user message immediately (Chat SDK pattern)
-    await saveChatMessage(chatId, message)
-
-    const systemPrompt = `You are DiGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI. You help data analysts and product owners discover insights from their data.
+  const systemPrompt = `You are DiGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI. You help data analysts and product owners discover insights from their data.
 
 You have access to MCP servers that provide real data access:
 
@@ -396,30 +403,18 @@ ${connectedServers.length > 0
 
     console.log('Chat API: Starting streamText with Azure OpenAI...')
     
+    let result;
     try {
-      const result = await streamText({
+      result = await streamText({
         model: getAzureOpenAIModel(),
         system: systemPrompt,
-        messages: [...previousMessages, userMessage],
+        messages: convertToCoreMessages(messages),
         tools,
         maxSteps: 5,
         onFinish: async ({ response, finishReason, usage, text }) => {
-          // Save the assistant's response (Chat SDK pattern)
-          const assistantMessage = {
-            id: generateUUID(),
-            role: 'assistant' as const,
-            content: text,
-            createdAt: new Date()
-          }
-          
-          await saveChatMessage(chatId, assistantMessage)
-          
-          console.log('Message completed:', { 
-            finishReason, 
-            usage: usage?.totalTokens,
-            chatId,
-            visibility: selectedVisibilityType 
-          })
+          // AI SDK now handles message persistence automatically via the useChat hook
+          // No need for manual persistence here as it's handled client-side
+          console.log('Message completed:', { finishReason, usage: usage?.totalTokens })
         }
       })
       
@@ -428,7 +423,7 @@ ${connectedServers.length > 0
     } catch (streamError) {
       console.error('StreamText error:', streamError)
       
-      // Enhanced error handling with user-friendly messages
+      // Analyze the error type for better user feedback
       const errorMessage = streamError instanceof Error ? streamError.message : 'Unknown streaming error'
       let statusCode = 500
       let userFriendlyMessage = 'An error occurred while processing your request'
@@ -453,7 +448,7 @@ ${connectedServers.length > 0
         userFriendlyMessage = 'Request timed out. Please try again with a shorter message.'
         statusCode = 408
       }
-
+      
       return new Response(
         JSON.stringify({ 
           error: userFriendlyMessage,

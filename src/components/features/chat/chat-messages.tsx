@@ -79,14 +79,47 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false, onReo
                           )
                         case 'tool-invocation':
                           return (
-                            <div key={partIndex} className="bg-muted/30 border border-border/30 rounded-lg p-3 my-2">
-                              <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                Tool: {part.toolInvocation?.toolName || 'Unknown'}
+                            <div key={partIndex} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 my-2">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                  Tool: {part.toolInvocation?.toolName || 'Unknown'}
+                                  {part.toolInvocation?.state && (
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      part.toolInvocation.state === 'call' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' :
+                                      part.toolInvocation.state === 'result' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200' :
+                                      'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200'
+                                    }`}>
+                                      {part.toolInvocation.state}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <pre className="text-xs bg-background/50 p-2 rounded overflow-x-auto">
-                                {JSON.stringify(part.toolInvocation, null, 2)}
-                              </pre>
+                              
+                              {/* Tool Arguments */}
+                              {part.toolInvocation?.args && (
+                                <details className="mb-2">
+                                  <summary className="text-xs cursor-pointer text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200">
+                                    View Arguments
+                                  </summary>
+                                  <pre className="text-xs bg-white dark:bg-gray-900 p-2 rounded mt-1 overflow-x-auto border border-blue-200 dark:border-blue-800">
+                                    {JSON.stringify(part.toolInvocation.args, null, 2)}
+                                  </pre>
+                                </details>
+                              )}
+                              
+                              {/* Tool Result */}
+                              {part.toolInvocation?.result && (
+                                <div className="bg-white dark:bg-gray-900 p-2 rounded border border-blue-200 dark:border-blue-800">
+                                  <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Result:</div>
+                                  <pre className="text-xs whitespace-pre-wrap text-gray-800 dark:text-gray-200">
+                                    {typeof part.toolInvocation.result === 'string' 
+                                      ? part.toolInvocation.result 
+                                      : JSON.stringify(part.toolInvocation.result, null, 2)
+                                    }
+                                  </pre>
+                                </div>
+                              )}
                             </div>
                           )
                         case 'reasoning':
@@ -126,15 +159,38 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false, onReo
                                 <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                                 File Attachment
                               </div>
+                              
                               {part.mimeType?.startsWith('image/') && part.data ? (
-                                <img 
-                                  src={`data:${part.mimeType};base64,${part.data}`}
-                                  alt="AI generated file"
-                                  className="max-w-full h-auto rounded border"
-                                />
+                                <div className="space-y-2">
+                                  <img 
+                                    src={`data:${part.mimeType};base64,${part.data}`}
+                                    alt="AI generated file"
+                                    className="max-w-full h-auto rounded border border-purple-200 dark:border-purple-800 shadow-sm"
+                                    loading="lazy"
+                                  />
+                                  <div className="text-xs text-purple-600 dark:text-purple-400">
+                                    {part.mimeType} • {part.data ? `${Math.round(part.data.length / 1024)}KB` : 'Unknown size'}
+                                  </div>
+                                </div>
+                              ) : part.mimeType?.startsWith('text/') && part.data ? (
+                                <div className="space-y-2">
+                                  <pre className="text-xs bg-white dark:bg-gray-900 p-2 rounded border border-purple-200 dark:border-purple-800 overflow-x-auto max-h-40">
+                                    {atob(part.data)}
+                                  </pre>
+                                  <div className="text-xs text-purple-600 dark:text-purple-400">
+                                    {part.mimeType} • {part.data ? `${Math.round(part.data.length / 1024)}KB` : 'Unknown size'}
+                                  </div>
+                                </div>
                               ) : (
-                                <div className="text-sm text-muted-foreground">
-                                  File: {part.mimeType || 'Unknown type'}
+                                <div className="space-y-2">
+                                  <div className="text-sm text-purple-700 dark:text-purple-300 bg-white dark:bg-gray-900 p-2 rounded border border-purple-200 dark:border-purple-800">
+                                    File type: {part.mimeType || 'Unknown'}
+                                    {part.data && (
+                                      <span className="block text-xs text-purple-600 dark:text-purple-400 mt-1">
+                                        Size: {Math.round(part.data.length / 1024)}KB
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>

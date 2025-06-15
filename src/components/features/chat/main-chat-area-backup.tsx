@@ -7,6 +7,8 @@ import { ChatMessages } from "./chat-messages"
 import { ChatInput } from "./chat-input"
 import { InitialWelcomeScreen } from "./initial-welcome-screen"
 import { ArtifactWorkspace, EnhancedArtifactProvider, useEnhancedArtifacts } from "../artifacts"
+import { initialArtifactData } from "../artifacts/artifact-workspace-vercel"
+import type { UIArtifact } from "@/lib/artifacts/types"
 import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { Button } from "@/components/ui/button"
 import { X, Maximize2, Minimize2 } from "lucide-react"
@@ -40,7 +42,7 @@ function MainChatAreaCore({
   onLogout, 
   onNewChat
 }: MainChatAreaProps) {
-  // Simplified state - only UI state beyond AI SDK
+  // Simplified state - only what's needed beyond AI SDK
   const [isChatMinimized, setIsChatMinimized] = useState(false)
   const [isArtifactFullScreen, setIsArtifactFullScreen] = useState(false)
   
@@ -54,8 +56,53 @@ function MainChatAreaCore({
     processMessageForArtifacts,
     clearArtifacts
   } = useEnhancedArtifacts()
+  
+  // Update current UI artifact when vercel artifacts change
+  useEffect(() => {
+    if (vercelArtifacts.length > 0 && activeArtifact) {
+      setCurrentUIArtifact(activeArtifact)
+    } else {
+      setCurrentUIArtifact(prev => ({ ...prev, isVisible: false }))
+    }
+  }, [vercelArtifacts, activeArtifact])
+  
+  // Load initial messages when currentChatId changes
+  useEffect(() => {
+    async function loadMessages() {
+      if (!currentChatId) {
+        setInitialMessages([])
+        clearArtifacts()
+        return
+      }
 
-  // Initialize user in chat service
+      setIsLoadingMessages(true)
+      try {
+        const response = await fetch(`/api/chat/messages?chatId=${encodeURIComponent(currentChatId)}`)
+        if (!response.ok) {
+          throw new Error('Failed to load messages')
+        }
+        const data = await response.json()
+        const messages = data.messages || []
+        setInitialMessages(messages)
+        
+        // Process existing messages for artifacts
+        clearArtifacts()
+        messages.forEach((message: Message) => {
+          processMessageForArtifacts(message)
+        })
+      } catch (error) {
+        console.error('Failed to load initial messages:', error)
+        toast.error('Failed to load chat history')
+        setInitialMessages([])
+      } finally {
+        setIsLoadingMessages(false)
+      }
+    }
+
+    loadMessages()
+  }, [currentChatId, clearArtifacts, processMessageForArtifacts])
+  
+  // Initialize user in chat service via API
   useEffect(() => {
     const initializeUser = async () => {
       if (user?.email) {
@@ -78,44 +125,13 @@ function MainChatAreaCore({
     initializeUser()
   }, [user?.email, user?.name])
 
-  // Load initial messages for existing chats
-  const loadInitialMessages = useCallback(async () => {
-    if (!currentChatId) {
-      clearArtifacts()
-      return []
-    }
-
-    try {
-      const response = await fetch(`/api/chat/messages?chatId=${encodeURIComponent(currentChatId)}`)
-      if (!response.ok) {
-        throw new Error('Failed to load messages')
-      }
-      const data = await response.json()
-      const messages = data.messages || []
-      
-      // Process existing messages for artifacts
-      clearArtifacts()
-      messages.forEach((message: Message) => {
-        if (message.role === 'assistant') {
-          processMessageForArtifacts(message)
-        }
-      })
-      
-      return messages
-    } catch (error) {
-      console.error('Failed to load initial messages:', error)
-      toast.error('Failed to load chat history')
-      return []
-    }
-  }, [currentChatId, clearArtifacts, processMessageForArtifacts])
-
-  // Extract artifacts and persist messages when finished
+  // Extract artifacts when message is finished
   const handleFinish = useCallback(async (message: Message) => {
     if (message.role === 'assistant') {
-      // Process with enhanced artifacts context
+      // Process with enhanced artifacts context (Vercel system only)
       processMessageForArtifacts(message)
 
-      // Persist the message via API (using sendExtraMessageFields pattern)
+      // Persist the message if we have a chat ID - now via API
       if (currentChatId) {
         try {
           await fetch('/api/chat/messages', {
@@ -128,28 +144,23 @@ function MainChatAreaCore({
           })
         } catch (error) {
           console.error('Failed to persist message:', error)
+          // Don't show error to user as this is background operation
         }
       }
     }
   }, [currentChatId, processMessageForArtifacts])
 
-  // Use Vercel AI SDK's useChat hook - aligned with Chat SDK patterns
+  // Use Vercel AI SDK's useChat hook with proper initial messages
   const { 
     messages, 
     isLoading, 
     error,
     setMessages,
-    append,
-    input,
-    setInput,
-    handleSubmit,
-    stop,
-    reload
+    append
   } = useChat({
     id: currentChatId || undefined,
     api: '/api/chat',
-    initialMessages: [], // Loaded async via setMessages
-    sendExtraMessageFields: true, // AI SDK v4+ pattern for persistence
+    initialMessages, // Use loaded initial messages
     body: {
       userId: user?.email,
       id: currentChatId || undefined
@@ -161,19 +172,10 @@ function MainChatAreaCore({
     }
   })
 
-  // Load messages when chat ID changes
-  useEffect(() => {
-    loadInitialMessages().then(messages => {
-      if (messages.length > 0) {
-        setMessages(messages)
-      }
-    })
-  }, [currentChatId, loadInitialMessages, setMessages])
-
-  // Transform messages for display - supporting both legacy content and AI SDK v4+ parts
-  const displayMessages = useMemo(() => 
+  // Transform messages for display
+  const mappedMessages = useMemo(() => 
     messages.map(msg => {
-      // Handle AI SDK v4+ message parts
+      // Extract content from parts for AI SDK v4+ compatibility
       const content = msg.parts
         ?.filter(part => part.type === 'text')
         .map(part => part.text)
@@ -187,9 +189,7 @@ function MainChatAreaCore({
         model: 'gpt-4',
         isError: false,
         // Preserve parts for advanced rendering
-        parts: msg.parts,
-        // Preserve experimental attachments
-        experimental_attachments: msg.experimental_attachments
+        parts: msg.parts
       }
     }), [messages]
   )
@@ -197,7 +197,7 @@ function MainChatAreaCore({
   // Check if we're on the initial welcome screen
   const isInitialState = !currentChatId && messages.length === 0
 
-  // Send message handler - simplified to use AI SDK patterns
+  // Send message handler
   const handleSendMessage = useCallback(async (content: string, selectedHints: string[] = []) => {
     if (isLoading) {
       toast.warning('Please wait for the current message to complete')
@@ -219,11 +219,34 @@ function MainChatAreaCore({
         onNewChat()
       }
 
-      // Use AI SDK's append method
-      await append({
-        role: 'user',
+      const userMessage = {
+        role: 'user' as const,
         content: fullContent
-      })
+      }
+
+      // Persist user message immediately if we have a chat ID - now via API
+      if (currentChatId) {
+        try {
+          await fetch('/api/chat/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chatId: currentChatId,
+              message: {
+                id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                role: 'user',
+                content: fullContent,
+                createdAt: new Date()
+              }
+            })
+          })
+        } catch (error) {
+          console.error('Failed to persist user message:', error)
+          // Don't show error to user as this is background operation
+        }
+      }
+
+      await append(userMessage)
     } catch (error) {
       console.error('Failed to send message:', error)
       toast.error('Failed to send message. Please try again.')
@@ -244,6 +267,7 @@ function MainChatAreaCore({
 
   // Reopen artifacts from a previous message
   const handleReopenArtifacts = useCallback((messageContent: string) => {
+    // Create a mock message to process with the Vercel system
     const mockMessage: Message = {
       id: `reopen-${Date.now()}`,
       role: 'assistant',
@@ -260,11 +284,35 @@ function MainChatAreaCore({
     }
   }, [processMessageForArtifacts, vercelArtifacts.length])
 
-  // Handle closing artifacts
-  const handleCloseArtifacts = useCallback(() => {
-    setIsArtifactFullScreen(false)
-    clearArtifacts()
-  }, [clearArtifacts])
+  // Artifact workspace callbacks
+  const handleArtifactSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!artifactInput.trim() || isLoading) return
+
+    try {
+      await handleSendMessage(artifactInput)
+      setArtifactInput("")
+    } catch (error) {
+      console.error("Failed to send message:", error)
+    }
+  }, [artifactInput, handleSendMessage, isLoading])
+
+  const handleArtifactStop = useCallback(() => {
+    console.log("Stop streaming requested")
+  }, [])
+
+  const handleArtifactReload = useCallback(() => {
+    console.log("Reload requested")
+  }, [])
+
+  const handleArtifactAppend = useCallback((message: any) => {
+    setWorkspaceMessages(prev => [...prev, message])
+  }, [])
+
+  // Sync workspace messages with main chat messages
+  useEffect(() => {
+    setWorkspaceMessages(mappedMessages)
+  }, [mappedMessages])
 
   // Determine if we should show the artifact panel
   const showArtifactPanel = vercelArtifacts.length > 0
@@ -275,30 +323,52 @@ function MainChatAreaCore({
     [showArtifactPanel, dimensions.width]
   )
 
-  // Get adaptive layout classes
+  // Handle closing artifacts (also exits full-screen)
+  const handleCloseArtifacts = useCallback(() => {
+    setIsArtifactFullScreen(false)
+    clearArtifacts()
+  }, [clearArtifacts])
+
+  // Get adaptive layout classes based on current breakpoint and state
   const adaptiveLayoutClasses = useMemo(() => 
     getAdaptiveLayoutClasses(showArtifactPanel, breakpoints, dimensions.width), 
     [showArtifactPanel, breakpoints, dimensions.width]
   )
 
-  // Layout classes following Vercel Chat SDK patterns
+  // Vercel-inspired layout: container-based constraints that prevent horizontal overflow
   const chatContainerClass = showArtifactPanel 
     ? (isArtifactFullScreen
         ? 'hidden'
         : (isChatMinimized || shouldForceChatMinimize)
         ? 'w-80 min-w-80 max-w-80 flex-shrink-0' 
-        : 'chat-area')
+        : 'chat-area') // Use simple class, width controlled by CSS custom properties
     : 'w-full'
 
   const artifactPanelClass = (isChatMinimized || shouldForceChatMinimize)
     ? 'flex-1 min-w-0 artifact-panel' 
     : isArtifactFullScreen
     ? 'fixed inset-0 z-50 w-screen h-screen artifact-panel bg-background'
-    : 'artifact-panel'
+    : 'artifact-panel' // Use simple class, width controlled by CSS custom properties
 
+  // Container styles for CSS custom properties
   const containerStyles = showArtifactPanel && adaptiveLayoutClasses.containerStyle 
     ? adaptiveLayoutClasses.containerStyle 
     : undefined
+
+  // Debug info (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.debug('Vercel-inspired Layout Debug:', {
+      showArtifactPanel,
+      dimensions,
+      breakpoints,
+      shouldForceChatMinimize,
+      chatContainerClass,
+      artifactPanelClass,
+      containerStyles,
+      totalMinWidth: 850,
+      hasHorizontalSpace: dimensions.width >= 850
+    })
+  }
 
   return (
     <SidebarInset className="flex flex-col relative chat-layout-container w-full h-full">
@@ -329,7 +399,7 @@ function MainChatAreaCore({
             <>
               <div className="flex-1 min-h-0 overflow-hidden">
                 <ChatMessages 
-                  messages={displayMessages} 
+                  messages={mappedMessages} 
                   isLoading={isLoading} 
                   user={user} 
                   onReopenArtifacts={handleReopenArtifacts}
@@ -345,14 +415,14 @@ function MainChatAreaCore({
           )}
         </div>
 
-        {/* Artifact Panel - Vercel Chat SDK style */}
-        {showArtifactPanel && activeArtifact && (
+        {/* Enhanced Artifact Panel */}
+        {showArtifactPanel && (
           <div className={`${isArtifactFullScreen ? '' : 'border-l border-border/50'} flex flex-col min-h-0 ${artifactPanelClass}`}>
-            {/* Artifact Header */}
+            {/* Artifact Header with controls */}
             <div className="flex items-center justify-between p-4 border-b border-border/50">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium text-sm">
-                  {activeArtifact.title || 'Artifact'}
+                  {currentUIArtifact.title}
                 </h3>
                 {vercelArtifacts.length > 1 && (
                   <span className="text-xs text-muted-foreground">
@@ -395,24 +465,24 @@ function MainChatAreaCore({
               </div>
             </div>
 
-            {/* Artifact Workspace - simplified to use AI SDK patterns */}
+            {/* Vercel Workspace */}
             <div className="flex-1 min-h-0">
               <ArtifactWorkspace
-                artifact={activeArtifact}
-                setArtifact={() => {}} // Managed by context
+                artifact={currentUIArtifact}
+                setArtifact={setCurrentUIArtifact}
                 chatId={currentChatId || 'main-chat'}
-                input={input}
-                setInput={setInput}
-                handleSubmit={handleSubmit}
+                input={artifactInput}
+                setInput={setArtifactInput}
+                handleSubmit={handleArtifactSubmit}
                 status={isLoading ? 'loading' : 'idle'}
-                stop={stop}
+                stop={handleArtifactStop}
                 attachments={[]}
                 setAttachments={() => {}}
-                messages={displayMessages}
-                setMessages={setMessages}
-                reload={reload}
+                messages={workspaceMessages}
+                setMessages={setWorkspaceMessages}
+                reload={handleArtifactReload}
                 votes={undefined}
-                append={append}
+                append={handleArtifactAppend}
                 isReadonly={false}
                 selectedVisibilityType="private"
               />

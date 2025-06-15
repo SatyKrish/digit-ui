@@ -17,9 +17,9 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSidebar } from "@/components/ui/sidebar"
 import { MCPToolsPanel } from "@/components/shared/mcp-tools-panel"
-import { useChatSessions, useGroupedChatSessions } from "@/hooks/chat"
+import { useChats, useGroupedChatSessions } from "@/hooks/chat"
 import { formatRelativeTime } from "@/utils/format"
-import type { ChatSidebarProps, ChatSession, TimePeriod } from "@/types/chat"
+import type { ChatSidebarProps, Chat, TimePeriod } from "@/types/chat"
 
 export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: ChatSidebarProps & { user?: { id: string; email: string; name: string } }) {
   const { setOpen, open } = useSidebar()
@@ -27,22 +27,26 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
   const [collapsedGroups, setCollapsedGroups] = useState<Set<TimePeriod>>(new Set())
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   
-  // Use real session data
-  const { sessions, createSession, isLoading } = useChatSessions(user)
-  const { groupedSessions, groupOrder, getGroupLabel } = useGroupedChatSessions(sessions)
+  // Use updated chat management (aligned with Chat SDK patterns)
+  const { chats, createChat, isLoading } = useChats(user)
+  const { groupedSessions: groupedChats, groupOrder, getGroupLabel } = useGroupedChatSessions(chats)
 
   const handleNewChat = async () => {
     setIsClosing(true)
     try {
-      // Create new session without reloading all sessions
-      const newSession = await createSession()
-      // Smooth close animation before action
-      setTimeout(() => {
-        // Switch to the new session instead of just calling onNewChat
-        onChatSelect(newSession.id)
-        setOpen(false)
+      // Create new chat without reloading all chats
+      const newChat = await createChat()
+      if (newChat) {
+        // Smooth close animation before action
+        setTimeout(() => {
+          // Switch to the new chat instead of just calling onNewChat
+          onChatSelect(newChat.id)
+          setOpen(false)
+          setIsClosing(false)
+        }, 150)
+      } else {
         setIsClosing(false)
-      }, 150)
+      }
     } catch (error) {
       console.error('Failed to create new chat:', error)
       setIsClosing(false)
@@ -125,15 +129,15 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
             <div className="p-4 text-center text-sm text-sidebar-foreground/60">
               Loading chats...
             </div>
-          ) : sessions.length === 0 ? (
+          ) : chats.length === 0 ? (
             <div className="p-4 text-center text-sm text-sidebar-foreground/60">
               No chat history yet
             </div>
           ) : (
             <div className="space-y-2 p-2">
               {groupOrder.map((period) => {
-                const groupSessions = groupedSessions[period]
-                if (!groupSessions || groupSessions.length === 0) return null
+                const groupChats = groupedChats[period]
+                if (!groupChats || groupChats.length === 0) return null
                 
                 const isCollapsed = collapsedGroups.has(period)
                 
@@ -148,7 +152,7 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
                       </span>
                       <div className="flex items-center gap-1">
                         <span className="text-xs text-sidebar-foreground/50">
-                          {groupSessions.length}
+                          {groupChats.length}
                         </span>
                         {isCollapsed ? (
                           <ChevronRight className="h-3 w-3 text-sidebar-foreground/50" />
@@ -161,9 +165,9 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
                     {!isCollapsed && (
                       <SidebarGroupContent>
                         <SidebarMenu className="space-y-1">
-                          {groupSessions.map((session: ChatSession, index: number) => (
+                          {groupChats.map((chat: Chat, index: number) => (
                             <SidebarMenuItem
-                              key={session.id}
+                              key={chat.id}
                               className={`
                                 transform transition-all duration-200 ease-out
                                 ${open ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0"}
@@ -173,8 +177,8 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
                               }}
                             >
                               <SidebarMenuButton
-                                onClick={() => handleChatSelect(session.id)}
-                                isActive={currentChatId === session.id}
+                                onClick={() => handleChatSelect(chat.id)}
+                                isActive={currentChatId === chat.id}
                                 className="
                                   w-full justify-start gap-3 p-3 h-auto rounded-md
                                   transition-all duration-200 ease-out
@@ -189,11 +193,11 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
                                 <MessageSquare className="h-4 w-4 shrink-0 transition-colors duration-200" />
                                 <div className="flex flex-col items-start gap-1 overflow-hidden">
                                   <span className="text-sm font-medium truncate w-full text-left transition-colors duration-200">
-                                    {session.title}
+                                    {chat.title}
                                   </span>
                                   <span className="text-xs text-sidebar-foreground/60 transition-colors duration-200">
-                                    {formatRelativeTime(session.timestamp)}
-                                    {session.messageCount !== undefined && ` • ${session.messageCount} messages`}
+                                    {formatRelativeTime(chat.updatedAt || new Date())}
+                                    {chat.messageCount !== undefined && ` • ${chat.messageCount} messages`}
                                   </span>
                                 </div>
                               </SidebarMenuButton>

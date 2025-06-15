@@ -104,12 +104,26 @@ export class ChatPersistence {
   }
 
   /**
+   * Get messages for a chat (alias for backward compatibility)
+   */
+  async getMessages(chatId: string): Promise<Message[]> {
+    return this.loadInitialMessages(chatId);
+  }
+
+  /**
    * Save messages from AI SDK conversation
    * Call this periodically or on conversation end
    */
   async saveMessages(chatId: string, messages: Message[]): Promise<void> {
     const dbMessages = messages.map(convertMessageToDb);
     await this.chatRepository.saveMessages(chatId, dbMessages);
+  }
+
+  /**
+   * Save a single message (alias for backward compatibility)
+   */
+  async saveMessage(chatId: string, message: Message): Promise<void> {
+    return this.persistMessage(chatId, message);
   }
 
   /**
