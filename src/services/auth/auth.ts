@@ -2,13 +2,6 @@ export interface User {
   id: string
   name: string
   email: string
-  avatar: string
-  roles?: string[]
-  tenantId?: string
-  // The following fields are no longer populated to avoid Graph API dependency
-  // jobTitle?: string  // Removed - requires Graph API
-  // department?: string  // Removed - requires Graph API  
-  // officeLocation?: string  // Removed - requires Graph API
 }
 
 export interface AuthContextType {

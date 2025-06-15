@@ -9,8 +9,6 @@ export const azureConfig = {
   postLogoutRedirectUri: process.env.AZURE_POST_LOGOUT_REDIRECT_URI || 'http://localhost:3000',
   scopes: {
     default: ["openid", "profile", "email"],
-    // Removed User.Read to avoid admin consent requirements
-    // extended: ["User.Read", "email", "profile", "openid"] // Deprecated - causes admin consent
   }
 } as const
 
