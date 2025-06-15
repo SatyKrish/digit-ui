@@ -16,7 +16,7 @@ import { MCPStatus } from "@/components/shared/mcp-status"
 interface User {
   name: string
   email: string
-  avatar: string
+  // Removed avatar field - using initials instead
 }
 
 interface ChatHeaderProps {
@@ -145,7 +145,6 @@ export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, a
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full shadow-soft hover:shadow-medium transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Avatar className="h-10 w-10 ring-2 ring-primary/20">
-                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
                 <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
                   {userInitials}
                 </AvatarFallback>
