@@ -1,3 +1,6 @@
+// Temporary legacy artifact types for extractor service
+// TODO: Migrate to Vercel artifact types
+
 export interface Artifact {
   type: "markdown" | "code" | "mermaid" | "chart" | "table" | "visualization" | "heatmap" | "treemap" | "geospatial"
   content: string
@@ -9,20 +12,6 @@ export interface Artifact {
   mapType?: "basic" | "satellite" | "dark"
 }
 
-export interface ArtifactPanelProps {
-  artifacts: Artifact[]
-  onClose?: () => void
-  isChatMinimized?: boolean
-  onToggleChatMinimized?: () => void
-  isFullScreen?: boolean
-  onToggleFullScreen?: () => void
-}
-
-export interface ArtifactRendererProps {
-  artifact: Artifact
-  isFullScreen?: boolean
-}
-
 export interface ChartData {
   data: any[]
   chartType: "bar" | "line" | "pie" | "area"
@@ -30,28 +19,31 @@ export interface ChartData {
 }
 
 export interface TableData {
-  data: any[]
+  headers: string[]
+  rows: (string | number)[][]
   title?: string
 }
 
 export interface VisualizationData {
-  data: any[]
-  visualizationType: "kpi" | "progress" | "custom"
+  type: "kpi" | "progress" | "custom"
+  data: any
   title?: string
 }
 
 export interface HeatmapData {
-  data: any[]
+  data: number[][]
+  labels?: { x: string[], y: string[] }
   title?: string
 }
 
 export interface TreemapData {
-  data: any[]
+  data: Array<{ name: string; value: number; children?: TreemapData["data"] }>
   title?: string
 }
 
 export interface GeospatialData {
+  type: "points" | "regions" | "routes"
   data: any[]
-  mapType: "basic" | "satellite" | "dark"
+  mapType?: "basic" | "satellite" | "dark"
   title?: string
 }

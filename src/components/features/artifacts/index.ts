@@ -33,16 +33,13 @@ export {
 } from "@/lib/artifacts/server"
 
 // Client Components
-export { Artifact } from "./artifact"
-export { ArtifactProvider, useArtifact } from "./artifact-provider"
 export { ArtifactWorkspace } from "./artifact-workspace-vercel"
 
 // Integration Components
 export { VercelIntegrationWrapper } from "./vercel-integration-wrapper"
 export { EnhancedArtifactProvider, useEnhancedArtifacts } from "./enhanced-artifact-provider"
 
-// Legacy Components (for backward compatibility)
-export { ArtifactPanel } from "./artifact-panel"
+// Demo Components
 export { DemoArtifactWorkspace } from "./demo-workspace"
 
 // Server Actions (RSC) - commented out temporarily for build fix

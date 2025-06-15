@@ -483,11 +483,6 @@
     overflow: auto;
   }
 
-  /* Ensure fullscreen content uses full space */
-  .artifact-panel.fixed .artifact-renderer {
-    min-height: calc(100vh - 120px);
-  }
-
   /* Remove any container constraints in fullscreen mode */
   .artifact-panel.fixed * {
     max-width: none !important;

@@ -1,4 +1,4 @@
-import type { Artifact } from "@/types/artifacts"
+import type { Artifact } from "./types"
 import { ARTIFACT_REGEX, ARTIFACT_TYPES, CHART_TYPES, MAP_TYPES } from "@/constants/artifacts"
 
 /**

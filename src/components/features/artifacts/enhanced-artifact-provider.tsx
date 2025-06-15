@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { extractArtifacts } from '@/services/artifacts/artifact-extractor'
 import type { UIArtifact } from '@/lib/artifacts/types'
-import type { Artifact } from '@/types/artifacts'
+import type { Artifact } from '@/services/artifacts/types'
 import type { Message } from 'ai'
 
 interface EnhancedArtifactContextValue {

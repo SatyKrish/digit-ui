@@ -6,7 +6,7 @@ import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
 import { Button } from "@/components/ui/button"
 import { X, Maximize2, Minimize2 } from "lucide-react"
 import type { UIArtifact } from "@/lib/artifacts/types"
-import type { Artifact } from "@/types/artifacts"
+import type { Artifact } from "@/services/artifacts/types"
 
 interface VercelIntegrationWrapperProps {
   // Legacy artifact data from current system
