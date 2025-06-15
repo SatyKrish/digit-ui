@@ -35,8 +35,7 @@ export {
 // Client Components
 export { ArtifactWorkspace } from "./artifact-workspace-vercel"
 
-// Integration Components
-export { VercelIntegrationWrapper } from "./vercel-integration-wrapper"
+// Enhanced Artifact System
 export { EnhancedArtifactProvider, useEnhancedArtifacts } from "./enhanced-artifact-provider"
 
 // Demo Components
