@@ -16,7 +16,7 @@ import type { ChatMessagesProps } from "@/types/chat"
 // Memoized individual message component for better performance
 const ChatMessageItem = memo(({ message, user, index, isStreaming = false, onReopenArtifacts }: { 
   message: ChatMessage; 
-  user?: { name: string; avatar?: string }; 
+  user?: { name: string }; 
   index: number;
   isStreaming?: boolean;
   onReopenArtifacts?: (messageContent: string) => void;

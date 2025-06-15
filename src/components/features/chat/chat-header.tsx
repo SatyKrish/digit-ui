@@ -16,7 +16,6 @@ import { MCPStatus } from "@/components/shared/mcp-status"
 interface User {
   name: string
   email: string
-  // Removed avatar field - using initials instead
 }
 
 interface ChatHeaderProps {

@@ -63,7 +63,6 @@ export interface ChatMessagesProps {
   isLoading?: boolean
   user?: {
     name: string
-    avatar?: string
   }
   onReopenArtifacts?: (messageContent: string) => void
 }
@@ -76,9 +75,9 @@ export interface ChatInputProps {
 
 export interface MainChatAreaProps {
   user: {
+    id: string
     name: string
     email: string
-    avatar: string
   }
   currentChatId: string | null
   onLogout: () => void
