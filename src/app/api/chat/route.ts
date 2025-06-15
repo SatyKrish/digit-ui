@@ -1,6 +1,6 @@
 import { streamText, convertToCoreMessages, tool, type CoreMessage } from "ai"
 import { mcpClient } from "@/client/mcp-client"
-import { chatPersistence } from "@/services/chat/chat-persistence"
+import { aiSdkChatPersistence } from "@/database/repositories"
 import { env } from "@/config/env"
 import { getAzureOpenAIModel, azureOpenAIConfig } from "@/config/azure-openai"
 import { z } from "zod"
@@ -10,25 +10,18 @@ import {
 import { generateUUID } from "@/lib/utils"
 import type { ArtifactKind } from "@/lib/artifacts/types"
 
-// Vercel Chat SDK aligned request schema
+// Simplified AI SDK-aligned request schema
 const chatRequestSchema = z.object({
-  id: z.string().uuid(),
-  message: z.object({
-    id: z.string().uuid(),
-    createdAt: z.coerce.date(),
-    role: z.enum(['user']),
-    content: z.string().min(1).max(10000),
-    parts: z.array(z.object({
-      type: z.enum(['text']),
-      text: z.string()
-    })).optional(),
-    experimental_attachments: z.array(z.object({
-      url: z.string().url(),
-      name: z.string(),
-      contentType: z.string()
-    })).optional()
-  }),
-  userId: z.string(),
+  id: z.string().optional(), // Chat ID, optional for new chats
+  messages: z.array(z.object({
+    id: z.string(),
+    role: z.enum(['user', 'assistant', 'system', 'tool']),
+    content: z.string(),
+    name: z.string().optional(),
+    toolInvocations: z.array(z.any()).optional(),
+    createdAt: z.union([z.date(), z.string()]).optional()
+  })),
+  userId: z.string().optional(), // From body for user identification
   // Support for custom body fields
   selectedVisibilityType: z.enum(['public', 'private']).optional().default('private')
 })
@@ -224,12 +217,12 @@ async function prepareMcpTools() {
  */
 async function loadChatMessages(chatId: string): Promise<CoreMessage[]> {
   try {
-    const chat = await chatPersistence.getChat(chatId)
+    const chat = await aiSdkChatPersistence.getChat(chatId)
     if (!chat) {
       return []
     }
 
-    const messages = await chatPersistence.getMessages(chatId)
+    const messages = await aiSdkChatPersistence.getMessages(chatId)
     return messages.map(msg => ({
       id: msg.id,
       role: msg.role as 'user' | 'assistant' | 'system',
@@ -248,12 +241,12 @@ async function loadChatMessages(chatId: string): Promise<CoreMessage[]> {
  */
 async function saveChatMessage(chatId: string, message: any) {
   try {
-    await chatPersistence.saveMessage(chatId, {
+    await aiSdkChatPersistence.saveMessage({
       id: message.id,
       role: message.role,
       content: message.content,
       createdAt: message.createdAt || new Date()
-    })
+    }, chatId)
   } catch (error) {
     console.error('Failed to save message:', error)
   }
@@ -261,7 +254,7 @@ async function saveChatMessage(chatId: string, message: any) {
 
 export async function POST(req: Request) {
   try {
-    // Parse and validate request using Chat SDK schema
+    // Parse and validate request using AI SDK schema
     const body = await req.json()
     const parsed = chatRequestSchema.safeParse(body)
     
@@ -279,14 +272,46 @@ export async function POST(req: Request) {
       )
     }
 
-    const { id: chatId, message, userId, selectedVisibilityType } = parsed.data
+    const { id: chatId, messages, userId } = parsed.data
+    
+    // Extract user ID from messages or body (AI SDK sends it in body)
+    const effectiveUserId = userId || body.userId
+    if (!effectiveUserId) {
+      return new Response(
+        JSON.stringify({ error: 'User ID is required' }), 
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Ensure user exists
+    try {
+      await aiSdkChatPersistence.ensureUser({
+        id: effectiveUserId,
+        email: effectiveUserId, // Use ID as email for now
+        name: 'User' // Default name
+      })
+    } catch (error) {
+      console.error('Failed to ensure user:', error)
+    }
+
+    // Get or create chat
+    let currentChatId = chatId
+    if (!currentChatId && body.id) {
+      currentChatId = body.id
+    }
+    
+    if (!currentChatId) {
+      // Create new chat
+      const newChat = await aiSdkChatPersistence.createChat(effectiveUserId)
+      currentChatId = newChat.id
+    }
 
     // Ensure MCP client is properly initialized
     if (!mcpClient.isReady()) {
       await mcpClient.initialize()
     }
 
-    const { tools, servers, connectedServers, availableTools } = await prepareMcpTools()
+    const { tools, servers, connectedServers } = await prepareMcpTools()
 
     // Validate Azure OpenAI configuration
     try {
@@ -295,7 +320,7 @@ export async function POST(req: Request) {
       console.error('Azure OpenAI configuration error:', llmError)
       const errorMessage = llmError instanceof Error ? llmError.message : 'Unknown Azure OpenAI configuration error'
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Azure OpenAI configuration error', 
           details: errorMessage,
           provider: 'azure'
@@ -307,17 +332,13 @@ export async function POST(req: Request) {
       )
     }
 
-    // Load previous messages for context
-    const previousMessages = await loadChatMessages(chatId)
-    
-    // Create the new user message as CoreMessage
-    const userMessage: CoreMessage = {
-      role: message.role,
-      content: message.content
-    }
-
-    // Save the user message immediately (Chat SDK pattern)
-    await saveChatMessage(chatId, message)
+    // Convert AI SDK messages to core messages for processing
+    const coreMessages = messages.map(msg => ({
+      role: msg.role === 'tool' ? 'assistant' : msg.role, // Convert 'tool' role to 'assistant' for core message compatibility
+      content: msg.content,
+      name: msg.name,
+      toolInvocations: msg.toolInvocations
+    })) as CoreMessage[]
 
     const systemPrompt = `You are DiGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI. You help data analysts and product owners discover insights from their data.
 
@@ -346,53 +367,13 @@ ${server.tools.length > 0
 - Connected servers: ${connectedServers.length}
 - Available tools: ${Object.keys(tools).length}
 
-**Artifact Tools:**
-You have access to artifact creation and management tools:
-- createDocument: Create new documents, code files, charts, or other content in the artifact workspace
-- updateDocument: Update existing documents with new content or modifications
-
-Use these tools when users:
-- Ask you to create code, documents, or visual content
-- Want to save or persist content for later use
-- Request interactive or editable content
-- Need artifacts they can work with outside the chat
-
-**Instructions:**
-${connectedServers.length > 0 
-  ? `1. When users ask about data, use the appropriate MCP tools to fetch real information
-2. Available tool categories:
-   ${connectedServers.map(server => {
-     const serverTools = availableTools.filter(t => t.serverId === server.id)
-     return `   - ${server.name}: ${serverTools.map(t => t.name).join(', ')}`
-   }).join('\n   ')}
-3. Always explain what data you're fetching and present results clearly
-4. Create appropriate artifacts (charts, tables, etc.) from the tool results`
-  : `1. Currently no MCP servers are connected, so I cannot access external data sources
-2. Please ensure MCP servers are properly configured and running
-3. Check server URLs in environment variables and server connectivity`
-}
-
 When generating artifacts, use these formats:
+1. **Code blocks**: Use \`\`\`language\\ncode\\n\`\`\` format
+2. **Mermaid diagrams**: Use \`\`\`mermaid\\ndiagram\\n\`\`\` format
+3. **Interactive charts**: Use \`\`\`json:chart:type\\n{"data": [...], "title": "Chart Title"}\\n\`\`\`
+4. **Data tables**: Use \`\`\`json:table\\n{"data": [...], "title": "Table Title"}\\n\`\`\`
 
-1. **Code blocks**: Use \`\`\`language\ncode\n\`\`\` format
-2. **Mermaid diagrams**: Use \`\`\`mermaid\ndiagram\n\`\`\` format
-3. **Interactive charts**: Use \`\`\`json:chart:type\n{"data": [...], "title": "Chart Title"}\n\`\`\`
-   - Supported chart types: bar, line, pie
-   - Data format: [{"name": "Category", "value": 123}, ...]
-4. **Data tables**: Use \`\`\`json:table\n{"data": [...], "title": "Table Title"}\n\`\`\`
-   - Data format: [{"column1": "value1", "column2": 123}, ...]
-5. **KPI visualizations**: Use \`\`\`json:visualization:kpi\n{"data": [...], "title": "KPI Dashboard"}\n\`\`\`
-   - Data format: [{"title": "Metric", "value": 123, "change": 5.2, "trend": "up"}, ...]
-6. **Heatmaps**: Use \`\`\`json:heatmap\n{"data": [...], "title": "Heatmap Title"}\n\`\`\`
-   - Data format: [{"x": "Category1", "y": "Category2", "value": 75}, ...]
-7. **Treemaps**: Use \`\`\`json:treemap\n{"name": "Root", "children": [...], "title": "Treemap Title"}\n\`\`\`
-   - Data format: {"name": "Root", "children": [{"name": "Category", "value": 123, "children": [...]}]}
-
-Always provide clear, professional responses suitable for enterprise use.
-${connectedServers.length > 0 
-  ? `Available domains: ${connectedServers.map(s => s.name).join(', ')}`
-  : 'No data domains available - servers disconnected'
-}`
+Always provide clear, professional responses suitable for enterprise use.`
 
     console.log('Chat API: Starting streamText with Azure OpenAI...')
     
@@ -400,31 +381,41 @@ ${connectedServers.length > 0
       const result = await streamText({
         model: getAzureOpenAIModel(),
         system: systemPrompt,
-        messages: [...previousMessages, userMessage],
+        messages: coreMessages,
         tools,
         maxSteps: 5,
         onFinish: async ({ response, finishReason, usage, text }) => {
-          // Save the assistant's response (Chat SDK pattern)
-          const assistantMessage = {
-            id: generateUUID(),
-            role: 'assistant' as const,
-            content: text,
-            createdAt: new Date()
+          // Save all messages using AI SDK persistence
+          try {
+            // Convert messages to proper format with Date objects and compatible roles
+            const formattedMessages = messages.map(msg => ({
+              ...msg,
+              role: msg.role === 'tool' ? 'data' as const : msg.role, // Convert 'tool' to 'data' for AI SDK compatibility
+              createdAt: msg.createdAt instanceof Date ? msg.createdAt : 
+                       typeof msg.createdAt === 'string' ? new Date(msg.createdAt) : 
+                       new Date()
+            }));
+
+            // Add the assistant response
+            const assistantMessage = {
+              id: generateUUID(),
+              role: 'assistant' as const,
+              content: text,
+              createdAt: new Date()
+            };
+
+            await aiSdkChatPersistence.handleMessageCompletion(
+              [...formattedMessages, assistantMessage],
+              currentChatId,
+              { updateTitle: true }
+            )
+          } catch (error) {
+            console.error('Failed to save messages:', error)
           }
-          
-          await saveChatMessage(chatId, assistantMessage)
-          
-          console.log('Message completed:', { 
-            finishReason, 
-            usage: usage?.totalTokens,
-            chatId,
-            visibility: selectedVisibilityType 
-          })
         }
       })
-      
+
       return result.toDataStreamResponse()
-      
     } catch (streamError) {
       console.error('StreamText error:', streamError)
       

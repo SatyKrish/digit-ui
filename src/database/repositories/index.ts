@@ -1,3 +1,10 @@
+// Modern AI SDK-aligned repositories (recommended)
+export { AiSdkChatRepository } from './ai-sdk-chat-repository';
+export { AiSdkMessageRepository } from './ai-sdk-message-repository';  
+export { AiSdkUserRepository } from './ai-sdk-user-repository';
+export { AiSdkChatPersistence, aiSdkChatPersistence } from './ai-sdk-chat-persistence';
+
+// Legacy repositories (for backward compatibility)
 import { UserRepository } from './user-repository';
 import { SessionRepository } from './session-repository';
 import { MessageRepository } from './message-repository';
