@@ -1,10 +1,11 @@
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { useEffect, useState, useCallback } from "react";
 import { User, AuthContextType } from "@/types/auth";
-import { loginRequest, graphConfig } from "@/config/msal-config";
+import { loginRequest } from "@/config/msal-config";
 
 /**
- * Enhanced authentication hook with Microsoft Graph integration
+ * Enhanced authentication hook with minimal claims from ID token
+ * Uses only standard OpenID Connect claims to avoid admin consent requirements
  */
 export function useAuth(): AuthContextType {
   const { instance, accounts } = useMsal();
@@ -14,93 +15,27 @@ export function useAuth(): AuthContextType {
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Fetch user profile from Microsoft Graph
-   */
-  const fetchUserProfile = useCallback(async (accessToken: string) => {
-    try {
-      const response = await fetch(graphConfig.graphMeEndpoint, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        return await response.json();
-      }
-      return null;
-    } catch (error) {
-      console.warn('Could not fetch user profile:', error);
-      return null;
-    }
-  }, []);
-
-  /**
-   * Fetch user photo from Microsoft Graph
-   */
-  const fetchUserPhoto = useCallback(async (accessToken: string): Promise<string | null> => {
-    try {
-      const response = await fetch(graphConfig.graphPhotoEndpoint, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-
-      if (response.ok) {
-        const photoBlob = await response.blob();
-        return URL.createObjectURL(photoBlob);
-      }
-      return null;
-    } catch (error) {
-      console.warn('Could not fetch user photo:', error);
-      return null;
-    }
-  }, []);
-
   useEffect(() => {
     if (isAuthenticated && accounts.length > 0) {
       const loadUserData = async () => {
         setIsInitializing(true);
         const account = accounts[0];
         
-        // Get access token for Graph API calls
         try {
-          const tokenResponse = await instance.acquireTokenSilent({
-            ...loginRequest,
-            account
-          });
-
-          // Fetch additional user data from Microsoft Graph
-          const [profile, photoUrl] = await Promise.all([
-            fetchUserProfile(tokenResponse.accessToken),
-            fetchUserPhoto(tokenResponse.accessToken)
-          ]);
-
-          const enhancedUser: User = {
+          // Extract user information from ID token claims and account info
+          // This avoids the need for Graph API calls and admin consent
+          const idTokenClaims = account.idTokenClaims;
+          
+          const user: User = {
             id: account.localAccountId,
-            email: account.username,
-            name: profile?.displayName || account.name || '',
-            avatar: photoUrl || (account.idTokenClaims?.picture as string) || "/placeholder-user.jpg",
-            tenantId: account.tenantId || '',
-            roles: [],
-            jobTitle: profile?.jobTitle || '',
-            department: profile?.department || '',
-            officeLocation: profile?.officeLocation || ''
+            email: account.username, // This is the user's email/UPN
+            name: idTokenClaims?.name || account.name || idTokenClaims?.preferred_username || '',
           };
 
-          setUser(enhancedUser);
+          setUser(user);
         } catch (error) {
           console.error('Error loading user data:', error);
-          // Fallback to basic account info
-          setUser({
-            id: account.localAccountId,
-            email: account.username,
-            name: account.name || '',
-            avatar: (account.idTokenClaims?.picture as string) || "/placeholder-user.jpg",
-            tenantId: account.tenantId || '',
-            roles: []
-          });
+          setError('Failed to load user information');
         } finally {
           setIsInitializing(false);
         }
@@ -111,7 +46,7 @@ export function useAuth(): AuthContextType {
       setUser(null);
       setIsInitializing(false);
     }
-  }, [isAuthenticated, accounts, instance, fetchUserProfile, fetchUserPhoto]);
+  }, [isAuthenticated, accounts, instance]);
 
   const signIn = async (): Promise<void> => {
     setIsLoading(true);
@@ -146,47 +81,38 @@ export function useAuth(): AuthContextType {
     }
   };
 
-  const getAccessToken = async (scopes?: string[]): Promise<string> => {
+  const getAccessToken = async (): Promise<string | null> => {
     if (!accounts.length) {
-      throw new Error('No active account');
+      return null;
     }
     
     try {
       const response = await instance.acquireTokenSilent({
-        scopes: scopes || loginRequest.scopes,
+        scopes: loginRequest.scopes,
         account: accounts[0]
       });
       return response.accessToken;
     } catch (error) {
       console.error('Failed to acquire token:', error);
-      throw error;
+      setError('Failed to acquire access token');
+      return null;
     }
   };
 
   const refreshProfile = async (): Promise<void> => {
-    if (!isAuthenticated || !accounts.length) return;
+    if (!user || !isAuthenticated || accounts.length === 0) return;
 
     try {
-      setError(null);
-      const accessToken = await getAccessToken();
-      const [profile, photoUrl] = await Promise.all([
-        fetchUserProfile(accessToken),
-        fetchUserPhoto(accessToken)
-      ]);
+      const account = accounts[0];
+      const idTokenClaims = account.idTokenClaims;
+      
+      const updatedUser: User = {
+        ...user,
+        name: idTokenClaims?.name || account.name || idTokenClaims?.preferred_username || user.name,
+        email: account.username || user.email,
+      };
 
-      if (user && profile) {
-        const updatedUser: User = {
-          ...user,
-          name: profile.displayName || user.name,
-          email: profile.mail || profile.userPrincipalName || user.email,
-          avatar: photoUrl || user.avatar,
-          jobTitle: profile.jobTitle || '',
-          department: profile.department || '',
-          officeLocation: profile.officeLocation || ''
-        };
-
-        setUser(updatedUser);
-      }
+      setUser(updatedUser);
     } catch (err) {
       console.error('Profile refresh error:', err);
       setError('Failed to refresh profile');
@@ -207,26 +133,30 @@ export function useAuth(): AuthContextType {
 
 /**
  * Hook for checking specific user permissions/roles
+ * Note: Roles functionality is simplified since we removed roles from User interface
  */
 export function usePermissions() {
   const { user, isAuthenticated } = useAuth();
 
   const hasRole = useCallback((role: string): boolean => {
-    return isAuthenticated && user?.roles?.includes(role) || false;
-  }, [isAuthenticated, user?.roles]);
+    // Always return false since roles are not available in minimal claims
+    return false;
+  }, [isAuthenticated]);
 
   const hasAnyRole = useCallback((roles: string[]): boolean => {
-    return isAuthenticated && roles.some(role => user?.roles?.includes(role)) || false;
-  }, [isAuthenticated, user?.roles]);
+    // Always return false since roles are not available in minimal claims
+    return false;
+  }, [isAuthenticated]);
 
   const hasAllRoles = useCallback((roles: string[]): boolean => {
-    return isAuthenticated && roles.every(role => user?.roles?.includes(role)) || false;
-  }, [isAuthenticated, user?.roles]);
+    // Always return false since roles are not available in minimal claims
+    return false;
+  }, [isAuthenticated]);
 
   return {
     hasRole,
     hasAnyRole,
     hasAllRoles,
-    roles: user?.roles || []
+    roles: [] // Always empty array since roles are not available
   };
 }
