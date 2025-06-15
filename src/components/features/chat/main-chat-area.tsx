@@ -11,6 +11,7 @@ import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
 import { useChat } from "@ai-sdk/react"
 import { toast } from "sonner"
+import { useResponsiveLayout, getAdaptiveLayoutClasses } from "@/hooks/shared/use-responsive-layout"
 import type { MainChatAreaProps, Artifact } from "@/types"
 import type { Message } from "ai"
 
@@ -25,6 +26,9 @@ export function MainChatArea({
   const [isArtifactFullScreen, setIsArtifactFullScreen] = useState(false)
   const [initialMessages, setInitialMessages] = useState<Message[]>([])
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+  
+  // Enhanced responsive layout management
+  const { dimensions, breakpoints } = useResponsiveLayout()
   
   // Load initial messages when currentChatId changes
   useEffect(() => {
@@ -241,29 +245,61 @@ export function MainChatArea({
   // Determine if we should show the artifact panel
   const showArtifactPanel = currentArtifacts.length > 0
 
+  // Viewport constraint check - force minimize chat if viewport is too narrow
+  const shouldForceChatMinimize = useMemo(() => 
+    showArtifactPanel && dimensions.width < 1000, 
+    [showArtifactPanel, dimensions.width]
+  )
+
   // Handle closing artifacts (also exits full-screen)
   const handleCloseArtifacts = useCallback(() => {
     setCurrentArtifacts([])
     setIsArtifactFullScreen(false)
   }, [])
 
-  // Responsive layout: ensure both chat and artifacts fit within viewport
+  // Get adaptive layout classes based on current breakpoint and state
+  const adaptiveLayoutClasses = useMemo(() => 
+    getAdaptiveLayoutClasses(showArtifactPanel, breakpoints, dimensions.width), 
+    [showArtifactPanel, breakpoints, dimensions.width]
+  )
+
+  // Vercel-inspired layout: container-based constraints that prevent horizontal overflow
   const chatContainerClass = showArtifactPanel 
     ? (isArtifactFullScreen
         ? 'hidden'
-        : isChatMinimized 
+        : (isChatMinimized || shouldForceChatMinimize)
         ? 'w-80 min-w-80 max-w-80 flex-shrink-0' 
-        : 'flex-[3] min-w-0 chat-area')
+        : 'chat-area') // Use simple class, width controlled by CSS custom properties
     : 'w-full'
 
-  const artifactPanelClass = isChatMinimized 
+  const artifactPanelClass = (isChatMinimized || shouldForceChatMinimize)
     ? 'flex-1 min-w-0 artifact-panel' 
     : isArtifactFullScreen
     ? 'fixed inset-0 z-50 w-screen h-screen artifact-panel bg-background'
-    : 'flex-[7] min-w-0 artifact-panel'
+    : 'artifact-panel' // Use simple class, width controlled by CSS custom properties
+
+  // Container styles for CSS custom properties
+  const containerStyles = showArtifactPanel && adaptiveLayoutClasses.containerStyle 
+    ? adaptiveLayoutClasses.containerStyle 
+    : undefined
+
+  // Debug info (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.debug('Vercel-inspired Layout Debug:', {
+      showArtifactPanel,
+      dimensions,
+      breakpoints,
+      shouldForceChatMinimize,
+      chatContainerClass,
+      artifactPanelClass,
+      containerStyles,
+      totalMinWidth: 850,
+      hasHorizontalSpace: dimensions.width >= 850
+    })
+  }
 
   return (
-    <SidebarInset className="flex flex-col relative chat-layout-container">
+    <SidebarInset className="flex flex-col relative chat-layout-container w-full h-full">
       <SidebarHoverTrigger />
       {!isArtifactFullScreen && (
         <ChatHeader 
@@ -274,9 +310,14 @@ export function MainChatArea({
         />
       )}
 
-      <div className={`flex-1 flex min-h-0 max-w-full overflow-hidden chat-flex-container ${isArtifactFullScreen ? 'p-0' : ''}`}>
+      <div 
+        className={`flex-1 flex min-h-0 w-full overflow-hidden chat-flex-container ${
+          showArtifactPanel ? 'has-artifacts' : ''
+        } ${isArtifactFullScreen ? 'p-0' : ''}`}
+        style={containerStyles}
+      >
         {/* Chat Area */}
-        <div className={`flex flex-col min-h-0 ${chatContainerClass}`}>
+        <div className={`flex flex-col min-h-0 overflow-hidden ${chatContainerClass}`}>
           {isInitialState ? (
             <InitialWelcomeScreen 
               user={user} 
@@ -307,7 +348,7 @@ export function MainChatArea({
           <div className={`${isArtifactFullScreen ? '' : 'border-l border-border/50'} flex flex-col min-h-0 ${artifactPanelClass}`}>
             <ArtifactPanel 
               artifacts={currentArtifacts} 
-              isChatMinimized={isChatMinimized}
+              isChatMinimized={isChatMinimized || shouldForceChatMinimize}
               onToggleChatMinimized={() => setIsChatMinimized(!isChatMinimized)}
               onClose={handleCloseArtifacts}
               isFullScreen={isArtifactFullScreen}

@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/components/features/layout/theme-provider'
 import { SidebarProvider } from '@/components/ui/sidebar'
 
 export const metadata: Metadata = {
-  title: 'Digit',
+  title: 'DiGIT',
   description: 'AI-powered Enterprise Data Intelligence Platform',
 }
 
