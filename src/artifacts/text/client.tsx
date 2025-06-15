@@ -1,4 +1,5 @@
 import { Artifact } from '@/lib/artifacts/create-artifact';
+import { ArtifactContent } from '@/lib/artifacts/types';
 import { Editor } from '@/components/ui/text-editor';
 import { DiffView } from '@/components/ui/diff-view';
 import { DocumentSkeleton } from '@/components/ui/document-skeleton';
@@ -15,6 +16,51 @@ import { toast } from 'sonner';
 
 interface TextArtifactMetadata {
   suggestions: Array<Suggestion>;
+}
+
+// Define the content component separately, following Vercel pattern
+function TextArtifactContent(props: ArtifactContent<TextArtifactMetadata>) {
+  const {
+    mode,
+    status,
+    content,
+    isCurrentVersion,
+    currentVersionIndex,
+    onSaveContent,
+    getDocumentContentById,
+    isLoading,
+    metadata,
+  } = props;
+  if (isLoading) {
+    return <DocumentSkeleton artifactKind="text" />;
+  }
+
+  if (mode === 'diff') {
+    const oldContent = getDocumentContentById(currentVersionIndex - 1);
+    const newContent = getDocumentContentById(currentVersionIndex);
+    return <DiffView oldContent={oldContent} newContent={newContent} />;
+  }
+
+  return (
+    <>
+      <div className="flex flex-row py-8 md:p-20 px-4">
+        <Editor
+          content={content}
+          suggestions={metadata ? metadata.suggestions : []}
+          isCurrentVersion={isCurrentVersion}
+          currentVersionIndex={currentVersionIndex}
+          status={status === 'completed' ? 'idle' : status}
+          onSaveContent={onSaveContent}
+        />
+
+        {metadata &&
+        metadata.suggestions &&
+        metadata.suggestions.length > 0 ? (
+          <div className="md:hidden h-dvh w-12 shrink-0" />
+        ) : null}
+      </div>
+    </>
+  );
 }
 
 export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
@@ -57,48 +103,8 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
     }
   },
   
-  content: ({
-    mode,
-    status,
-    content,
-    isCurrentVersion,
-    currentVersionIndex,
-    onSaveContent,
-    getDocumentContentById,
-    isLoading,
-    metadata,
-  }) => {
-    if (isLoading) {
-      return <DocumentSkeleton artifactKind="text" />;
-    }
-
-    if (mode === 'diff') {
-      const oldContent = getDocumentContentById(currentVersionIndex - 1);
-      const newContent = getDocumentContentById(currentVersionIndex);
-      return <DiffView oldContent={oldContent} newContent={newContent} />;
-    }
-
-    return (
-      <>
-        <div className="flex flex-row py-8 md:p-20 px-4">
-          <Editor
-            content={content}
-            suggestions={metadata ? metadata.suggestions : []}
-            isCurrentVersion={isCurrentVersion}
-            currentVersionIndex={currentVersionIndex}
-            status={status}
-            onSaveContent={onSaveContent}
-          />
-
-          {metadata &&
-          metadata.suggestions &&
-          metadata.suggestions.length > 0 ? (
-            <div className="md:hidden h-dvh w-12 shrink-0" />
-          ) : null}
-        </div>
-      </>
-    );
-  },
+  // Use the component reference, not an inline function
+  content: TextArtifactContent,
   
   actions: [
     {

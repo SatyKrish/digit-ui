@@ -216,8 +216,10 @@ export function Artifact({
       label: "Copy",
       description: "Copy content to clipboard",
       onClick: ({ artifact }) => {
-        navigator.clipboard.writeText(artifact.content)
-        toast.success("Content copied to clipboard")
+        if (artifact) {
+          navigator.clipboard.writeText(artifact.content)
+          toast.success("Content copied to clipboard")
+        }
       }
     },
     {
@@ -225,14 +227,16 @@ export function Artifact({
       label: "Download",
       description: "Download artifact",
       onClick: ({ artifact }) => {
-        const blob = new Blob([artifact.content], { type: "text/plain" })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${artifact.title}.${getFileExtension(artifact.kind)}`
-        a.click()
-        URL.revokeObjectURL(url)
-        toast.success("Artifact downloaded")
+        if (artifact) {
+          const blob = new Blob([artifact.content], { type: "text/plain" })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement("a")
+          a.href = url
+          a.download = `${artifact.title}.${getFileExtension(artifact.kind)}`
+          a.click()
+          URL.revokeObjectURL(url)
+          toast.success("Artifact downloaded")
+        }
       }
     }
   ]
@@ -318,7 +322,23 @@ export function Artifact({
                   {allActions.map((action, index) => (
                     <DropdownMenuItem
                       key={index}
-                      onClick={() => action.onClick({ artifact: state.document! })}
+                      onClick={() => {
+                        if (state.document) {
+                          const context = {
+                            content: currentContent,
+                            handleVersionChange: () => {},
+                            currentVersionIndex: 0,
+                            isCurrentVersion: true,
+                            mode: mode as 'edit' | 'diff',
+                            metadata: {},
+                            setMetadata: () => {},
+                            artifact: state.document,
+                            appendMessage: () => {},
+                            callMCPTool: async () => ({ success: true })
+                          }
+                          action.onClick(context)
+                        }
+                      }}
                       disabled={action.disabled}
                       className="flex items-center gap-2"
                     >
@@ -402,7 +422,9 @@ function ArtifactIcon({
     code: "💻", 
     chart: "📊",
     visualization: "📈",
-    document: "📄"
+    document: "📄",
+    image: "🖼️",
+    sheet: "📊"
   }
 
   return (
@@ -608,7 +630,9 @@ function getFileExtension(kind: ArtifactKind): string {
     code: "js", // Could be dynamic based on language
     chart: "json",
     visualization: "html",
-    document: "md"
+    document: "md",
+    image: "png",
+    sheet: "csv"
   }
   return extensions[kind]
 }

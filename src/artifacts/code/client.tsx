@@ -1,4 +1,5 @@
 import { Artifact } from '@/lib/artifacts/create-artifact';
+import { ArtifactContent } from '@/lib/artifacts/types';
 import { CodeEditor } from '@/components/ui/code-editor';
 import {
   Play as PlayIcon,
@@ -52,6 +53,31 @@ interface CodeMetadata {
   outputs: Array<ConsoleOutput>;
 }
 
+// Define the content component separately, following Vercel pattern
+function CodeArtifactContent(props: ArtifactContent<CodeMetadata>) {
+  const { metadata, setMetadata, status, ...restProps } = props;
+  
+  return (
+    <>
+      <div className="px-1">
+        <CodeEditor {...restProps} status={status === 'completed' ? 'idle' : status} />
+      </div>
+
+      {metadata?.outputs && (
+        <Console
+          consoleOutputs={metadata.outputs}
+          setConsoleOutputs={() => {
+            setMetadata({
+              ...metadata,
+              outputs: [],
+            });
+          }}
+        />
+      )}
+    </>
+  );
+}
+
 export const codeArtifact = new Artifact<'code', CodeMetadata>({
   kind: 'code',
   description: 'Useful for code generation; Code execution is available for supported languages.',
@@ -78,32 +104,12 @@ export const codeArtifact = new Artifact<'code', CodeMetadata>({
     }
   },
   
-  content: ({ metadata, setMetadata, ...props }) => {
-    return (
-      <>
-        <div className="px-1">
-          <CodeEditor {...props} />
-        </div>
-
-        {metadata?.outputs && (
-          <Console
-            consoleOutputs={metadata.outputs}
-            setConsoleOutputs={() => {
-              setMetadata({
-                ...metadata,
-                outputs: [],
-              });
-            }}
-          />
-        )}
-      </>
-    );
-  },
+  // Use the component reference, not an inline function
+  content: CodeArtifactContent,
   
   actions: [
     {
       icon: <PlayIcon size={18} />,
-      label: 'Run',
       description: 'Execute code',
       onClick: async ({ content, setMetadata, callMCPTool }) => {
         const runId = generateUUID();
@@ -135,7 +141,7 @@ export const codeArtifact = new Artifact<'code', CodeMetadata>({
                 ...metadata.outputs.filter((output) => output.id !== runId),
                 {
                   id: runId,
-                  contents: mcpResult.data.outputs || [{ type: 'text', value: mcpResult.data.result }],
+                  contents: mcpResult.data.outputs || [{ type: 'result', content: mcpResult.data.result }],
                   status: 'completed',
                 },
               ],
@@ -156,7 +162,7 @@ export const codeArtifact = new Artifact<'code', CodeMetadata>({
                 ...metadata.outputs.filter((output) => output.id !== runId),
                 {
                   id: runId,
-                  contents: [{ type: 'text', value: 'Python execution requires server-side support or MCP integration.' }],
+                  contents: [{ type: 'error', content: 'Python execution requires server-side support or MCP integration.' }],
                   status: 'completed',
                 },
               ],
@@ -165,8 +171,8 @@ export const codeArtifact = new Artifact<'code', CodeMetadata>({
             // JavaScript execution
             const result = eval(content);
             outputContent.push({
-              type: 'text',
-              value: String(result),
+              type: 'result',
+              content: String(result),
             });
 
             setMetadata((metadata) => ({
@@ -188,8 +194,8 @@ export const codeArtifact = new Artifact<'code', CodeMetadata>({
               ...metadata.outputs.filter((output) => output.id !== runId),
               {
                 id: runId,
-                contents: [{ type: 'text', value: error.message }],
-                status: 'failed',
+                contents: [{ type: 'error', content: error.message }],
+                status: 'error',
               },
             ],
           }));

@@ -33,6 +33,7 @@ export interface StreamPart {
     | "code-delta" 
     | "sheet-delta"
     | "image-delta"
+    | "chart-delta"
     | "title"
     | "id"
     | "suggestion"
@@ -43,6 +44,13 @@ export interface StreamPart {
   metadata?: Partial<ArtifactMetadata>
   status?: "streaming" | "completed" | "error" | "idle"
   error?: string
+  // Chart-specific properties
+  textDelta?: string
+  data?: any
+  chartType?: string
+  title?: string
+  xKey?: string
+  yKey?: string
 }
 
 export interface ArtifactDocument {
@@ -102,7 +110,7 @@ export interface UIArtifact {
   kind: ArtifactKind
   content: string
   isVisible: boolean
-  status: 'streaming' | 'idle'
+  status: 'streaming' | 'idle' | 'completed'
   boundingBox: {
     top: number
     left: number
@@ -116,7 +124,7 @@ export interface ArtifactContent<M = any> {
   title: string
   content: string
   mode: 'edit' | 'diff'
-  status: 'streaming' | 'idle'
+  status: 'streaming' | 'idle' | 'completed'
   currentVersionIndex: number
   suggestions: Array<Suggestion>
   onSaveContent: (content: string, debounce?: boolean) => void
@@ -137,6 +145,7 @@ export interface ArtifactActionContext<M = any> {
   mode: 'edit' | 'diff'
   metadata: M
   setMetadata: React.Dispatch<React.SetStateAction<M>>
+  artifact?: ArtifactDocument
 }
 
 // Artifact toolbar context for MCP integration

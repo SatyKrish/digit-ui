@@ -7,6 +7,7 @@ import { ChatMessages } from "./chat-messages"
 import { ChatInput } from "./chat-input"
 import { InitialWelcomeScreen } from "./initial-welcome-screen"
 import { ArtifactPanel } from "../artifacts/artifact-panel"
+import { VercelIntegrationWrapper, EnhancedArtifactProvider, useEnhancedArtifacts } from "../artifacts"
 import { SidebarHoverTrigger } from "../layout/sidebar-hover-trigger"
 import { extractArtifacts } from "@/services/artifacts/artifact-extractor"
 import { useChat } from "@ai-sdk/react"
@@ -21,6 +22,24 @@ export function MainChatArea({
   onLogout, 
   onNewChat
 }: MainChatAreaProps) {
+  return (
+    <EnhancedArtifactProvider initialMode="hybrid">
+      <MainChatAreaCore
+        user={user}
+        currentChatId={currentChatId}
+        onLogout={onLogout}
+        onNewChat={onNewChat}
+      />
+    </EnhancedArtifactProvider>
+  )
+}
+
+function MainChatAreaCore({ 
+  user, 
+  currentChatId, 
+  onLogout, 
+  onNewChat
+}: MainChatAreaProps) {
   const [currentArtifacts, setCurrentArtifacts] = useState<Artifact[]>([])
   const [isChatMinimized, setIsChatMinimized] = useState(false)
   const [isArtifactFullScreen, setIsArtifactFullScreen] = useState(false)
@@ -30,11 +49,22 @@ export function MainChatArea({
   // Enhanced responsive layout management
   const { dimensions, breakpoints } = useResponsiveLayout()
   
+  // Use the enhanced artifacts context
+  const {
+    legacyArtifacts,
+    vercelArtifacts,
+    processMessageForArtifacts,
+    clearArtifacts,
+    integrationMode
+  } = useEnhancedArtifacts()
+  
   // Load initial messages when currentChatId changes
   useEffect(() => {
     async function loadMessages() {
       if (!currentChatId) {
         setInitialMessages([])
+        setCurrentArtifacts([])
+        clearArtifacts()
         return
       }
 
@@ -45,7 +75,23 @@ export function MainChatArea({
           throw new Error('Failed to load messages')
         }
         const data = await response.json()
-        setInitialMessages(data.messages || [])
+        const messages = data.messages || []
+        setInitialMessages(messages)
+        
+        // Process existing messages for artifacts
+        clearArtifacts()
+        setCurrentArtifacts([])
+        messages.forEach((message: Message) => {
+          processMessageForArtifacts(message)
+          
+          // Also update legacy artifacts for backward compatibility
+          if (message.role === 'assistant') {
+            const artifacts = extractArtifacts(message.content || '')
+            if (artifacts.length > 0) {
+              setCurrentArtifacts(prev => [...prev, ...artifacts])
+            }
+          }
+        })
       } catch (error) {
         console.error('Failed to load initial messages:', error)
         toast.error('Failed to load chat history')
@@ -56,7 +102,7 @@ export function MainChatArea({
     }
 
     loadMessages()
-  }, [currentChatId])
+  }, [currentChatId, clearArtifacts, processMessageForArtifacts])
   
   // Initialize user in chat service via API
   useEffect(() => {
@@ -93,6 +139,9 @@ export function MainChatArea({
       const artifacts = extractArtifacts(textContent)
       setCurrentArtifacts(artifacts)
 
+      // Process with enhanced artifacts context
+      processMessageForArtifacts(message)
+
       // Persist the message if we have a chat ID - now via API
       if (currentChatId) {
         try {
@@ -110,7 +159,7 @@ export function MainChatArea({
         }
       }
     }
-  }, [currentChatId])
+  }, [currentChatId, processMessageForArtifacts])
 
   // Use Vercel AI SDK's useChat hook with proper initial messages
   const { 
@@ -222,8 +271,9 @@ export function MainChatArea({
   const handleNavigateHome = useCallback(() => {
     setMessages([])
     setCurrentArtifacts([])
+    clearArtifacts()
     onNewChat?.()
-  }, [setMessages, onNewChat])
+  }, [setMessages, clearArtifacts, onNewChat])
 
   // Toggle full-screen mode for artifacts
   const handleToggleFullScreen = useCallback(() => {
@@ -243,7 +293,8 @@ export function MainChatArea({
   }, [])
 
   // Determine if we should show the artifact panel
-  const showArtifactPanel = currentArtifacts.length > 0
+  const showArtifactPanel = currentArtifacts.length > 0 || 
+    (integrationMode !== 'legacy' && vercelArtifacts.length > 0)
 
   // Viewport constraint check - force minimize chat if viewport is too narrow
   const shouldForceChatMinimize = useMemo(() => 
@@ -255,7 +306,8 @@ export function MainChatArea({
   const handleCloseArtifacts = useCallback(() => {
     setCurrentArtifacts([])
     setIsArtifactFullScreen(false)
-  }, [])
+    clearArtifacts()
+  }, [clearArtifacts])
 
   // Get adaptive layout classes based on current breakpoint and state
   const adaptiveLayoutClasses = useMemo(() => 
@@ -343,17 +395,32 @@ export function MainChatArea({
           )}
         </div>
 
-        {/* Artifact Panel */}
+        {/* Enhanced Artifact Panel */}
         {showArtifactPanel && (
           <div className={`${isArtifactFullScreen ? '' : 'border-l border-border/50'} flex flex-col min-h-0 ${artifactPanelClass}`}>
-            <ArtifactPanel 
-              artifacts={currentArtifacts} 
-              isChatMinimized={isChatMinimized || shouldForceChatMinimize}
-              onToggleChatMinimized={() => setIsChatMinimized(!isChatMinimized)}
-              onClose={handleCloseArtifacts}
-              isFullScreen={isArtifactFullScreen}
-              onToggleFullScreen={handleToggleFullScreen}
-            />
+            {integrationMode === 'vercel' || integrationMode === 'hybrid' ? (
+              <VercelIntegrationWrapper
+                artifacts={currentArtifacts}
+                chatId={currentChatId || 'main-chat'}
+                messages={mappedMessages}
+                onClose={handleCloseArtifacts}
+                isFullScreen={isArtifactFullScreen}
+                onToggleFullScreen={handleToggleFullScreen}
+                isChatMinimized={isChatMinimized || shouldForceChatMinimize}
+                onToggleChatMinimized={() => setIsChatMinimized(!isChatMinimized)}
+                onSendMessage={handleSendMessage}
+                isLoading={isLoading}
+              />
+            ) : (
+              <ArtifactPanel 
+                artifacts={currentArtifacts} 
+                isChatMinimized={isChatMinimized || shouldForceChatMinimize}
+                onToggleChatMinimized={() => setIsChatMinimized(!isChatMinimized)}
+                onClose={handleCloseArtifacts}
+                isFullScreen={isArtifactFullScreen}
+                onToggleFullScreen={handleToggleFullScreen}
+              />
+            )}
           </div>
         )}
       </div>

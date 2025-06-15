@@ -35,10 +35,18 @@ export {
 // Client Components
 export { Artifact } from "./artifact"
 export { ArtifactProvider, useArtifact } from "./artifact-provider"
-export { ArtifactWorkspace } from "./artifact-workspace"
+export { ArtifactWorkspace } from "./artifact-workspace-vercel"
 
-// Server Actions (RSC)
-export { 
-  createStreamingArtifact,
-  updateStreamingArtifact
-} from "@/app/actions/artifacts"
+// Integration Components
+export { VercelIntegrationWrapper } from "./vercel-integration-wrapper"
+export { EnhancedArtifactProvider, useEnhancedArtifacts } from "./enhanced-artifact-provider"
+
+// Legacy Components (for backward compatibility)
+export { ArtifactPanel } from "./artifact-panel"
+export { DemoArtifactWorkspace } from "./demo-workspace"
+
+// Server Actions (RSC) - commented out temporarily for build fix
+// export { 
+//   createStreamingArtifact,
+//   updateStreamingArtifact
+// } from "@/app/actions/artifacts"

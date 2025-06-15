@@ -2,4 +2,3 @@
 export * from "./chat"
 export * from "./artifacts" 
 export * from "./routes"
-export * from "./ui"

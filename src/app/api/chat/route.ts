@@ -1,9 +1,14 @@
-import { streamText, convertToCoreMessages } from "ai"
+import { streamText, convertToCoreMessages, tool } from "ai"
 import { mcpClient } from "@/client/mcp-client"
 import { chatPersistence } from "@/services/chat/chat-persistence"
 import { env } from "@/config/env"
 import { getAzureOpenAIModel, azureOpenAIConfig } from "@/config/azure-openai"
 import { z } from "zod"
+import { 
+  artifactKinds 
+} from "@/lib/artifacts/server"
+import { generateUUID } from "@/lib/utils"
+import type { ArtifactKind } from "@/lib/artifacts/types"
 
 /**
  * Convert JSON Schema to Zod schema for Vercel AI SDK compatibility
@@ -143,8 +148,152 @@ async function prepareMcpTools() {
       }
     }
 
-    if (Object.keys(tools).length === 0 && connectedServers.length === 0) {
-      console.warn('No connected MCP servers found - no tools will be available to the AI model')
+    // Add artifact tools for document creation and updating
+    tools.createDocument = tool({
+      description: 'Create a document in the artifact workspace for writing, code, or content creation activities',
+      parameters: z.object({
+        title: z.string().describe('The title of the document'),
+        kind: z.enum(artifactKinds).describe('The type of artifact to create (text, code, chart, etc.)'),
+      }),
+      execute: async ({ title, kind }) => {
+        try {
+          const id = generateUUID()
+          
+          // Create initial content based on kind
+          let initialContent = ''
+          switch (kind) {
+            case 'text':
+              initialContent = `# ${title}\n\nStart writing your content here...`
+              break
+            case 'code':
+              initialContent = `// ${title}\n\n// Add your code here`
+              break
+            case 'chart':
+              initialContent = `{\n  "title": "${title}",\n  "type": "bar",\n  "data": []\n}`
+              break
+            default:
+              initialContent = title
+          }
+          
+          // Create document via document API
+          const documentData = {
+            title,
+            content: initialContent,
+            kind: kind as ArtifactKind,
+            metadata: {
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              description: `Created via chat: ${title}`
+            }
+          }
+          
+          // Call the document API internally
+          const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/document`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              id,
+              ...documentData 
+            })
+          })
+          
+          if (!response.ok) {
+            throw new Error(`Document API error: ${response.statusText}`)
+          }
+          
+          const createdDocument = await response.json()
+          
+          return {
+            id: createdDocument.id,
+            title: createdDocument.title,
+            kind: createdDocument.kind,
+            success: true,
+            message: `Document "${title}" created successfully`
+          }
+        } catch (error) {
+          console.error('Error creating document:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to create document'
+          }
+        }
+      }
+    })
+
+    tools.updateDocument = tool({
+      description: 'Update an existing document in the artifact workspace',
+      parameters: z.object({
+        id: z.string().describe('The ID of the document to update'),
+        description: z.string().describe('Description of the changes or new content to add to the document'),
+      }),
+      execute: async ({ id, description }) => {
+        try {
+          // Get the existing document first
+          const getResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/document?id=${id}`)
+          
+          if (!getResponse.ok) {
+            return {
+              success: false,
+              error: `Document with ID "${id}" not found`
+            }
+          }
+          
+          const documentVersions = await getResponse.json()
+          if (!documentVersions || documentVersions.length === 0) {
+            return {
+              success: false,
+              error: `Document with ID "${id}" not found`
+            }
+          }
+          
+          const existingDoc = documentVersions[documentVersions.length - 1] // Get latest version
+          
+          // Update the document content based on the description
+          const updatedContent = `${existingDoc.content}\n\n<!-- Updated: ${new Date().toISOString()} -->\n${description}`
+          
+          // Update via document API
+          const updateResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/document`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              id,
+              content: updatedContent,
+              metadata: {
+                ...existingDoc.metadata,
+                updatedAt: new Date(),
+                description: `Updated via chat: ${description}`
+              }
+            })
+          })
+          
+          if (!updateResponse.ok) {
+            throw new Error(`Document API error: ${updateResponse.statusText}`)
+          }
+          
+          const updatedDoc = await updateResponse.json()
+          
+          return {
+            id: updatedDoc.id,
+            title: updatedDoc.title,
+            success: true,
+            message: `Document "${updatedDoc.title}" updated successfully`
+          }
+        } catch (error) {
+          console.error('Error updating document:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update document'
+          }
+        }
+      }
+    })
+
+    if (Object.keys(tools).length === 2 && connectedServers.length === 0) {
+      console.warn('No connected MCP servers found - only artifact tools will be available to the AI model')
     }
 
   return { tools, servers, connectedServers, availableTools }
@@ -206,6 +355,17 @@ ${server.tools.length > 0
 - Total configured servers: ${servers.length}
 - Connected servers: ${connectedServers.length}
 - Available tools: ${Object.keys(tools).length}
+
+**Artifact Tools:**
+You have access to artifact creation and management tools:
+- createDocument: Create new documents, code files, charts, or other content in the artifact workspace
+- updateDocument: Update existing documents with new content or modifications
+
+Use these tools when users:
+- Ask you to create code, documents, or visual content
+- Want to save or persist content for later use
+- Request interactive or editable content
+- Need artifacts they can work with outside the chat
 
 **Instructions:**
 ${connectedServers.length > 0 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { useWelcomeMessage } from "@/hooks/welcome/use-welcome-message"
+import { getSlideInStaggerClass } from "@/utils/animations"
 
 interface User {
   name: string
@@ -116,7 +117,7 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
                 <Badge
                   key={hint}
                   variant={selectedHints.includes(hint) ? "default" : "secondary"}
-                  className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-soft px-3 py-1 animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)} ${
+                  className={`cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-soft px-3 py-1 ${getSlideInStaggerClass(index)} ${
                     selectedHints.includes(hint) 
                       ? "hover:bg-primary/80" 
                       : "hover:bg-primary hover:text-primary-foreground"
@@ -138,7 +139,7 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
                   <Badge 
                     key={hint} 
                     variant="default" 
-                    className={`cursor-pointer transition-all duration-200 hover:scale-105 animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
+                    className={`cursor-pointer transition-all duration-200 hover:scale-105 ${getSlideInStaggerClass(index)}`}
                     onClick={() => toggleHint(hint)}
                   >
                     {hint} ×

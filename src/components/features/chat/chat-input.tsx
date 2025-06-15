@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { DOMAIN_HINTS } from "@/constants/chat"
+import { getSlideInStaggerClass } from "@/utils/animations"
 
 export interface ChatInputProps {
   onSendMessage: (content: string, selectedHints?: string[]) => void
@@ -49,7 +50,7 @@ export function ChatInput({ onSendMessage, isLoading, placeholder }: ChatInputPr
               <Badge 
                 key={hint} 
                 variant="default" 
-                className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)} domain-hint-badge`}
+                className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft ${getSlideInStaggerClass(index)} domain-hint-badge`}
                 onClick={() => toggleHint(hint)}
               >
                 {hint} ×
@@ -70,7 +71,7 @@ export function ChatInput({ onSendMessage, isLoading, placeholder }: ChatInputPr
               <Badge
                 key={hint}
                 variant={selectedHints.includes(hint) ? "default" : "outline"}
-                className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)} domain-hint-badge ${
+                className={`cursor-pointer text-xs transition-all duration-200 hover:scale-105 hover:shadow-soft ${getSlideInStaggerClass(index)} domain-hint-badge ${
                   selectedHints.includes(hint) 
                     ? "hover:bg-primary/80 ring-2 ring-primary/20" 
                     : "hover:bg-primary hover:text-primary-foreground hover:border-primary"

@@ -2,9 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import streaming optimizations */
-@import '../styles/streaming-optimizations.css';
-
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -262,7 +259,6 @@
   .animate-stagger-2 { animation-delay: 0.2s; }
   .animate-stagger-3 { animation-delay: 0.3s; }
   .animate-stagger-4 { animation-delay: 0.4s; }
-  .animate-stagger-5 { animation-delay: 0.5s; }
 
   /* Semantic color utilities */
   .text-status-success { @apply text-success; }

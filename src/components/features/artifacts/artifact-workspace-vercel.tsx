@@ -16,12 +16,14 @@ import { textArtifact } from '@/artifacts/text/client';
 import { codeArtifact } from '@/artifacts/code/client';
 import { imageArtifact } from '@/artifacts/image/client';
 import { sheetArtifact } from '@/artifacts/sheet/client';
+import { chartArtifact } from '@/artifacts/chart/client';
 
 export const artifactDefinitions = [
   textArtifact,
   codeArtifact,
   imageArtifact,
   sheetArtifact,
+  chartArtifact,
 ];
 
 export type ArtifactDefinition = typeof artifactDefinitions[number];
@@ -155,7 +157,7 @@ export function ArtifactWorkspace({
   );
 
   const saveContent = useCallback(
-    (updatedContent: string, debounce: boolean) => {
+    (updatedContent: string, debounce?: boolean) => {
       if (document && updatedContent !== document.content) {
         setIsContentDirty(true);
 
@@ -211,7 +213,26 @@ export function ArtifactWorkspace({
   );
 
   if (!artifactDefinition) {
-    throw new Error('Artifact definition not found!');
+    // Return a simple fallback display for unsupported artifact types
+    console.warn(`Artifact definition not found for kind: ${artifact.kind}. Showing fallback display.`);
+    return (
+      <div className="p-8 text-center">
+        <div className="mb-4 p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
+          <div className="mb-2 text-sm text-yellow-800">
+            <strong>Unsupported artifact type:</strong> {artifact.kind}
+          </div>
+          <div className="text-xs text-yellow-600">
+            This artifact type is not yet supported in the Vercel workspace.
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto">
+          <h3 className="text-lg font-semibold mb-2">{artifact.title}</h3>
+          <div className="text-left bg-gray-50 p-4 rounded border overflow-auto max-h-96">
+            <pre className="whitespace-pre-wrap text-sm">{artifact.content}</pre>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Initialize artifact
@@ -408,11 +429,9 @@ export function ArtifactWorkspace({
             <div className="dark:bg-muted bg-background h-full overflow-y-scroll !max-w-full items-center">
               <artifactDefinition.content
                 title={artifact.title}
-                content={
-                  isCurrentVersion
-                    ? artifact.content
-                    : getDocumentContentById(currentVersionIndex)
-                }
+                content={isCurrentVersion
+                  ? artifact.content
+                  : getDocumentContentById(currentVersionIndex)}
                 mode={mode}
                 status={artifact.status}
                 currentVersionIndex={currentVersionIndex}
@@ -436,6 +455,15 @@ export function ArtifactWorkspace({
                           key={index}
                           onClick={() =>
                             toolbarItem.onClick({
+                              // ArtifactActionContext properties
+                              content: artifact.content,
+                              handleVersionChange,
+                              currentVersionIndex,
+                              isCurrentVersion,
+                              mode,
+                              metadata,
+                              setMetadata,
+                              // ArtifactToolbarContext properties
                               appendMessage: append,
                               callMCPTool: async (toolName: string, args: any) => {
                                 // MCP tool integration

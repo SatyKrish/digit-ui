@@ -10,6 +10,7 @@ import { generateInitials } from "@/utils/format"
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer"
 import { useScrollToBottom } from "@/hooks/shared/use-scroll-to-bottom"
 import { useStreamingOptimization } from "@/hooks/shared/use-streaming-optimization"
+import { getSlideInStaggerClass } from "@/utils/animations"
 import type { ChatMessage } from "@/types/chat"
 import type { ChatMessagesProps } from "@/types/chat"
 
@@ -30,7 +31,7 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false, onReo
         // Reduce animations during streaming to prevent flickering
         isStreaming && message.role === "assistant" && index === 0 
           ? "opacity-100" 
-          : `animate-slide-in-up animate-stagger-${Math.min(index % 4 + 1, 4)}`
+          : getSlideInStaggerClass(index)
       } ${
         message.role === "user" ? "justify-end" : "justify-start"
       }`}

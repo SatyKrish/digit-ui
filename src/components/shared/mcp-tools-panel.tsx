@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Database, BarChart3, FileText, RefreshCw } from "lucide-react"
+import { getSlideInStaggerClass } from "@/utils/animations"
 
 interface MCPServer {
   id: string
@@ -196,7 +197,7 @@ export function MCPToolsPanel() {
               <TabsTrigger 
                 key={server.id} 
                 value={server.id} 
-                className={`flex items-center gap-2 transition-all duration-200 hover:scale-105 animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
+                className={`flex items-center gap-2 transition-all duration-200 hover:scale-105 ${getSlideInStaggerClass(index)}`}
               >
                 {getServerIcon(server.id)}
                 <span>{server.name}</span>
@@ -263,7 +264,7 @@ export function MCPToolsPanel() {
                     getToolsByServer(server.id).map((tool, index) => (
                       <div 
                         key={tool.name} 
-                        className={`border border-border/50 rounded-lg p-4 shadow-soft hover:shadow-medium hover:border-border transition-all duration-200 hover:scale-[1.02] animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
+                        className={`border border-border/50 rounded-lg p-4 shadow-soft hover:shadow-medium hover:border-border transition-all duration-200 hover:scale-[1.02] ${getSlideInStaggerClass(index)}`}
                       >
                         <h4 className="font-semibold text-foreground">{tool.name}</h4>
                         <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{tool.description}</p>

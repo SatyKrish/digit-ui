@@ -11,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { 
   Artifact, 
   ArtifactProvider, 
-  ArtifactWorkspace,
   useArtifact 
 } from "@/components/features/artifacts"
+import { DemoArtifactWorkspace } from "@/components/features/artifacts/demo-workspace"
 import type { ArtifactKind } from "@/lib/artifacts/types"
 import { toast } from "sonner"
 
@@ -70,7 +70,7 @@ export default function ArtifactsDemo() {
               </CardHeader>
               <CardContent>
                 <div className="h-[70vh] min-h-[600px] xl:h-[75vh] 2xl:h-[80vh] border rounded-lg overflow-hidden">
-                  <ArtifactWorkspace />
+                  <DemoArtifactWorkspace />
                 </div>
               </CardContent>
             </Card>

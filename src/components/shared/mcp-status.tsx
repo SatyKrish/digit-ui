@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Database, BarChart3, FileText } from "lucide-react"
+import { getSlideInStaggerClass } from "@/utils/animations"
 
 interface MCPServer {
   id: string
@@ -119,7 +120,7 @@ export function MCPStatus() {
             <TooltipTrigger asChild>
               <Badge 
                 variant={getStatusColor(server.status)} 
-                className={`flex items-center gap-2 py-1 h-7 px-3 transition-all duration-200 hover:scale-105 animate-slide-in-left animate-stagger-${Math.min(index + 1, 4)}`}
+                className={`flex items-center gap-2 py-1 h-7 px-3 transition-all duration-200 hover:scale-105 animate-slide-in-left ${getSlideInStaggerClass(index)}`}
               >
                 {getServerIcon(server.id)}
                 <span className="text-xs font-medium">{server.name}</span>
