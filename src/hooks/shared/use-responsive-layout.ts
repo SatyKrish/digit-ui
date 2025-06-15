@@ -1,5 +1,6 @@
 // Enhanced layout hook for chat interface with adaptive responsive behavior
 import { useState, useEffect } from 'react'
+import type { CSSProperties } from 'react'
 
 interface LayoutDimensions {
   width: number
@@ -46,8 +47,8 @@ export function useResponsiveLayout() {
   return { dimensions, breakpoints }
 }
 
-// Enhanced utility to get adaptive CSS classes for layout
-export function getAdaptiveLayoutClasses(showArtifacts: boolean, breakpoints?: LayoutBreakpoints) {
+// Enhanced utility to get adaptive CSS classes for layout - Vercel-inspired approach
+export function getAdaptiveLayoutClasses(showArtifacts: boolean, breakpoints?: LayoutBreakpoints, containerWidth?: number) {
   if (!showArtifacts) {
     return {
       chatClasses: 'w-full',
@@ -55,19 +56,31 @@ export function getAdaptiveLayoutClasses(showArtifacts: boolean, breakpoints?: L
     }
   }
 
-  // Unified layout approach - chat gets fixed 35%, artifact gets remaining space
-  const baseClasses = {
-    chatClasses: 'flex-[0_0_35%] min-w-[350px] max-w-[35%] chat-area',
-    artifactClasses: 'flex-[1_0_auto] min-w-[500px] artifact-panel'
-  }
-
-  // Desktop gets slightly more space for artifacts
-  if (breakpoints?.isDesktop || breakpoints?.isLargeDesktop) {
+  // Container-based approach inspired by Vercel AI SDK patterns
+  // Always prioritize preventing horizontal overflow over exact percentages
+  const totalMinWidth = 850 // 350px (chat) + 500px (artifacts)
+  const currentWidth = containerWidth || 1200
+  
+  if (currentWidth < totalMinWidth) {
+    // Force stack layout on very small screens to prevent horizontal scroll
     return {
-      chatClasses: 'flex-[0_0_30%] min-w-[400px] max-w-[30%] chat-area',
-      artifactClasses: 'flex-[1_0_auto] min-w-[500px] artifact-panel'
+      chatClasses: 'w-full min-w-[320px] chat-area',
+      artifactClasses: 'w-full min-w-[320px] artifact-panel'
     }
   }
-
-  return baseClasses
+  
+  // Calculate optimal chat width: aim for 30-35% but never exceed container constraints
+  const targetChatPercent = breakpoints?.isLargeDesktop ? 0.3 : 0.35
+  const maxChatWidth = Math.floor(currentWidth * targetChatPercent)
+  const chatWidth = Math.max(350, Math.min(maxChatWidth, 500)) // Between 350-500px
+  const artifactWidth = currentWidth - chatWidth
+  
+  return {
+    chatClasses: `chat-area`,
+    artifactClasses: `artifact-panel`,
+    containerStyle: {
+      '--chat-width': `${chatWidth}px`,
+      '--artifact-width': `${artifactWidth}px`
+    } as CSSProperties
+  }
 }

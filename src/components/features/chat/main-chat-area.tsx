@@ -259,35 +259,42 @@ export function MainChatArea({
 
   // Get adaptive layout classes based on current breakpoint and state
   const adaptiveLayoutClasses = useMemo(() => 
-    getAdaptiveLayoutClasses(showArtifactPanel, breakpoints), 
-    [showArtifactPanel, breakpoints]
+    getAdaptiveLayoutClasses(showArtifactPanel, breakpoints, dimensions.width), 
+    [showArtifactPanel, breakpoints, dimensions.width]
   )
 
-  // Responsive layout: adaptive sizing that ensures both chat and artifacts fit within viewport
+  // Vercel-inspired layout: container-based constraints that prevent horizontal overflow
   const chatContainerClass = showArtifactPanel 
     ? (isArtifactFullScreen
         ? 'hidden'
         : (isChatMinimized || shouldForceChatMinimize)
         ? 'w-80 min-w-80 max-w-80 flex-shrink-0' 
-        : adaptiveLayoutClasses.chatClasses) // Use adaptive classes
+        : 'chat-area') // Use simple class, width controlled by CSS custom properties
     : 'w-full'
 
   const artifactPanelClass = (isChatMinimized || shouldForceChatMinimize)
     ? 'flex-1 min-w-0 artifact-panel' 
     : isArtifactFullScreen
     ? 'fixed inset-0 z-50 w-screen h-screen artifact-panel bg-background'
-    : adaptiveLayoutClasses.artifactClasses // Use adaptive classes
+    : 'artifact-panel' // Use simple class, width controlled by CSS custom properties
+
+  // Container styles for CSS custom properties
+  const containerStyles = showArtifactPanel && adaptiveLayoutClasses.containerStyle 
+    ? adaptiveLayoutClasses.containerStyle 
+    : undefined
 
   // Debug info (only in development)
   if (process.env.NODE_ENV === 'development') {
-    console.debug('Adaptive Layout Debug:', {
+    console.debug('Vercel-inspired Layout Debug:', {
       showArtifactPanel,
       dimensions,
       breakpoints,
       shouldForceChatMinimize,
       chatContainerClass,
       artifactPanelClass,
-      adaptiveLayoutClasses
+      containerStyles,
+      totalMinWidth: 850,
+      hasHorizontalSpace: dimensions.width >= 850
     })
   }
 
@@ -303,7 +310,12 @@ export function MainChatArea({
         />
       )}
 
-      <div className={`flex-1 flex min-h-0 w-full overflow-hidden chat-flex-container ${isArtifactFullScreen ? 'p-0' : ''}`}>
+      <div 
+        className={`flex-1 flex min-h-0 w-full overflow-hidden chat-flex-container ${
+          showArtifactPanel ? 'has-artifacts' : ''
+        } ${isArtifactFullScreen ? 'p-0' : ''}`}
+        style={containerStyles}
+      >
         {/* Chat Area */}
         <div className={`flex flex-col min-h-0 overflow-hidden ${chatContainerClass}`}>
           {isInitialState ? (

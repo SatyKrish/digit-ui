@@ -111,19 +111,24 @@
   margin-right: 0 !important;
 }
 
-/* UNIFIED RESPONSIVE LAYOUT SYSTEM */
+/* UNIFIED RESPONSIVE LAYOUT SYSTEM - Vercel-inspired approach */
 
-/* Chat area - fixed percentage approach for consistency */
+/* Chat area - uses CSS custom properties for dynamic width */
 .chat-area {
-  min-width: 350px; /* Minimum for chat usability with input */
+  width: var(--chat-width, 35%);
+  min-width: 320px; /* Absolute minimum for usability */
+  max-width: 50%; /* Never exceed half screen */
+  flex-shrink: 0;
   overflow: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 
-/* Artifact panel - takes remaining space */
+/* Artifact panel - uses CSS custom properties for dynamic width */
 .artifact-panel {
-  min-width: 500px; /* Minimum width for proper artifact display */
+  width: var(--artifact-width, calc(100% - var(--chat-width, 35%)));
+  min-width: 400px; /* Reduced from 500px for better flexibility */
+  flex-grow: 1;
   overflow: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -132,7 +137,7 @@
   padding: 0;
 }
 
-/* Flex container - unified approach */
+/* Flex container - Vercel-inspired unified approach */
 .chat-flex-container {
   display: flex;
   align-items: stretch;
@@ -144,6 +149,15 @@
   gap: 0;
   margin: 0;
   padding: 0;
+  /* Prevent horizontal overflow at all costs */
+  box-sizing: border-box;
+}
+
+/* Container-based overflow prevention */
+.chat-flex-container.has-artifacts {
+  /* When artifacts are shown, enforce container constraints */
+  min-width: 0; /* Allow shrinking */
+  width: 100%;
 }
 
 /* Smooth transitions for layout elements */
@@ -151,6 +165,9 @@
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Ensure content doesn't break layout */
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Prevent content overflow during transitions */
@@ -158,6 +175,26 @@
 .artifact-panel > * {
   max-width: 100%;
   overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Stack layout for very small screens */
+@media (max-width: 850px) {
+  .chat-flex-container.has-artifacts {
+    flex-direction: column;
+  }
+  
+  .chat-area {
+    width: 100% !important;
+    min-width: 320px;
+    max-width: none;
+  }
+  
+  .artifact-panel {
+    width: 100% !important;
+    min-width: 320px;
+    max-width: none;
+  }
 }
 
 /* Enhanced chat container with horizontal scroll support */
