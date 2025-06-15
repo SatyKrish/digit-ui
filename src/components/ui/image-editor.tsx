@@ -24,7 +24,7 @@ interface ImageEditorProps {
   title?: string
   isCurrentVersion?: boolean
   currentVersionIndex?: number
-  status?: 'streaming' | 'idle'
+  status?: 'streaming' | 'idle' | 'completed'
   onSaveContent?: (content: string, debounce?: boolean) => void
   className?: string
   readOnly?: boolean

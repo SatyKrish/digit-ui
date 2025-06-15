@@ -368,7 +368,7 @@ export async function updateStreamingArtifact(
         
         switch (data.type) {
           case "content-update":
-            updatedContent = data.content || ""
+            updatedContent = typeof data.content === 'string' ? data.content : (data.content?.content || "")
             progress = Math.min(progress + 5, 95)
             
             ui.update(

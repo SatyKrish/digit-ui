@@ -260,7 +260,35 @@ export function useChats(user?: { id: string; email: string; name: string }) {
     deleteSession: deleteChat,
     selectSession: selectChat,
     refreshSessions: refreshChats,
-    getSessionById: getChatById
+    getSessionById: getChatById,
+    switchToSession: async (sessionId: string) => {
+      const chat = chats.find(c => c.id === sessionId);
+      selectChat(chat || null);
+      return chat || null;
+    },
+    clearAllSessions: async () => {
+      const currentUser = userRef.current;
+      if (!currentUser) return;
+      
+      try {
+        const response = await fetch('/api/chat/sessions/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.id })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to clear sessions');
+        }
+        
+        setChats([]);
+        setCurrentChat(null);
+        sessionCache.clear(currentUser.id);
+      } catch (error) {
+        console.error('Error clearing sessions:', error);
+        toast.error('Failed to clear chat history');
+      }
+    }
   };
 }
 

@@ -47,21 +47,21 @@ export function useArtifact() {
     [mutate]
   );
 
-  const [metadata, setMetadata] = useSWR<any>('artifact-metadata', null, {
+  const metadata = useSWR<any>('artifact-metadata', null, {
     fallbackData: {},
-  })[0] ? useSWR<any>('artifact-metadata') : { data: {}, mutate: () => {} };
+  });
 
   const setMetadataState = useCallback(
     (updater: any | ((current: any) => any)) => {
       metadata.mutate(
-        (current) => {
+        (current: any) => {
           const newMetadata = typeof updater === 'function' ? updater(current || {}) : updater;
           return newMetadata;
         },
         { revalidate: false }
       );
     },
-    [metadata]
+    [metadata.mutate]
   );
 
   return {

@@ -6,7 +6,7 @@ interface ChatSessionContextType {
   sessions: Chat[]
   currentSession: Chat | null
   isLoading: boolean
-  createSession: (title?: string) => Promise<Chat>
+  createSession: (title?: string) => Promise<Chat | null>
   switchToSession: (sessionId: string) => Promise<Chat | null>
   deleteSession: (sessionId: string) => Promise<boolean>
   updateSessionTitle: (sessionId: string, title: string) => Promise<boolean>
