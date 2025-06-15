@@ -75,6 +75,7 @@ export interface ChatInputProps {
 
 export interface MainChatAreaProps {
   user: {
+    id: string
     name: string
     email: string
   }
