@@ -1,9 +1,14 @@
-// Simple layout hook for chat interface
+// Enhanced layout hook for chat interface with adaptive responsive behavior
 import { useState, useEffect } from 'react'
 
 interface LayoutDimensions {
   width: number
   height: number
+}
+
+interface LayoutBreakpoints {
+  isDesktop: boolean
+  isLargeDesktop: boolean
 }
 
 export function useResponsiveLayout() {
@@ -12,13 +17,23 @@ export function useResponsiveLayout() {
     height: typeof window !== 'undefined' ? window.innerHeight : 800
   })
 
+  const [breakpoints, setBreakpoints] = useState<LayoutBreakpoints>({
+    isDesktop: false,
+    isLargeDesktop: false
+  })
+
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const updateDimensions = () => {
-      setDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight
+      const width = window.innerWidth
+      const height = window.innerHeight
+      
+      setDimensions({ width, height })
+      
+      setBreakpoints({
+        isDesktop: width >= 1200 && width < 1920,
+        isLargeDesktop: width >= 1920
       })
     }
 
@@ -28,20 +43,31 @@ export function useResponsiveLayout() {
     return () => window.removeEventListener('resize', updateDimensions)
   }, [])
 
-  return dimensions
+  return { dimensions, breakpoints }
 }
 
-// Simple utility to get CSS classes for layout
-export function getLayoutClasses(showArtifacts: boolean) {
+// Enhanced utility to get adaptive CSS classes for layout
+export function getAdaptiveLayoutClasses(showArtifacts: boolean, breakpoints?: LayoutBreakpoints) {
   if (!showArtifacts) {
     return {
-      chatClasses: 'flex-1',
+      chatClasses: 'w-full',
       artifactClasses: ''
     }
   }
 
-  return {
-    chatClasses: 'flex-1 min-w-[55%]',
-    artifactClasses: 'w-[45%] flex-shrink-0 max-w-[600px]'
+  // Unified layout approach - chat gets fixed 35%, artifact gets remaining space
+  const baseClasses = {
+    chatClasses: 'flex-[0_0_35%] min-w-[350px] max-w-[35%] chat-area',
+    artifactClasses: 'flex-[1_0_auto] min-w-[500px] artifact-panel'
   }
+
+  // Desktop gets slightly more space for artifacts
+  if (breakpoints?.isDesktop || breakpoints?.isLargeDesktop) {
+    return {
+      chatClasses: 'flex-[0_0_30%] min-w-[400px] max-w-[30%] chat-area',
+      artifactClasses: 'flex-[1_0_auto] min-w-[500px] artifact-panel'
+    }
+  }
+
+  return baseClasses
 }

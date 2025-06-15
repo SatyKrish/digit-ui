@@ -40,11 +40,11 @@ export function ChatInput({ onSendMessage, isLoading, placeholder }: ChatInputPr
   }
 
   return (
-    <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-6 space-y-4 shadow-elegant">
+    <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-6 space-y-4 shadow-elegant chat-input-container">
       {/* Selected Hints */}
       {selectedHints.length > 0 && (
-        <div className="flex justify-center">
-          <div className="w-full max-w-4xl flex flex-wrap gap-2 animate-fade-in">
+        <div className="flex justify-center selected-hints-container">
+          <div className="w-full max-w-full flex flex-wrap gap-2 animate-fade-in px-2">
             {selectedHints.map((hint, index) => (
               <Badge 
                 key={hint} 
@@ -60,12 +60,12 @@ export function ChatInput({ onSendMessage, isLoading, placeholder }: ChatInputPr
       )}
 
       {/* Quick Domain Hints */}
-      <div className="flex justify-center">
-        <div className="w-full max-w-4xl">
+      <div className="flex justify-center domain-hints-container">
+        <div className="w-full max-w-full px-2">
           <div className="text-xs text-muted-foreground mb-2 text-center font-medium">
             Quick domain contexts:
           </div>
-          <div className="flex flex-wrap gap-2 justify-center">
+          <div className="flex flex-wrap gap-2 justify-center domain-hints-grid">
             {DOMAIN_HINTS.map((hint, index) => (
               <Badge
                 key={hint}
@@ -96,7 +96,7 @@ export function ChatInput({ onSendMessage, isLoading, placeholder }: ChatInputPr
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="flex gap-2 justify-center">
-        <div className="w-full max-w-4xl relative">
+        <div className="w-full max-w-full relative px-2">
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}

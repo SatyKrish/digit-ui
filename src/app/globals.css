@@ -447,16 +447,16 @@
     word-wrap: break-word;
   }
   
-  /* Chat-specific responsive utilities */
+  /* Chat-specific responsive utilities - Simplified and unified */
   .chat-responsive-width {
-    min-width: 280px;
-    max-width: 100%;
+    min-width: 350px;
   }
   
   .artifact-responsive-width {
-    min-width: 320px;
-    max-width: 45vw;
+    min-width: 500px;
   }
+  
+  /* Layout classes are now handled by the responsive hook */
   
   /* Horizontal scrolling utilities */
   .scroll-horizontal-auto {
