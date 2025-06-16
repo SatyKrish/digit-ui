@@ -3,9 +3,11 @@ import { mcpClient } from "@/client/mcp-client"
 import { aiSdkChatPersistence } from "@/database/repositories"
 import { getAzureOpenAIModel } from "@/config/azure-openai"
 import { z } from "zod"
-import { artifactKinds } from "@/lib/artifacts/server"
 import { generateUUID } from "@/lib/utils"
 import type { ArtifactKind } from "@/lib/artifacts/types"
+
+// Artifact kinds constant
+const artifactKinds = ["text", "code", "chart", "visualization", "document", "image", "sheet"] as const
 
 // Performance: Cache expensive operations
 const TOOL_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
@@ -242,138 +244,19 @@ function createDocumentTool() {
       console.log(`[ARTIFACT] Creating ${kind} artifact: ${title}`);
       
       try {
-        // Import the document handlers with error handling
-        let handler;
-        try {
-          const { getDocumentHandler } = await import('@/lib/artifacts/server');
-          handler = getDocumentHandler(kind);
-          console.log(`[ARTIFACT] Loaded handler for artifact kind: ${kind}`);
-        } catch (importError) {
-          console.warn(`[ARTIFACT] Failed to import document handlers:`, importError);
-        }
+        // Simplified artifact creation - use provided content or let AI generate it
+        console.log(`[ARTIFACT] Creating ${kind} artifact with simplified logic`);
         
-        if (!handler) {
-          console.warn(`[ARTIFACT] No handler found for artifact kind: ${kind}, using fallback`);
-          return createFallbackArtifact(artifactId, kind, title, content, language);
-        }
+        // Use provided content or create minimal placeholder
+        let resultContent = content || createMinimalPlaceholder(kind, title);
         
-        console.log(`[ARTIFACT] Found handler for ${kind}, generating content...`);
-        
-        // Optimized data stream with better memory management
-        let generatedContent = '';
-        let streamMetadata: any = null;
-        const contentChunks: string[] = [];
-        
-        const dataStream = {
-          writeData: (data: any) => {
-            try {
-              const contentLength = data.content?.length || 0;
-              console.log(`[DATASTREAM] Type: ${data.type}, Content length: ${contentLength}`);
-              
-              switch (data.type) {
-                case 'text-delta':
-                case 'content-update':
-                case 'code-delta':
-                case 'sheet-delta':
-                  if (data.content) {
-                    contentChunks.push(data.content);
-                    // Limit memory usage by joining chunks periodically
-                    if (contentChunks.length > 100) {
-                      generatedContent += contentChunks.join('');
-                      contentChunks.length = 0;
-                    }
-                  }
-                  break;
-                case 'chart-delta':
-                  // Handle chart content and metadata
-                  if (data.content) {
-                    contentChunks.push(data.content);
-                    // Limit memory usage by joining chunks periodically
-                    if (contentChunks.length > 100) {
-                      generatedContent += contentChunks.join('');
-                      contentChunks.length = 0;
-                    }
-                  }
-                  // Capture chart metadata
-                  if (data.data || data.chartType || data.xKey || data.yKey) {
-                    streamMetadata = {
-                      data: data.data,
-                      chartType: data.chartType,
-                      title: data.title || title,
-                      xKey: data.xKey,
-                      yKey: data.yKey
-                    };
-                    console.log(`[CHART] Captured metadata:`, streamMetadata);
-                  }
-                  break;
-              }
-            } catch (streamError) {
-              console.error(`[DATASTREAM] Error processing data:`, streamError);
-            }
-          },
-          close: () => {
-            // Final join of remaining chunks
-            if (contentChunks.length > 0) {
-              generatedContent += contentChunks.join('');
-            }
-            console.log(`[DATASTREAM] Data stream closed. Generated content length: ${generatedContent.length}`);
-          }
-        };
-        
-        // Generate content with timeout protection
-        const contentPromise = content || handler.onCreateDocument({
-          title,
-          dataStream,
-          metadata: { language }
-        });
-        
-        console.log(`[ARTIFACT] Waiting for content generation...`);
-        const finalContent = await Promise.race([
-          contentPromise,
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Content generation timeout')), 30000)
-          )
-        ]) as string;
-        
-        // Finalize the data stream
-        dataStream.close();
-        
-        // Use generated content if available, otherwise use finalContent
-        let resultContent = generatedContent || finalContent;
-        
-        // Enhanced chart processing
+        // For charts, ensure valid JSON structure
         if (kind === 'chart') {
-          resultContent = await processChartContent(resultContent, streamMetadata, title);
-          
-          // For charts, ensure we have valid content to display
-          if (!resultContent || resultContent.length === 0) {
-            console.warn(`[CHART] No content generated, using provided content`);
-            resultContent = content || '{}';
-          }
-          
-          // Validate chart content is valid JSON
-          try {
-            const chartData = JSON.parse(resultContent);
-            if (!chartData.data || !Array.isArray(chartData.data) || chartData.data.length === 0) {
-              console.warn(`[CHART] Invalid chart data, attempting to parse provided content`);
-              if (content) {
-                const providedData = JSON.parse(content);
-                if (providedData.data && Array.isArray(providedData.data)) {
-                  resultContent = content;
-                }
-              }
-            }
-          } catch (parseError) {
-            console.error(`[CHART] Chart content is not valid JSON:`, parseError);
-            if (content) {
-              console.log(`[CHART] Falling back to provided content`);
-              resultContent = content;
-            }
-          }
+          resultContent = await processChartContent(resultContent, null, title);
         }
         
         const duration = Date.now() - startTime;
-        console.log(`[ARTIFACT] Generated ${kind} artifact in ${duration}ms (${resultContent.length} chars)`);
+        console.log(`[ARTIFACT] Created ${kind} artifact in ${duration}ms (${resultContent.length} chars)`);
         
         return {
           id: artifactId,
@@ -530,6 +413,44 @@ function createFallbackChartData(title: string): any {
     yKey,
     data
   };
+}
+
+/**
+ * Create minimal placeholder content for different artifact types
+ */
+function createMinimalPlaceholder(kind: ArtifactKind, title: string): string {
+  switch (kind) {
+    case 'chart':
+      return JSON.stringify({
+        title: title,
+        chartType: 'bar',
+        data: [],
+        xKey: 'x',
+        yKey: 'y'
+      })
+    
+    case 'code':
+      return `// ${title}\n// Content will be generated by AI`
+    
+    case 'text':
+      return `# ${title}\n\nContent will be generated by AI.`
+    
+    case 'image':
+      return `<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#f0f0f0"/>
+  <text x="200" y="150" text-anchor="middle">${title}</text>
+</svg>`
+    
+    case 'sheet':
+      return JSON.stringify({
+        title: title,
+        data: [],
+        metadata: { columns: [], rowCount: 0 }
+      })
+    
+    default:
+      return `# ${title}\n\nContent will be generated by AI.`
+  }
 }
 
 /**

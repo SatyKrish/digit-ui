@@ -19,9 +19,10 @@ export type DataStreamDelta = {
     | 'clear'
     | 'finish'
     | 'kind';
-  content: string | Suggestion;
+  content?: string | Suggestion;
   data?: any[];
   chartType?: string;
+  title?: string;
   xKey?: string;
   yKey?: string;
 };
@@ -88,6 +89,34 @@ export function DataStreamHandler({ id }: { id: string }) {
             return {
               ...draftArtifact,
               status: 'idle',
+            };
+
+          case 'text-delta':
+          case 'code-delta':
+          case 'sheet-delta':
+          case 'image-delta':
+            return {
+              ...draftArtifact,
+              content: draftArtifact.content + (delta.content || ''),
+              status: 'streaming',
+            };
+
+          case 'chart-delta':
+            // Handle chart-specific streaming data
+            if (delta.data && Array.isArray(delta.data)) {
+              setMetadata((prevMeta: any) => ({
+                ...prevMeta,
+                data: delta.data,
+                chartType: delta.chartType || prevMeta?.chartType,
+                title: delta.title || prevMeta?.title,
+                xKey: delta.xKey || prevMeta?.xKey,
+                yKey: delta.yKey || prevMeta?.yKey,
+              }));
+            }
+            return {
+              ...draftArtifact,
+              content: draftArtifact.content + (delta.content || ''),
+              status: 'streaming',
             };
 
           default:

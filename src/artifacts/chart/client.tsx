@@ -184,13 +184,13 @@ export const chartArtifact = new Artifact<'chart', ChartArtifactMetadata>({
         try {
           const parsed = JSON.parse(newContent);
           if (parsed.data && Array.isArray(parsed.data) && parsed.data.length > 0) {
-            setMetadata((prevMeta) => ({
+            setMetadata((prevMeta: any) => ({
               ...prevMeta,
               data: parsed.data,
-              chartType: (parsed.chartType as ChartArtifactMetadata['chartType']) || prevMeta.chartType,
-              title: parsed.title || prevMeta.title,
-              xKey: parsed.xKey || prevMeta.xKey,
-              yKey: parsed.yKey || prevMeta.yKey,
+              chartType: (parsed.chartType as ChartArtifactMetadata['chartType']) || prevMeta?.chartType,
+              title: parsed.title || prevMeta?.title,
+              xKey: parsed.xKey || prevMeta?.xKey,
+              yKey: parsed.yKey || prevMeta?.yKey,
             }));
           }
         } catch {
@@ -208,23 +208,23 @@ export const chartArtifact = new Artifact<'chart', ChartArtifactMetadata>({
       console.log('Chart delta received:', streamPart); // Debug log
       
       // Handle streaming chart data updates directly via metadata
-      setMetadata((prev) => ({
+      setMetadata((prev: any) => ({
         ...prev,
-        data: streamPart.data || prev.data,
+        data: streamPart.data || prev?.data,
         chartType: (streamPart.chartType as ChartArtifactMetadata['chartType']) || 
                   // Use the same detection logic for streaming updates
                   detectChartType({
                     chartType: streamPart.chartType,
-                    title: streamPart.title || prev.title,
-                    data: streamPart.data || prev.data
-                  }, prev.title), // Pass original title for better detection
-        title: streamPart.title || prev.title,
-        xKey: streamPart.xKey || prev.xKey,
-        yKey: streamPart.yKey || prev.yKey,
+                    title: streamPart.title || prev?.title,
+                    data: streamPart.data || prev?.data
+                  }, prev?.title), // Pass original title for better detection
+        title: streamPart.title || prev?.title,
+        xKey: streamPart.xKey || prev?.xKey,
+        yKey: streamPart.yKey || prev?.yKey,
       }));
       
-      // Also update content if this is a content stream
-      if (streamPart.content && !streamPart.data) {
+      // Also update content if this contains content
+      if (streamPart.content) {
         setArtifact((prev) => ({
           ...prev,
           content: prev.content + streamPart.content,

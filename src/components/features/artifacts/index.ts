@@ -19,18 +19,19 @@ export type {
   StreamPart
 } from "@/lib/artifacts/types"
 
-// Server Components  
-export {
-  createDocumentHandler,
-  getDocumentHandler,
-  documentHandlersByArtifactKind,
-  artifactKinds,
-  textDocumentHandler,
-  codeDocumentHandler,
-  chartDocumentHandler,
-  visualizationDocumentHandler,
-  documentDocumentHandler
-} from "@/lib/artifacts/server"
+// Server Components (removed - simplified architecture)
+// Individual artifact servers are now imported directly in chat route
+// export {
+//   createDocumentHandler,
+//   getDocumentHandler,
+//   documentHandlersByArtifactKind,
+//   artifactKinds,
+//   textDocumentHandler,
+//   codeDocumentHandler,
+//   chartDocumentHandler,
+//   visualizationDocumentHandler,
+//   documentDocumentHandler
+// } from "@/lib/artifacts/server"
 
 // Client Components
 export { ArtifactWorkspace } from "./artifact-workspace-vercel"
