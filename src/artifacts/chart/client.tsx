@@ -205,8 +205,6 @@ export const chartArtifact = new Artifact<'chart', ChartArtifactMetadata>({
     }
     
     if (streamPart.type === 'chart-delta') {
-      console.log('Chart delta received:', streamPart); // Debug log
-      
       // Handle streaming chart data updates directly via metadata
       setMetadata((prev: any) => ({
         ...prev,

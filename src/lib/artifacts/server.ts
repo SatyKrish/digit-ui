@@ -310,8 +310,6 @@ export const chartDocumentHandler = createDocumentHandler({
   onCreateDocument: async ({ title, dataStream }) => {
     let content = ""
     
-    console.log('[CHART DEBUG] Title:', title);
-    
     // First, use LLM to determine the optimal chart configuration
     const configResult = await streamText({
       model: getAzureOpenAIModel("gpt-4o"),
@@ -345,9 +343,7 @@ Return ONLY a JSON object with this structure:
     let chartMeta;
     try {
       chartMeta = JSON.parse(chartConfig);
-      console.log('[CHART DEBUG] LLM determined chart config:', chartMeta);
     } catch (error) {
-      console.warn('[CHART DEBUG] Failed to parse chart config, using defaults:', error);
       chartMeta = {
         chartType: 'bar',
         xKey: 'name',
