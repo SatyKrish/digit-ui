@@ -49,7 +49,7 @@ export interface StreamPart {
   // Chart-specific properties
   textDelta?: string
   data?: any
-  chartType?: string
+  chartType?: "bar" | "line" | "pie" | "area" | string
   title?: string
   xKey?: string
   yKey?: string

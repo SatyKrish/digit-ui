@@ -7,10 +7,18 @@ import { ArtifactError } from "./types"
 
 const artifactKinds = ["text", "code", "chart", "visualization", "document", "image", "sheet"] as const
 
+interface ChartData {
+  chartType: 'bar' | 'line' | 'pie' | 'area'
+  title: string
+  xKey: string
+  yKey: string
+  data: Array<Record<string, any>>
+}
+
 /**
- * Simple chart type detection from title
+ * Detect chart type from title
  */
-function detectChartType(title: string): string {
+function detectChartType(title: string): ChartData['chartType'] {
   const lowerTitle = title.toLowerCase()
   
   if (lowerTitle.includes('pie') || lowerTitle.includes('distribution') || lowerTitle.includes('share')) {
@@ -27,51 +35,99 @@ function detectChartType(title: string): string {
 }
 
 /**
- * Create minimal placeholder content
+ * Create fallback chart data
+ */
+function createFallbackChart(title: string): ChartData {
+  return {
+    chartType: detectChartType(title),
+    title,
+    xKey: 'category',
+    yKey: 'value',
+    data: [
+      { category: 'Item A', value: 30 },
+      { category: 'Item B', value: 45 },
+      { category: 'Item C', value: 25 }
+    ]
+  }
+}
+
+/**
+ * Extract JSON from mixed content
+ */
+function extractJSON(content: string): string | null {
+  // Remove markdown code blocks
+  let cleaned = content.trim()
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '')
+  }
+  
+  // Find JSON object in content
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    return jsonMatch[0]
+  }
+  
+  return null
+}
+
+/**
+ * Validate and normalize chart data
+ */
+function validateChartData(data: any, title: string): ChartData {
+  // Ensure required fields exist
+  const normalized: ChartData = {
+    chartType: data.chartType || detectChartType(title),
+    title: data.title || title,
+    xKey: data.xKey || 'category',
+    yKey: data.yKey || 'value',
+    data: Array.isArray(data.data) ? data.data : []
+  }
+  
+  return normalized
+}
+
+/**
+ * Process chart content with clean error handling
+ */
+function processChartContent(content: string, title: string): string {
+  if (!content?.trim()) {
+    console.warn('[CHART] Empty content, using fallback')
+    return JSON.stringify(createFallbackChart(title))
+  }
+  
+  // Try to extract JSON from content
+  const jsonString = extractJSON(content)
+  if (!jsonString) {
+    console.warn('[CHART] No JSON found in content, using fallback')
+    return JSON.stringify(createFallbackChart(title))
+  }
+  
+  // Try to parse and validate
+  try {
+    const parsed = JSON.parse(jsonString)
+    const validated = validateChartData(parsed, title)
+    return JSON.stringify(validated)
+  } catch (error) {
+    console.warn('[CHART] JSON parse failed, using fallback:', error)
+    return JSON.stringify(createFallbackChart(title))
+  }
+}
+
+/**
+ * Create placeholder content
  */
 function createPlaceholder(kind: ArtifactKind, title: string): string {
   switch (kind) {
     case 'chart':
-      return JSON.stringify({
-        title,
-        chartType: detectChartType(title),
-        data: [],
-        xKey: 'x',
-        yKey: 'y'
-      })
+      return JSON.stringify(createFallbackChart(title))
     case 'code':
       return `// ${title}\n// Generated code will appear here`
     case 'text':
       return `# ${title}\n\nContent will be generated here.`
     default:
       return `# ${title}\n\nContent will be generated here.`
-  }
-}
-
-/**
- * Simple chart content processing
- */
-function processChartContent(content: string, title: string): string {
-  if (!content?.trim()) {
-    throw new Error('Empty chart content')
-  }
-  
-  try {
-    const parsed = JSON.parse(content)
-    
-    // Auto-detect chart type if missing
-    if (!parsed.chartType) {
-      parsed.chartType = detectChartType(title)
-    }
-    
-    // Ensure basic structure
-    if (!parsed.data) parsed.data = []
-    if (!parsed.xKey) parsed.xKey = 'x'
-    if (!parsed.yKey) parsed.yKey = 'y'
-    
-    return JSON.stringify(parsed)
-  } catch (error) {
-    throw new Error(`Invalid chart JSON: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 

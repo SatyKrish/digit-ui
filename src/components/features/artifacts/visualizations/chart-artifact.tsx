@@ -89,19 +89,57 @@ export function ChartArtifact({ data, chartType = "bar", title, xKey, yKey }: Ch
     )
   }
 
-  // Auto-detect keys if not provided
+  // Auto-detect keys if not provided - improved logic
   const keys = Object.keys(data[0] || {})
-  const defaultXKey = xKey || keys[0]
-  const defaultYKey = yKey || keys.find((key) => typeof data[0]?.[key] === "number") || keys[1]
+  const defaultXKey = xKey || keys[0] || 'category'
+  
+  // For yKey, find the first numeric field, or fall back to the second key
+  let defaultYKey = yKey
+  if (!defaultYKey) {
+    // Find first numeric field that's not the X key
+    defaultYKey = keys.find((key) => 
+      key !== defaultXKey && typeof data[0]?.[key] === "number"
+    ) || keys[1] || 'value'
+  }
+
+  // For multi-series data, get all numeric keys (excluding X key)
+  const numericKeys = keys.filter(key => 
+    key !== defaultXKey && typeof data[0]?.[key] === "number"
+  )
+
+  // Debug logging for data structure issues
+  console.log('[CHART] Data analysis:', {
+    dataLength: data.length,
+    firstItem: data[0],
+    keys,
+    defaultXKey,
+    defaultYKey,
+    numericKeys,
+    isMultiSeries: numericKeys.length > 1
+  })
 
   // Choose colors based on theme
   const colors = COLORS[theme === "dark" ? "dark" : "light"]
 
-  // Calculate statistics
-  const total = data.reduce((sum, item) => sum + (item[defaultYKey] || 0), 0)
-  const average = total / data.length
-  const max = Math.max(...data.map(item => item[defaultYKey] || 0))
-  const min = Math.min(...data.map(item => item[defaultYKey] || 0))
+  // Calculate statistics - handle both single and multi-series data
+  let total, average, max, min
+  
+  if (numericKeys.length > 1) {
+    // Multi-series: sum all numeric values
+    total = data.reduce((sum, item) => {
+      return sum + numericKeys.reduce((itemSum, key) => itemSum + (item[key] || 0), 0)
+    }, 0)
+    const allValues = data.flatMap(item => numericKeys.map(key => item[key] || 0))
+    average = total / allValues.length
+    max = Math.max(...allValues)
+    min = Math.min(...allValues)
+  } else {
+    // Single series: use primary Y key
+    total = data.reduce((sum, item) => sum + (item[defaultYKey] || 0), 0)
+    average = total / data.length
+    max = Math.max(...data.map(item => item[defaultYKey] || 0))
+    min = Math.min(...data.map(item => item[defaultYKey] || 0))
+  }
 
   // Custom tooltip styling
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -139,14 +177,29 @@ export function ChartArtifact({ data, chartType = "bar", title, xKey, yKey }: Ch
             <YAxis stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Line 
-              type="monotone" 
-              dataKey={defaultYKey} 
-              stroke={colors[0]} 
-              strokeWidth={3}
-              dot={{ fill: colors[0], strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: colors[0], strokeWidth: 2 }}
-            />
+            {/* Render multiple lines for multi-series data */}
+            {numericKeys.length > 1 ? (
+              numericKeys.map((key, index) => (
+                <Line 
+                  key={key}
+                  type="monotone" 
+                  dataKey={key} 
+                  stroke={colors[index % colors.length]} 
+                  strokeWidth={3}
+                  dot={{ fill: colors[index % colors.length], strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: colors[index % colors.length], strokeWidth: 2 }}
+                />
+              ))
+            ) : (
+              <Line 
+                type="monotone" 
+                dataKey={defaultYKey} 
+                stroke={colors[0]} 
+                strokeWidth={3}
+                dot={{ fill: colors[0], strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: colors[0], strokeWidth: 2 }}
+              />
+            )}
           </LineChart>
         )
 
@@ -162,14 +215,29 @@ export function ChartArtifact({ data, chartType = "bar", title, xKey, yKey }: Ch
             <YAxis stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Area 
-              type="monotone" 
-              dataKey={defaultYKey} 
-              stroke={colors[0]} 
-              fill={colors[0]}
-              fillOpacity={0.3}
-              strokeWidth={2}
-            />
+            {/* Render multiple areas for multi-series data */}
+            {numericKeys.length > 1 ? (
+              numericKeys.map((key, index) => (
+                <Area 
+                  key={key}
+                  type="monotone" 
+                  dataKey={key} 
+                  stroke={colors[index % colors.length]} 
+                  fill={colors[index % colors.length]}
+                  fillOpacity={0.3}
+                  strokeWidth={2}
+                />
+              ))
+            ) : (
+              <Area 
+                type="monotone" 
+                dataKey={defaultYKey} 
+                stroke={colors[0]} 
+                fill={colors[0]}
+                fillOpacity={0.3}
+                strokeWidth={2}
+              />
+            )}
           </AreaChart>
         )
 
@@ -208,11 +276,23 @@ export function ChartArtifact({ data, chartType = "bar", title, xKey, yKey }: Ch
             <YAxis stroke={theme === "dark" ? "#9ca3af" : "#6b7280"} fontSize={12} />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey={defaultYKey} fill={colors[0]} radius={[4, 4, 0, 0]}>
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-              ))}
-            </Bar>
+            {/* Render multiple bars for multi-series data */}
+            {numericKeys.length > 1 ? (
+              numericKeys.map((key, index) => (
+                <Bar 
+                  key={key}
+                  dataKey={key} 
+                  fill={colors[index % colors.length]} 
+                  radius={[4, 4, 0, 0]}
+                />
+              ))
+            ) : (
+              <Bar dataKey={defaultYKey} fill={colors[0]} radius={[4, 4, 0, 0]}>
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                ))}
+              </Bar>
+            )}
           </BarChart>
         )
     }

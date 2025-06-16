@@ -65,48 +65,47 @@ interface ChartArtifactMetadata {
   data: ChartData[];
 }
 
-// Define the content component separately, following Vercel pattern
+// Simplified and more robust chart content component
 function ChartArtifactContent({ content, metadata }: ArtifactContent<ChartArtifactMetadata>) {
-  // Priority 1: Use metadata if available (preferred for performance)
-  if (metadata && metadata.data && Array.isArray(metadata.data) && metadata.data.length > 0) {
-    return (
-      <ChartArtifact
-        data={metadata.data}
-        chartType={metadata.chartType}
-        title={metadata.title}
-        xKey={metadata.xKey}
-        yKey={metadata.yKey}
-      />
-    );
-  }
-
-  // Priority 2: Try to parse content as fallback
-  let chartData: ChartArtifactMetadata | null = null;
-  let parseError: string | null = null;
-  
-  if (content && content.trim()) {
-    try {
-      const parsed = JSON.parse(content);
-      if (parsed.data && Array.isArray(parsed.data) && parsed.data.length > 0) {
-        // Auto-detect chart type if missing - pass both parsed title and original metadata title
-        let detectedChartType = detectChartType(parsed, metadata?.title);
-        
-        chartData = {
-          chartType: detectedChartType,
-          title: parsed.title || metadata?.title || 'Chart',
-          xKey: parsed.xKey || 'x',
-          yKey: parsed.yKey || 'y',
-          data: parsed.data,
-        };
-      } else {
-        parseError = 'Invalid chart data structure: missing or empty data array';
-      }
-    } catch (error) {
-      parseError = `Failed to parse chart configuration: ${error instanceof Error ? error.message : 'Unknown error'}`;
+  // Helper function to extract chart data from any source
+  const extractChartData = (): ChartArtifactMetadata | null => {
+    // Try metadata first (most reliable during streaming)
+    if (metadata?.data && Array.isArray(metadata.data) && metadata.data.length > 0) {
+      console.log('[CHART] Using metadata data:', metadata.data.length, 'items');
+      return {
+        chartType: metadata.chartType || 'bar',
+        title: metadata.title || 'Chart',
+        xKey: metadata.xKey,
+        yKey: metadata.yKey,
+        data: metadata.data
+      };
     }
-  }
 
-  // Priority 3: Show parsed data if successful
+    // Try parsing content as fallback
+    if (content?.trim()) {
+      try {
+        const parsed = JSON.parse(content);
+        if (parsed.data && Array.isArray(parsed.data) && parsed.data.length > 0) {
+          console.log('[CHART] Using parsed content data:', parsed.data.length, 'items');
+          return {
+            chartType: parsed.chartType || detectChartType(parsed, metadata?.title) || 'bar',
+            title: parsed.title || metadata?.title || 'Chart',
+            xKey: parsed.xKey,
+            yKey: parsed.yKey,
+            data: parsed.data
+          };
+        }
+      } catch (error) {
+        console.warn('[CHART] Failed to parse content:', error);
+      }
+    }
+
+    return null;
+  };
+
+  const chartData = extractChartData();
+
+  // Show chart if we have valid data
   if (chartData) {
     return (
       <ChartArtifact
@@ -119,44 +118,13 @@ function ChartArtifactContent({ content, metadata }: ArtifactContent<ChartArtifa
     );
   }
 
-  // Priority 4: Show error state if parsing failed and we have content
-  if (parseError && content && content.trim()) {
-    return (
-      <div className="p-4 text-center space-y-2">
-        <ChartIcon className="mx-auto h-8 w-8 mb-2 text-red-500" />
-        <p className="text-red-600 font-medium">Chart Error</p>
-        <p className="text-sm text-muted-foreground">{parseError}</p>
-        <details className="mt-2 text-xs">
-          <summary className="cursor-pointer hover:text-foreground">Show raw content</summary>
-          <pre className="mt-1 bg-muted p-2 rounded text-left max-h-32 overflow-auto">
-            {content}
-          </pre>
-        </details>
-      </div>
-    );
-  }
-
-  // Priority 5: Show loading state when no content or data yet
-  // This handles the initial loading state before any data arrives
-  const hasEmptyMetadata = metadata && (!metadata.data || metadata.data.length === 0);
-  const hasNoContent = !content || content.trim() === '';
-  
-  if (hasNoContent && hasEmptyMetadata) {
-    return (
-      <div className="p-4 text-center text-muted-foreground">
-        <ChartIcon className="mx-auto h-8 w-8 mb-2 animate-pulse" />
-        <p>Loading chart data...</p>
-      </div>
-    );
-  }
-
-  // Priority 6: Fallback - try to render empty chart with proper message
+  // Show loading state
   return (
-    <ChartArtifact
-      data={[]}
-      chartType="bar"
-      title="Chart"
-    />
+    <div className="p-8 text-center text-muted-foreground">
+      <ChartIcon className="mx-auto h-12 w-12 mb-4 animate-pulse" />
+      <p className="text-lg font-medium">Generating chart...</p>
+      <p className="text-sm mt-2">Analyzing data and creating visualization</p>
+    </div>
   );
 }
 
@@ -176,25 +144,33 @@ export const chartArtifact = new Artifact<'chart', ChartArtifactMetadata>({
   },
   
   onStreamPart: ({ streamPart, setMetadata, setArtifact }) => {
+    // Handle text streaming (content updates)
     if (streamPart.type === 'text-delta') {
       setArtifact((prev) => {
         const newContent = prev.content + (streamPart.content as string || '');
         
-        // Try to parse content and update metadata if we get valid chart data
-        try {
-          const parsed = JSON.parse(newContent);
-          if (parsed.data && Array.isArray(parsed.data) && parsed.data.length > 0) {
-            setMetadata((prevMeta: any) => ({
-              ...prevMeta,
-              data: parsed.data,
-              chartType: (parsed.chartType as ChartArtifactMetadata['chartType']) || prevMeta?.chartType,
-              title: parsed.title || prevMeta?.title,
-              xKey: parsed.xKey || prevMeta?.xKey,
-              yKey: parsed.yKey || prevMeta?.yKey,
-            }));
+        // Try to parse and update metadata if we have complete JSON
+        const trimmedContent = newContent.trim();
+        if (trimmedContent.startsWith('{') && trimmedContent.endsWith('}')) {
+          try {
+            const parsed = JSON.parse(trimmedContent);
+            if (parsed.data && Array.isArray(parsed.data) && parsed.data.length > 0) {
+              // Update metadata with parsed data
+              const validChartType = parsed.chartType === 'bar' || parsed.chartType === 'line' || 
+                                     parsed.chartType === 'pie' || parsed.chartType === 'area' 
+                                     ? parsed.chartType : 'bar';
+              
+              setMetadata({
+                chartType: validChartType,
+                title: parsed.title || 'Chart',
+                xKey: parsed.xKey,
+                yKey: parsed.yKey,
+                data: parsed.data
+              });
+            }
+          } catch {
+            // Ignore parsing errors during streaming
           }
-        } catch {
-          // Ignore parsing errors during streaming
         }
         
         return {
@@ -204,24 +180,22 @@ export const chartArtifact = new Artifact<'chart', ChartArtifactMetadata>({
       });
     }
     
+    // Handle direct chart data streaming (preferred method)
     if (streamPart.type === 'chart-delta') {
-      // Handle streaming chart data updates directly via metadata
-      setMetadata((prev: any) => ({
-        ...prev,
-        data: streamPart.data || prev?.data,
-        chartType: (streamPart.chartType as ChartArtifactMetadata['chartType']) || 
-                  // Use the same detection logic for streaming updates
-                  detectChartType({
-                    chartType: streamPart.chartType,
-                    title: streamPart.title || prev?.title,
-                    data: streamPart.data || prev?.data
-                  }, prev?.title), // Pass original title for better detection
-        title: streamPart.title || prev?.title,
-        xKey: streamPart.xKey || prev?.xKey,
-        yKey: streamPart.yKey || prev?.yKey,
-      }));
+      // Update metadata directly with streamed chart data
+      const validChartType = streamPart.chartType === 'bar' || streamPart.chartType === 'line' || 
+                             streamPart.chartType === 'pie' || streamPart.chartType === 'area' 
+                             ? streamPart.chartType : 'bar';
       
-      // Also update content if this contains content
+      setMetadata({
+        chartType: validChartType,
+        title: streamPart.title || 'Chart',
+        xKey: streamPart.xKey,
+        yKey: streamPart.yKey,
+        data: streamPart.data || []
+      });
+      
+      // Also update content if provided
       if (streamPart.content) {
         setArtifact((prev) => ({
           ...prev,
