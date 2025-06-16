@@ -8,9 +8,9 @@ import { categorizeStreamError, createErrorResponse, validateUserId } from "./li
 import { ensureUserExists, getOrCreateChat, saveChatCompletion } from "./lib/chat-utils"
 
 /**
- * Simple system prompt
+ * Enhanced system prompt with user request context
  */
-function createSystemPrompt(serverCount: number, toolCount: number): string {
+function createSystemPrompt(serverCount: number, toolCount: number, userRequest: string = ""): string {
   return `You are DiGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI.
 
 **System Status:** ${serverCount} servers connected, ${toolCount} tools available
@@ -20,7 +20,11 @@ function createSystemPrompt(serverCount: number, toolCount: number): string {
 - Create interactive charts, documents, and visualizations
 - Generate code and provide data insights
 
-Always provide clear, professional responses suitable for enterprise use.`
+Always provide clear, professional responses suitable for enterprise use.
+
+**CURRENT USER REQUEST:** "${userRequest}"
+
+When making tool calls, always consider the full context of this user request, especially any visualization requirements (chart types, format preferences) that should be preserved throughout your workflow.`
 }
 
 export async function POST(req: Request) {
@@ -89,7 +93,7 @@ export async function POST(req: Request) {
       return createErrorResponse('Azure OpenAI configuration error: ' + (llmError instanceof Error ? llmError.message : String(llmError)), undefined, 500)
     }
 
-    // Process messages
+    // Process messages and extract current user request
     const coreMessages = messages.map(msg => {
       // Truncate very long messages
       if (msg.content?.length > 50000) {
@@ -104,7 +108,11 @@ export async function POST(req: Request) {
       } as CoreMessage
     })
 
-    const systemPrompt = createSystemPrompt(serverCount, Object.keys(tools).length)
+    // Extract the latest user message as the current request
+    const latestUserMessage = [...messages].reverse().find(msg => msg.role === 'user')
+    const currentUserRequest = latestUserMessage?.content
+
+    const systemPrompt = createSystemPrompt(serverCount, Object.keys(tools).length, currentUserRequest)
     const setupTime = Date.now() - startTime
     console.log(`[REQUEST] Setup completed in ${setupTime}ms`)
     
