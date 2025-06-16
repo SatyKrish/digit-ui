@@ -64,7 +64,6 @@ export interface ChatMessagesProps {
   user?: {
     name: string
   }
-  onReopenArtifacts?: (messageContent: string) => void
 }
 
 export interface ChatInputProps {
