@@ -93,7 +93,7 @@ function ChartArtifactContent({ content, metadata }: ArtifactContent<ChartArtifa
         
         chartData = {
           chartType: detectedChartType,
-          title: parsed.title || 'Chart',
+          title: parsed.title || metadata?.title || 'Chart',
           xKey: parsed.xKey || 'x',
           yKey: parsed.yKey || 'y',
           data: parsed.data,
@@ -177,12 +177,31 @@ export const chartArtifact = new Artifact<'chart', ChartArtifactMetadata>({
   
   onStreamPart: ({ streamPart, setMetadata, setArtifact }) => {
     if (streamPart.type === 'text-delta') {
-      setArtifact((prev) => ({
-        ...prev,
-        content: prev.content + (streamPart.content as string || ''),
-      }));
-      // Don't clear metadata.data unnecessarily - let the component handle parsing
-      // This improves performance by reducing unnecessary re-renders
+      setArtifact((prev) => {
+        const newContent = prev.content + (streamPart.content as string || '');
+        
+        // Try to parse content and update metadata if we get valid chart data
+        try {
+          const parsed = JSON.parse(newContent);
+          if (parsed.data && Array.isArray(parsed.data) && parsed.data.length > 0) {
+            setMetadata((prevMeta) => ({
+              ...prevMeta,
+              data: parsed.data,
+              chartType: (parsed.chartType as ChartArtifactMetadata['chartType']) || prevMeta.chartType,
+              title: parsed.title || prevMeta.title,
+              xKey: parsed.xKey || prevMeta.xKey,
+              yKey: parsed.yKey || prevMeta.yKey,
+            }));
+          }
+        } catch {
+          // Ignore parsing errors during streaming
+        }
+        
+        return {
+          ...prev,
+          content: newContent,
+        };
+      });
     }
     
     if (streamPart.type === 'chart-delta') {

@@ -203,7 +203,7 @@ export class ChatRepository {
    */
   async addMessage(chatId: string, message: DbMessage): Promise<void> {
     const stmt = this.db.prepare(`
-      INSERT INTO messages (
+      INSERT OR REPLACE INTO messages (
         id, chat_id, role, content, name, tool_call_id, 
         tool_invocations, experimental_attachments, annotations, 
         parts, reasoning, finish_reason, usage_stats, created_at

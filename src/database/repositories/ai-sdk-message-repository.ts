@@ -12,6 +12,15 @@ export class AiSdkMessageRepository {
   private db = getDatabase();
 
   /**
+   * Check if a message exists by ID
+   */
+  messageExists(messageId: string): boolean {
+    const stmt = this.db.prepare('SELECT 1 FROM messages WHERE id = ? LIMIT 1');
+    const result = stmt.get(messageId);
+    return !!result;
+  }
+
+  /**
    * Save a message (AI SDK pattern)
    * Used by AI SDK's onFinish callback
    */
@@ -19,8 +28,14 @@ export class AiSdkMessageRepository {
     const dbMessage = convertMessageToDb(message);
     dbMessage.chatId = chatId;
 
+    // Check if message already exists to avoid unnecessary operations
+    if (this.messageExists(message.id)) {
+      console.log(`[PERSISTENCE] Message ${message.id} already exists, skipping save`);
+      return dbMessage;
+    }
+
     const stmt = this.db.prepare(`
-      INSERT INTO messages (
+      INSERT OR REPLACE INTO messages (
         id, chat_id, role, content, name, tool_call_id, tool_invocations,
         experimental_attachments, annotations, created_at, parts, reasoning,
         finish_reason, usage_stats
@@ -244,8 +259,24 @@ export class AiSdkMessageRepository {
    * Batch save messages (for bulk operations)
    */
   saveMessages(messages: Message[], chatId: string): DbMessage[] {
+    // Filter out messages that already exist
+    const newMessages = messages.filter(msg => !this.messageExists(msg.id));
+    
+    if (newMessages.length === 0) {
+      console.log(`[PERSISTENCE] All ${messages.length} messages already exist, skipping batch save`);
+      return messages.map(msg => {
+        const dbMsg = convertMessageToDb(msg);
+        dbMsg.chatId = chatId;
+        return dbMsg;
+      });
+    }
+
+    if (newMessages.length < messages.length) {
+      console.log(`[PERSISTENCE] Saving ${newMessages.length} new messages out of ${messages.length} total`);
+    }
+
     const stmt = this.db.prepare(`
-      INSERT INTO messages (
+      INSERT OR REPLACE INTO messages (
         id, chat_id, role, content, name, tool_call_id, tool_invocations,
         experimental_attachments, annotations, created_at, parts, reasoning,
         finish_reason, usage_stats
@@ -273,14 +304,20 @@ export class AiSdkMessageRepository {
       }
     });
 
-    const dbMessages = messages.map(msg => {
+    const dbMessages = newMessages.map(msg => {
       const dbMsg = convertMessageToDb(msg);
       dbMsg.chatId = chatId;
       return dbMsg;
     });
 
     transaction(dbMessages);
-    return dbMessages;
+    
+    // Return all messages (including existing ones) for consistency
+    return messages.map(msg => {
+      const dbMsg = convertMessageToDb(msg);
+      dbMsg.chatId = chatId;
+      return dbMsg;
+    });
   }
 
   /**

@@ -105,10 +105,37 @@ export class AiSdkChatPersistence {
    * Save multiple messages (batch operation)
    */
   async saveMessages(messages: Message[], chatId: string): Promise<void> {
-    this.messageRepo.saveMessages(messages, chatId);
+    // Filter out duplicate messages that might already exist
+    const uniqueMessages = this.deduplicateMessages(messages);
+    
+    if (uniqueMessages.length === 0) {
+      console.log(`[PERSISTENCE] No new messages to save for chat ${chatId}`);
+      return;
+    }
+    
+    this.messageRepo.saveMessages(uniqueMessages, chatId);
     
     // Update chat metadata
     this.chatRepo.updateChatMetadata(chatId);
+  }
+
+  /**
+   * Deduplicate messages to prevent UNIQUE constraint violations
+   */
+  private deduplicateMessages(messages: Message[]): Message[] {
+    const seen = new Set<string>();
+    const uniqueMessages: Message[] = [];
+    
+    for (const message of messages) {
+      if (!seen.has(message.id)) {
+        seen.add(message.id);
+        uniqueMessages.push(message);
+      } else {
+        console.log(`[PERSISTENCE] Skipping duplicate message: ${message.id}`);
+      }
+    }
+    
+    return uniqueMessages;
   }
 
   /**
@@ -210,16 +237,28 @@ export class AiSdkChatPersistence {
       titlePrompt?: string;
     }
   ): Promise<void> {
-    // Save all new messages
-    await this.saveMessages(messages, chatId);
+    try {
+      // Save all new messages
+      await this.saveMessages(messages, chatId);
 
-    // Auto-generate title if this is the first conversation
-    if (options?.updateTitle && messages.length <= 2) {
-      const userMessage = messages.find(m => m.role === 'user');
-      if (userMessage && userMessage.content.length > 0) {
-        const title = this.generateTitleFromMessage(userMessage.content);
-        await this.updateChat(chatId, { title });
+      // Auto-generate title if this is the first conversation
+      if (options?.updateTitle && messages.length <= 2) {
+        const userMessage = messages.find(m => m.role === 'user');
+        if (userMessage && userMessage.content.length > 0) {
+          const title = this.generateTitleFromMessage(userMessage.content);
+          await this.updateChat(chatId, { title });
+        }
       }
+    } catch (error) {
+      console.error(`[PERSISTENCE] Failed to handle message completion for chat ${chatId}:`, error);
+      
+      // For SQLite constraint errors, provide more specific information
+      if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
+        console.error(`[PERSISTENCE] Duplicate message ID detected, this should be handled by INSERT OR REPLACE`);
+        throw new Error(`Message persistence failed due to duplicate ID: ${error.message}`);
+      }
+      
+      throw error;
     }
   }
 

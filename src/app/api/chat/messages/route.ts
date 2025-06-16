@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { chatPersistence } from '@/services/chat/chat-persistence'
+import { aiSdkChatPersistence } from '@/database/repositories'
 
 /**
  * Handle chat messages - loading and saving
- * Updated to use simplified ChatPersistence service
+ * Updated to use AI SDK aligned persistence service
  */
 
 export async function GET(request: NextRequest) {
@@ -22,8 +22,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    console.log(`[MESSAGES API] Loading messages for chat: ${id}`)
+
     // Load initial messages for the chat
-    const messages = await chatPersistence.loadInitialMessages(id)
+    const messages = await aiSdkChatPersistence.loadInitialMessages(id)
+
+    console.log(`[MESSAGES API] Loaded ${messages.length} messages for chat: ${id}`)
 
     return NextResponse.json({ messages })
   } catch (error) {
@@ -47,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Persist the message
-    await chatPersistence.persistMessage(chatId, message)
+    await aiSdkChatPersistence.saveMessage(message, chatId)
 
     return NextResponse.json({ success: true })
   } catch (error) {
