@@ -443,16 +443,41 @@
     word-wrap: break-word;
   }
   
-  /* Chat-specific responsive utilities - Simplified and unified */
+  /* Chat-specific responsive utilities - Updated to give 50-70% space to artifacts */
   .chat-responsive-width {
     min-width: 350px;
+    max-width: 50vw; /* Limit chat to max 50% of viewport */
   }
   
   .artifact-responsive-width {
     min-width: 500px;
+    max-width: 70vw; /* Allow artifacts up to 70% of viewport */
   }
   
   /* Layout classes are now handled by the responsive hook */
+  
+  /* Layout classes using CSS variables for precise space allocation */
+  .chat-area {
+    width: var(--chat-width, 35%);
+    min-width: 350px;
+    max-width: 50vw;
+    flex-shrink: 0;
+  }
+  
+  .artifact-panel {
+    width: var(--artifact-width, 65%);
+    min-width: 500px;
+    max-width: 70vw;
+    flex-shrink: 0;
+  }
+  
+  /* Ensure the container properly distributes space */
+  .chat-flex-container.has-artifacts {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
   
   /* Horizontal scrolling utilities */
   .scroll-horizontal-auto {

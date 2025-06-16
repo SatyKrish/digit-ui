@@ -281,6 +281,14 @@ function MainChatAreaCore({
     [showArtifactPanel, breakpoints, dimensions.width]
   )
 
+  // Debug information for layout (remove in production)
+  const debugInfo = useMemo(() => {
+    if (!showArtifactPanel || !adaptiveLayoutClasses.containerStyle) return null
+    const chatPercentage = adaptiveLayoutClasses.containerStyle['--chat-percentage']
+    const artifactPercentage = adaptiveLayoutClasses.containerStyle['--artifact-percentage']
+    return { chatPercentage, artifactPercentage }
+  }, [showArtifactPanel, adaptiveLayoutClasses])
+
   // Layout classes following Vercel Chat SDK patterns
   const chatContainerClass = showArtifactPanel 
     ? (isArtifactFullScreen
@@ -357,6 +365,12 @@ function MainChatAreaCore({
                 {vercelArtifacts.length > 1 && (
                   <span className="text-xs text-muted-foreground">
                     +{vercelArtifacts.length - 1} more
+                  </span>
+                )}
+                {/* Layout space indicator */}
+                {showArtifactPanel && (
+                  <span className="text-xs text-primary/60 font-mono bg-primary/5 px-2 py-1 rounded">
+                    ~{Math.round(((dimensions.width - 350) / dimensions.width) * 100)}% space
                   </span>
                 )}
               </div>

@@ -54,6 +54,41 @@ export function ChartArtifact({ data, chartType = "bar", title, xKey, yKey }: Ch
   const [currentChartType, setCurrentChartType] = useState(chartType)
   const { theme } = useTheme()
 
+  // Handle empty or invalid data
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return (
+      <Card className="w-full bg-gradient-to-br from-background to-muted/20 border border-border/50">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {title && (
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+                </div>
+              )}
+              <Badge variant="outline" className="text-xs text-orange-600">
+                No data
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80 w-full flex items-center justify-center border border-dashed border-border/50 rounded-lg">
+            <div className="text-center space-y-3">
+              <div className="w-16 h-16 mx-auto bg-muted/30 rounded-full flex items-center justify-center">
+                <BarChart3 className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">No data available</p>
+                <p className="text-xs text-muted-foreground">Chart data is empty or invalid</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   // Auto-detect keys if not provided
   const keys = Object.keys(data[0] || {})
   const defaultXKey = xKey || keys[0]

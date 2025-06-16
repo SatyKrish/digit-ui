@@ -32,50 +32,79 @@ interface ChartArtifactMetadata {
 }
 
 // Define the content component separately, following Vercel pattern
-function ChartArtifactContent(props: ArtifactContent<ChartArtifactMetadata>) {
-  const { content, metadata, setMetadata } = props;
-  
-  // Use useEffect to avoid setState during render
-  React.useEffect(() => {
-    if (!metadata?.data || metadata.data.length === 0) {
-      // Try to parse chart data from content if metadata is empty
-      try {
-        const parsed = JSON.parse(content);
-        if (parsed.data && Array.isArray(parsed.data)) {
-          const chartData: ChartArtifactMetadata = {
-            chartType: (parsed.chartType as ChartArtifactMetadata['chartType']) || 'bar',
-            title: parsed.title || 'Chart',
-            xKey: parsed.xKey || 'x',
-            yKey: parsed.yKey || 'y',
-            data: parsed.data,
-          };
-          setMetadata(chartData);
-        }
-      } catch (error) {
-        // If parsing fails, ignore and show empty state
-        console.warn('Failed to parse chart data:', error);
-      }
-    }
-  }, [content, metadata?.data, setMetadata]);
-
-  if (!metadata?.data || metadata.data.length === 0) {
-    // Show loading/empty state while metadata is being set
+function ChartArtifactContent({ content, metadata }: ArtifactContent<ChartArtifactMetadata>) {
+  // Priority 1: Use metadata if available (preferred for performance)
+  if (metadata && metadata.data && Array.isArray(metadata.data) && metadata.data.length > 0) {
     return (
-      <div className="p-4 text-center text-muted-foreground">
-        <ChartIcon className="mx-auto h-8 w-8 mb-2" />
-        <p>Loading chart data...</p>
+      <ChartArtifact
+        data={metadata.data}
+        chartType={metadata.chartType}
+        title={metadata.title}
+        xKey={metadata.xKey}
+        yKey={metadata.yKey}
+      />
+    );
+  }
+
+  // Priority 2: Try to parse content as fallback
+  let chartData: ChartArtifactMetadata | null = null;
+  let parseError: string | null = null;
+  
+  if (content && content.trim()) {
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed.data && Array.isArray(parsed.data) && parsed.data.length > 0) {
+        chartData = {
+          chartType: (parsed.chartType as ChartArtifactMetadata['chartType']) || 'bar',
+          title: parsed.title || 'Chart',
+          xKey: parsed.xKey || 'x',
+          yKey: parsed.yKey || 'y',
+          data: parsed.data,
+        };
+      } else {
+        parseError = 'Invalid chart data structure: missing or empty data array';
+      }
+    } catch (error) {
+      parseError = `Failed to parse chart configuration: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
+  }
+
+  // Priority 3: Show parsed data if successful
+  if (chartData) {
+    return (
+      <ChartArtifact
+        data={chartData.data}
+        chartType={chartData.chartType}
+        title={chartData.title}
+        xKey={chartData.xKey}
+        yKey={chartData.yKey}
+      />
+    );
+  }
+
+  // Priority 4: Show error state if parsing failed
+  if (parseError && content && content.trim()) {
+    return (
+      <div className="p-4 text-center space-y-2">
+        <ChartIcon className="mx-auto h-8 w-8 mb-2 text-red-500" />
+        <p className="text-red-600 font-medium">Chart Error</p>
+        <p className="text-sm text-muted-foreground">{parseError}</p>
+        <details className="mt-2 text-xs">
+          <summary className="cursor-pointer hover:text-foreground">Show raw content</summary>
+          <pre className="mt-1 bg-muted p-2 rounded text-left max-h-32 overflow-auto">
+            {content}
+          </pre>
+        </details>
       </div>
     );
   }
 
+  // Priority 5: Show loading state for empty/undefined content
   return (
-    <ChartArtifact
-      data={metadata.data}
-      chartType={metadata.chartType}
-      title={metadata.title}
-      xKey={metadata.xKey}
-      yKey={metadata.yKey}
-    />
+    <div className="p-4 text-center text-muted-foreground">
+      <ChartIcon className="mx-auto h-8 w-8 mb-2" />
+      <p>Loading chart data...</p>
+    </div>
   );
 }
 
@@ -84,13 +113,17 @@ export const chartArtifact = new Artifact<'chart', ChartArtifactMetadata>({
   description: 'Useful for creating interactive charts and data visualizations.',
   
   initialize: async ({ documentId, setMetadata }) => {
-    // Initialize with default chart configuration
+    // Initialize with default chart configuration including sample data
     setMetadata({
       chartType: 'bar',
       title: 'Chart',
       xKey: 'x',
       yKey: 'y',
-      data: [],
+      data: [
+        { x: 'Sample 1', y: 10 },
+        { x: 'Sample 2', y: 20 },
+        { x: 'Sample 3', y: 15 }
+      ],
     });
   },
   
@@ -100,10 +133,12 @@ export const chartArtifact = new Artifact<'chart', ChartArtifactMetadata>({
         ...prev,
         content: prev.content + streamPart.textDelta,
       }));
+      // Don't clear metadata.data unnecessarily - let the component handle parsing
+      // This improves performance by reducing unnecessary re-renders
     }
     
     if (streamPart.type === 'chart-delta') {
-      // Handle streaming chart data updates
+      // Handle streaming chart data updates directly via metadata
       setMetadata((prev) => ({
         ...prev,
         data: streamPart.data || prev.data,

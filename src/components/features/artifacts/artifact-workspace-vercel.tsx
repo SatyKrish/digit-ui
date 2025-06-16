@@ -264,10 +264,10 @@ export function ArtifactWorkspace({
             <motion.div
               className="fixed bg-background h-dvh"
               initial={{
-                width: windowWidth ? windowWidth - 400 : 'calc(100dvw - 400px)',
+                width: windowWidth ? Math.floor(windowWidth * 0.35) : 'calc(35dvw)', // Chat takes 35%
               }}
               animate={{
-                width: windowWidth ? windowWidth - 400 : 'calc(100dvw - 400px)',
+                width: windowWidth ? Math.floor(windowWidth * 0.35) : 'calc(35dvw)', // Chat takes 35%
               }}
               transition={{
                 type: 'spring',
@@ -319,10 +319,10 @@ export function ArtifactWorkspace({
                   }
                 : {
                     opacity: 1,
-                    x: windowWidth ? windowWidth - 400 : 'calc(100dvw - 400px)',
+                    x: windowWidth ? Math.floor(windowWidth * 0.35) : 'calc(35dvw)', // Start at 35% (chat area)
                     y: 0,
                     height: windowHeight || '100dvh',
-                    width: 400,
+                    width: windowWidth ? Math.floor(windowWidth * 0.65) : 'calc(65dvw)', // Take 65% for artifacts
                     borderRadius: 0,
                   }
             }
@@ -338,10 +338,10 @@ export function ArtifactWorkspace({
                   }
                 : {
                     opacity: 1,
-                    x: windowWidth ? windowWidth - 400 : 'calc(100dvw - 400px)',
+                    x: windowWidth ? Math.floor(windowWidth * 0.35) : 'calc(35dvw)', // Position at 35% (after chat area)
                     y: 0,
                     height: windowHeight || '100dvh',
-                    width: 400,
+                    width: windowWidth ? Math.floor(windowWidth * 0.65) : 'calc(65dvw)', // Take 65% for artifacts
                     borderRadius: 0,
                   }
             }

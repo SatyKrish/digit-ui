@@ -359,6 +359,12 @@ function MainChatAreaCore({
                     +{vercelArtifacts.length - 1} more
                   </span>
                 )}
+                {/* Layout space indicator */}
+                {showArtifactPanel && (
+                  <span className="text-xs text-primary/60 font-mono bg-primary/5 px-2 py-1 rounded">
+                    ~{Math.round(((dimensions.width - 350) / dimensions.width) * 100)}% space
+                  </span>
+                )}
               </div>
               
               <div className="flex items-center gap-1">

@@ -12,6 +12,13 @@ interface LayoutBreakpoints {
   isLargeDesktop: boolean
 }
 
+interface ExtendedCSSProperties extends CSSProperties {
+  '--chat-width'?: string
+  '--artifact-width'?: string
+  '--chat-percentage'?: string
+  '--artifact-percentage'?: string
+}
+
 export function useResponsiveLayout() {
   const [dimensions, setDimensions] = useState<LayoutDimensions>({
     width: typeof window !== 'undefined' ? window.innerWidth : 1200,
@@ -47,7 +54,7 @@ export function useResponsiveLayout() {
   return { dimensions, breakpoints }
 }
 
-// Enhanced utility to get adaptive CSS classes for layout - Vercel-inspired approach
+// Enhanced utility to get adaptive CSS classes for layout - 50-70% space for artifacts, 30-50% for chat
 export function getAdaptiveLayoutClasses(showArtifacts: boolean, breakpoints?: LayoutBreakpoints, containerWidth?: number) {
   if (!showArtifacts) {
     return {
@@ -56,7 +63,8 @@ export function getAdaptiveLayoutClasses(showArtifacts: boolean, breakpoints?: L
     }
   }
 
-  // Container-based approach inspired by Vercel AI SDK patterns
+  // Container-based approach - prioritize artifact space as requested
+  // Target: 50-70% for artifacts, 30-50% for chat
   // Always prioritize preventing horizontal overflow over exact percentages
   const totalMinWidth = 850 // 350px (chat) + 500px (artifacts)
   const currentWidth = containerWidth || 1200
@@ -69,10 +77,13 @@ export function getAdaptiveLayoutClasses(showArtifacts: boolean, breakpoints?: L
     }
   }
   
-  // Calculate optimal chat width: aim for 30-35% but never exceed container constraints
-  const targetChatPercent = breakpoints?.isLargeDesktop ? 0.3 : 0.35
+  // Calculate optimal layout: give 50-70% space for artifacts, 30-50% for chat
+  // Prioritize artifact space as requested
+  const targetArtifactPercent = breakpoints?.isLargeDesktop ? 0.7 : 0.65 // 70% for large desktops, 65% for others
+  const targetChatPercent = 1 - targetArtifactPercent // 30% for large desktops, 35% for others
+  
   const maxChatWidth = Math.floor(currentWidth * targetChatPercent)
-  const chatWidth = Math.max(350, Math.min(maxChatWidth, 500)) // Between 350-500px
+  const chatWidth = Math.max(350, Math.min(maxChatWidth, Math.floor(currentWidth * 0.5))) // Between 350px and 50% of viewport
   const artifactWidth = currentWidth - chatWidth
   
   return {
@@ -80,7 +91,9 @@ export function getAdaptiveLayoutClasses(showArtifacts: boolean, breakpoints?: L
     artifactClasses: `artifact-panel`,
     containerStyle: {
       '--chat-width': `${chatWidth}px`,
-      '--artifact-width': `${artifactWidth}px`
-    } as CSSProperties
+      '--artifact-width': `${artifactWidth}px`,
+      '--chat-percentage': `${Math.round((chatWidth / currentWidth) * 100)}%`,
+      '--artifact-percentage': `${Math.round((artifactWidth / currentWidth) * 100)}%`
+    } as ExtendedCSSProperties
   }
 }
