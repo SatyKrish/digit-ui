@@ -169,21 +169,78 @@ async function prepareMcpTools() {
     parameters: z.object({
       kind: z.enum(artifactKinds as readonly [ArtifactKind, ...ArtifactKind[]]).describe('The type of artifact to create'),
       title: z.string().describe('A clear, descriptive title for the artifact'),
-      content: z.string().describe('The content of the artifact (code, markdown, data, etc.)'),
+      content: z.string().optional().describe('Optional initial content - if not provided, will be generated using AI'),
       language: z.string().optional().describe('Programming language for code artifacts')
     }),
     execute: async ({ kind, title, content, language }) => {
       const artifactId = generateUUID()
       console.log(`Creating ${kind} artifact: ${title}`)
       
-      return {
-        id: artifactId,
-        kind,
-        title,
-        content,
-        language,
-        success: true,
-        message: `Created ${kind} artifact: ${title}`
+      try {
+        // Import the document handlers
+        const { getDocumentHandler } = await import('@/lib/artifacts/server')
+        
+        // Get the appropriate document handler
+        const handler = getDocumentHandler(kind)
+        
+        if (!handler) {
+          console.warn(`No handler found for artifact kind: ${kind}, falling back to basic creation`)
+          return {
+            id: artifactId,
+            kind,
+            title,
+            content: content || `# ${title}\n\nContent will be generated here...`,
+            language,
+            success: true,
+            message: `Created ${kind} artifact: ${title}`
+          }
+        }
+        
+        // Create a data stream to capture the generated content
+        let generatedContent = ''
+        const dataStream = {
+          writeData: (data: any) => {
+            if (data.type === 'text-delta' || data.type === 'content-update' || data.type === 'chart-delta') {
+              generatedContent += data.content || ''
+            }
+          },
+          close: () => {}
+        }
+        
+        // Use the document handler to generate content if not provided
+        const finalContent = content || await handler.onCreateDocument({
+          title,
+          dataStream,
+          metadata: { language }
+        })
+        
+        // Use the generated content from the data stream if it exists
+        const resultContent = generatedContent || finalContent
+        
+        console.log(`Generated ${kind} artifact content:`, resultContent.substring(0, 200) + '...')
+        
+        return {
+          id: artifactId,
+          kind,
+          title,
+          content: resultContent,
+          language,
+          success: true,
+          message: `Created ${kind} artifact: ${title}`
+        }
+        
+      } catch (error) {
+        console.error(`Error creating ${kind} artifact:`, error)
+        return {
+          id: artifactId,
+          kind,
+          title,
+          content: content || `# ${title}\n\nError generating content: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          language,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          message: `Failed to create ${kind} artifact: ${title}`
+        }
       }
     }
   })
@@ -198,12 +255,35 @@ async function prepareMcpTools() {
     execute: async ({ artifactId, content, title }) => {
       console.log(`Updating artifact: ${artifactId}`)
       
-      return {
-        id: artifactId,
-        content,
-        title,
-        success: true,
-        message: `Updated artifact: ${title || artifactId}`
+      try {
+        // Import the document handlers
+        const { getDocumentHandler } = await import('@/lib/artifacts/server')
+        
+        // For now, we'll just return the updated content
+        // In a full implementation, you would:
+        // 1. Fetch the existing document by artifactId
+        // 2. Get the appropriate handler based on the document's kind
+        // 3. Use handler.onUpdateDocument to process the update
+        // 4. Save the updated document
+        
+        return {
+          id: artifactId,
+          content,
+          title,
+          success: true,
+          message: `Updated artifact: ${title || artifactId}`
+        }
+        
+      } catch (error) {
+        console.error(`Error updating artifact ${artifactId}:`, error)
+        return {
+          id: artifactId,
+          content,
+          title,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          message: `Failed to update artifact: ${title || artifactId}`
+        }
       }
     }
   })

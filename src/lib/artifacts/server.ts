@@ -49,12 +49,23 @@ const SYSTEM_PROMPTS = {
 - Make code readable and maintainable
 - Consider security and performance`,
   
-  chart: `You are a data visualization expert. Create chart configurations and data.
-- Use appropriate chart types for the data
-- Ensure data is properly formatted
-- Include clear labels and legends
-- Consider accessibility and readability
-- Provide sample data if none is given`,
+  chart: `You are a data visualization expert. Generate realistic chart data and configuration.
+
+CHART TYPE RULES:
+- Use "pie" for: pie charts, distribution, breakdown, composition, share, percentage, proportion
+- Use "bar" for: comparisons, rankings, categorical data
+- Use "line" for: trends over time, continuous data
+- Use "area" for: cumulative data, filled trends
+
+REQUIRED JSON FORMAT:
+{"chartType": "pie|bar|line|area", "title": "Chart Title", "xKey": "field1", "yKey": "field2", "data": [...]}
+
+CRITICAL REQUIREMENTS:
+- ALWAYS include chartType as the FIRST field - this is MANDATORY
+- Use meaningful field names (country, category, value, etc.)
+- Generate realistic data for the requested topic
+- Keep data concise (≤10 items for pie charts)
+- Ensure JSON is valid and complete`,
   
   visualization: `You are a data visualization specialist. Create interactive visualizations.
 - Design for user interaction and exploration
@@ -299,33 +310,143 @@ export const chartDocumentHandler = createDocumentHandler({
   onCreateDocument: async ({ title, dataStream }) => {
     let content = ""
     
+    console.log('[CHART DEBUG] Title:', title);
+    
+    // First, use LLM to determine the optimal chart configuration
+    const configResult = await streamText({
+      model: getAzureOpenAIModel("gpt-4o"),
+      system: `You are a data visualization expert. Analyze the given request and determine the optimal chart configuration.
+
+CHART TYPE SELECTION:
+- "pie": For parts of a whole, percentages, distributions, market share
+- "bar": For comparisons, rankings, categorical data, top N lists
+- "line": For trends over time, continuous data, time series
+- "area": For cumulative data, stacked trends, filled line charts
+
+FIELD NAMING:
+- Choose meaningful field names based on the data type
+- For geographic data: use "country", "region", "city" 
+- For financial data: use "revenue", "profit", "value", "amount"
+- For rankings: use "rank", "score", "rating"
+- For time data: use "date", "year", "month", "time"
+
+Return ONLY a JSON object with this structure:
+{
+  "chartType": "pie|bar|line|area",
+  "xKey": "appropriate_field_name",
+  "yKey": "appropriate_field_name", 
+  "dataStructure": "brief description of what data should look like"
+}`,
+      prompt: `Analyze this chart request and determine the optimal configuration: "${title}"`
+    });
+    
+    const chartConfig = await configResult.text;
+    
+    let chartMeta;
+    try {
+      chartMeta = JSON.parse(chartConfig);
+      console.log('[CHART DEBUG] LLM determined chart config:', chartMeta);
+    } catch (error) {
+      console.warn('[CHART DEBUG] Failed to parse chart config, using defaults:', error);
+      chartMeta = {
+        chartType: 'bar',
+        xKey: 'name',
+        yKey: 'value',
+        dataStructure: 'Array of objects with name and value fields'
+      };
+    }
+    
+    // Now generate the actual chart data using the determined configuration
     const { fullStream } = await streamText({
       model: getAzureOpenAIModel("gpt-4o"),
       system: SYSTEM_PROMPTS.chart,
-      prompt: `Create a chart configuration and sample data for: "${title}". Return valid JSON configuration for Chart.js or similar libraries.`,
+      prompt: `Create chart data for: "${title}"
+
+REQUIRED CONFIGURATION:
+- Chart Type: ${chartMeta.chartType}
+- X-axis field: ${chartMeta.xKey}  
+- Y-axis field: ${chartMeta.yKey}
+- Data Structure: ${chartMeta.dataStructure}
+
+Return ONLY valid JSON in this exact format:
+{
+  "chartType": "${chartMeta.chartType}",
+  "title": "${title}",
+  "xKey": "${chartMeta.xKey}",
+  "yKey": "${chartMeta.yKey}",
+  "data": [...]
+}
+
+Generate realistic, relevant data for the topic. Keep data concise (≤10 items for pie charts, ≤15 for others).`,
     })
 
     for await (const delta of fullStream) {
       if (delta.type === "text-delta") {
         content += delta.textDelta
         dataStream.writeData({
-          type: "content-update",
+          type: "chart-delta",
           content: delta.textDelta
         })
       }
     }
 
-    // Validate and parse chart data
+    console.log('[CHART DEBUG] Raw AI response:', content);
+
+    // Validate and parse chart data for metadata
     try {
       const chartData = JSON.parse(content)
+      console.log('[CHART DEBUG] Parsed chart data:', chartData);
+      
+      // Track if we need to update the content
+      let needsUpdate = false;
+      
+      // Ensure chartType is always present (fallback to LLM determined type)
+      if (!chartData.chartType) {
+        chartData.chartType = chartMeta.chartType;
+        needsUpdate = true;
+        console.log('[CHART DEBUG] Added missing chartType:', chartData.chartType);
+      }
+      
+      // Ensure required fields are present (fallback to LLM determined fields)
+      if (!chartData.xKey && chartData.data && chartData.data.length > 0) {
+        chartData.xKey = chartMeta.xKey || Object.keys(chartData.data[0])[0];
+        needsUpdate = true;
+        console.log('[CHART DEBUG] Added missing xKey:', chartData.xKey);
+      }
+      
+      if (!chartData.yKey && chartData.data && chartData.data.length > 0) {
+        chartData.yKey = chartMeta.yKey || Object.keys(chartData.data[0])[1] || Object.keys(chartData.data[0])[0];
+        needsUpdate = true;
+        console.log('[CHART DEBUG] Added missing yKey:', chartData.yKey);
+      }
+      
+      // Update content with corrected data only if we made changes
+      if (needsUpdate) {
+        content = JSON.stringify(chartData);
+        console.log('[CHART DEBUG] Updated content with missing fields');
+      }
+      console.log('[CHART DEBUG] Final chart content:', content);
+      
+      if (chartData.data && Array.isArray(chartData.data)) {
+        dataStream.writeData({
+          type: "chart-delta",
+          data: chartData.data,
+          chartType: chartData.chartType,
+          title: chartData.title || title,
+          xKey: chartData.xKey,
+          yKey: chartData.yKey
+        })
+      }
       dataStream.writeData({
         type: "metadata-update",
         metadata: {
-          chartType: chartData.type || 'unknown',
-          dataPoints: chartData.data?.datasets?.[0]?.data?.length || 0
+          chartType: chartData.chartType,
+          dataPoints: chartData.data?.length || 0
         }
       })
     } catch (error) {
+      console.error('[CHART DEBUG] JSON parse error:', error);
+      console.error('[CHART DEBUG] Content that failed to parse:', content);
       dataStream.writeData({
         type: "error",
         error: "Invalid chart data format"
