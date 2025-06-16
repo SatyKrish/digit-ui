@@ -17,16 +17,11 @@ export type {
   StreamPart
 } from "@/lib/artifacts/types"
 
-// Simple artifact component following official Vercel AI SDK pattern
-export { SimpleArtifact } from "./simple-artifact"
+// All artifact components have been removed as System B has been eliminated
+// The application now uses the official Vercel AI SDK pattern exclusively
 
-// Keep data stream handler for compatibility
-export { DataStreamHandler } from "./data-stream-handler"
-
-// Note: The following components have been removed in favor of the official Vercel AI SDK pattern:
-// - EnhancedArtifactProvider (replaced by useChat hook's data property)
-// - ArtifactWorkspace (replaced by SimpleArtifact)
-// - useEnhancedArtifacts (no longer needed)
+// Note: System B (Simple Streaming Pattern) has been completely removed
+// All artifacts now use the official Vercel AI SDK pattern through ArtifactWorkspace
 // 
 // Migration guide:
 // - Use useChat hook's `data` property instead of custom artifact context

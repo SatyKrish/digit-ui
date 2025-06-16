@@ -34,10 +34,17 @@ export async function POST(req: Request) {
   try {
     // Parse and validate request
     const body = await req.json()
+    console.log(`[REQUEST] Body received:`, JSON.stringify({
+      hasMessages: !!body.messages,
+      messagesLength: body.messages?.length,
+      bodyKeys: Object.keys(body)
+    }))
+    
     const parsed = chatRequestSchema.safeParse(body)
     
     if (!parsed.success) {
       console.error(`[REQUEST] Invalid schema:`, parsed.error.flatten())
+      console.error(`[REQUEST] Body was:`, JSON.stringify(body, null, 2))
       return createErrorResponse('Invalid request format', undefined, 400)
     }
 

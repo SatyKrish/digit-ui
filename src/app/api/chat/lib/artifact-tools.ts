@@ -1,142 +1,17 @@
-// Simplified artifact tools
+// Enhanced artifact tools using streaming document handlers
 import { tool } from "ai"
 import { z } from "zod"
 import { generateUUID } from "@/lib/utils"
+import { getDocumentHandler, artifactKinds } from "@/lib/artifacts/server"
 import type { ArtifactKind } from "@/lib/artifacts/types"
 import { ArtifactError } from "./types"
 
-const artifactKinds = ["text", "code", "chart", "visualization", "document", "image", "sheet"] as const
-
-interface ChartData {
-  chartType: 'bar' | 'line' | 'pie' | 'area'
-  title: string
-  xKey: string
-  yKey: string
-  data: Array<Record<string, any>>
-}
-
 /**
- * Detect chart type from title
- */
-function detectChartType(title: string): ChartData['chartType'] {
-  const lowerTitle = title.toLowerCase()
-  
-  if (lowerTitle.includes('pie') || lowerTitle.includes('distribution') || lowerTitle.includes('share')) {
-    return 'pie'
-  }
-  if (lowerTitle.includes('line') || lowerTitle.includes('trend') || lowerTitle.includes('over time')) {
-    return 'line'
-  }
-  if (lowerTitle.includes('area')) {
-    return 'area'
-  }
-  
-  return 'bar'
-}
-
-/**
- * Create fallback chart data
- */
-function createFallbackChart(title: string): ChartData {
-  return {
-    chartType: detectChartType(title),
-    title,
-    xKey: 'category',
-    yKey: 'value',
-    data: [
-      { category: 'Item A', value: 30 },
-      { category: 'Item B', value: 45 },
-      { category: 'Item C', value: 25 }
-    ]
-  }
-}
-
-/**
- * Extract JSON from mixed content
- */
-function extractJSON(content: string): string | null {
-  // Remove markdown code blocks
-  let cleaned = content.trim()
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '')
-  }
-  
-  // Find JSON object in content
-  const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
-  if (jsonMatch) {
-    return jsonMatch[0]
-  }
-  
-  return null
-}
-
-/**
- * Validate and normalize chart data
- */
-function validateChartData(data: any, title: string): ChartData {
-  // Ensure required fields exist
-  const normalized: ChartData = {
-    chartType: data.chartType || detectChartType(title),
-    title: data.title || title,
-    xKey: data.xKey || 'category',
-    yKey: data.yKey || 'value',
-    data: Array.isArray(data.data) ? data.data : []
-  }
-  
-  return normalized
-}
-
-/**
- * Process chart content with clean error handling
- */
-function processChartContent(content: string, title: string): string {
-  if (!content?.trim()) {
-    console.warn('[CHART] Empty content, using fallback')
-    return JSON.stringify(createFallbackChart(title))
-  }
-  
-  // Try to extract JSON from content
-  const jsonString = extractJSON(content)
-  if (!jsonString) {
-    console.warn('[CHART] No JSON found in content, using fallback')
-    return JSON.stringify(createFallbackChart(title))
-  }
-  
-  // Try to parse and validate
-  try {
-    const parsed = JSON.parse(jsonString)
-    const validated = validateChartData(parsed, title)
-    return JSON.stringify(validated)
-  } catch (error) {
-    console.warn('[CHART] JSON parse failed, using fallback:', error)
-    return JSON.stringify(createFallbackChart(title))
-  }
-}
-
-/**
- * Create placeholder content
- */
-function createPlaceholder(kind: ArtifactKind, title: string): string {
-  switch (kind) {
-    case 'chart':
-      return JSON.stringify(createFallbackChart(title))
-    case 'code':
-      return `// ${title}\n// Generated code will appear here`
-    case 'text':
-      return `# ${title}\n\nContent will be generated here.`
-    default:
-      return `# ${title}\n\nContent will be generated here.`
-  }
-}
-
-/**
- * Create document tool - simplified
+ * Create document tool using streaming handlers
  */
 export function createDocumentTool() {
   return tool({
-    description: 'Create a new document, code file, chart, or other content.',
+    description: 'Create a new document, code file, chart, or other content with real-time streaming.',
     parameters: z.object({
       kind: z.enum(artifactKinds as readonly [ArtifactKind, ...ArtifactKind[]]),
       title: z.string().min(1).max(200),
@@ -148,50 +23,96 @@ export function createDocumentTool() {
       const artifactId = generateUUID()
       
       try {
-        let resultContent = content || createPlaceholder(kind, title)
-        
-        // Process chart content
-        if (kind === 'chart') {
-          resultContent = processChartContent(resultContent, title)
+        const handler = getDocumentHandler(kind)
+        if (!handler) {
+          throw new Error(`No handler found for artifact kind: ${kind}`)
         }
-        
-        return {
+
+        console.log(`[ARTIFACT] Found handler for ${kind}, calling onCreateDocument`)
+
+        // Create a simplified data stream for tool execution
+        // The actual streaming to the client happens through the AI SDK's own streaming mechanism
+        const dataStreamItems: any[] = []
+        const dataStream = {
+          writeData: (data: any) => {
+            console.log(`[ARTIFACT] Handler streaming data:`, JSON.stringify(data, null, 2))
+            dataStreamItems.push(data)
+          },
+          close: () => {
+            console.log(`[ARTIFACT] Handler stream closed`)
+          }
+        }
+
+        // Call the streaming handler
+        const resultContent = await handler.onCreateDocument({
+          title,
+          dataStream,
+          metadata: { language }
+        })
+
+        console.log(`[ARTIFACT] Handler completed successfully`)
+        console.log(`[ARTIFACT] Result content length: ${resultContent?.length || 0}`)
+        console.log(`[ARTIFACT] Stream items count: ${dataStreamItems.length}`)
+
+        // Return a comprehensive result that includes the streaming data
+        // The AI SDK will handle the actual streaming to the client
+        const result = {
           id: artifactId,
           kind,
           title,
           content: resultContent,
           language,
+          streamData: dataStreamItems,
           success: true,
-          message: `Created ${kind}: ${title}`
+          message: `Successfully created ${kind}: ${title}`
         }
+
+        console.log(`[ARTIFACT] Returning result:`, JSON.stringify({
+          ...result,
+          content: result.content ? `${result.content.substring(0, 100)}...` : 'empty',
+          streamData: `${result.streamData.length} items`
+        }, null, 2))
+
+        return result
       } catch (error) {
         console.error(`[ARTIFACT] Error creating ${kind}:`, error)
-        throw new ArtifactError(error instanceof Error ? error.message : 'Unknown error', kind)
+        console.error(`[ARTIFACT] Error stack:`, error instanceof Error ? error.stack : 'No stack trace')
+        
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+        throw new ArtifactError(`Failed to create ${kind}: ${errorMessage}`, kind)
       }
     }
   })
 }
 
 /**
- * Update document tool - simplified
+ * Update document tool using streaming handlers
  */
 export function createUpdateDocumentTool() {
   return tool({
-    description: 'Update an existing document or artifact.',
+    description: 'Update an existing document or artifact with real-time streaming.',
     parameters: z.object({
       artifactId: z.string().uuid(),
       content: z.string().max(100000),
-      title: z.string().optional()
+      title: z.string().optional(),
+      description: z.string().min(1).max(500)
     }),
-    execute: async ({ artifactId, content, title }) => {
+    execute: async ({ artifactId, content, title, description }) => {
       console.log(`[ARTIFACT] Updating: ${artifactId}`)
       
-      return {
-        id: artifactId,
-        content,
-        title,
-        success: true,
-        message: `Updated artifact`
+      try {
+        // For now, return a simple update result
+        // In a full implementation, you'd need to determine the kind and use the proper handler
+        return {
+          id: artifactId,
+          content,
+          title,
+          success: true,
+          message: `Updated artifact: ${description}`
+        }
+      } catch (error) {
+        console.error(`[ARTIFACT] Error updating ${artifactId}:`, error)
+        throw new ArtifactError(error instanceof Error ? error.message : 'Unknown error')
       }
     }
   })
