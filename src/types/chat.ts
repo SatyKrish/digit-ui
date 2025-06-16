@@ -30,6 +30,7 @@ export interface Chat {
   createdAt?: Date
   messageCount?: number
   lastMessageAt?: Date
+  userId?: string
 }
 
 // Backward compatibility alias - gradually migrate away from this

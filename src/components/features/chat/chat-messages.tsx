@@ -1,6 +1,6 @@
 "use client"
 
-import { memo } from "react"
+import { memo, useMemo, useCallback } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "next-themes"
@@ -122,30 +122,61 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false }: {
                           )
                         case 'reasoning':
                           return (
-                            <details key={partIndex} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 my-2">
-                              <summary className="text-xs font-semibold text-amber-700 dark:text-amber-300 cursor-pointer flex items-center gap-2">
-                                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                                AI Reasoning
+                            <details key={partIndex} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 my-2 group">
+                              <summary className="text-xs font-semibold text-amber-700 dark:text-amber-300 cursor-pointer flex items-center gap-2 hover:text-amber-600 dark:hover:text-amber-200 transition-colors">
+                                <div className="w-2 h-2 bg-amber-500 rounded-full group-open:animate-pulse"></div>
+                                <span>🧠 AI Reasoning Steps</span>
+                                <span className="ml-auto text-xs text-amber-600 dark:text-amber-400 group-open:hidden">Click to expand</span>
                               </summary>
-                              <pre className="text-xs mt-2 whitespace-pre-wrap text-amber-800 dark:text-amber-200">
-                                {part.reasoning || 'No reasoning details available'}
-                              </pre>
+                              <div className="mt-3 space-y-2">
+                                <div className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                                  Here's how I approached this problem:
+                                </div>
+                                <div className="bg-white dark:bg-amber-950/30 rounded-md p-3 border border-amber-200 dark:border-amber-800">
+                                  <pre className="text-xs whitespace-pre-wrap text-amber-800 dark:text-amber-200 leading-relaxed">
+                                    {part.reasoning || 'No reasoning details available'}
+                                  </pre>
+                                </div>
+                              </div>
                             </details>
                           )
                         case 'source':
                           return (
                             <div key={partIndex} className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 my-2">
-                              <div className="text-xs font-semibold text-green-700 dark:text-green-300 mb-2 flex items-center gap-2">
+                              <div className="text-xs font-semibold text-green-700 dark:text-green-300 mb-3 flex items-center gap-2">
                                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                Source Reference
+                                🔗 Source Reference
+                                <span className="ml-auto bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs">
+                                  Reference
+                                </span>
                               </div>
-                              <div className="text-sm">
+                              <div className="bg-white dark:bg-green-950/30 rounded-md p-3 border border-green-200 dark:border-green-800">
                                 {part.source?.url ? (
-                                  <a href={part.source.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                    {part.source.title || part.source.url}
-                                  </a>
+                                  <div className="space-y-2">
+                                    <a 
+                                      href={part.source.url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="text-primary hover:underline font-medium flex items-center gap-2 group"
+                                    >
+                                      <span>{part.source.title || part.source.url}</span>
+                                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
+                                    </a>
+                                    {part.source.title && part.source.url !== part.source.title && (
+                                      <div className="text-xs text-green-600 dark:text-green-400 font-mono">
+                                        {part.source.url}
+                                      </div>
+                                    )}
+                                    {part.source.description && (
+                                      <div className="text-sm text-green-700 dark:text-green-300 italic">
+                                        {part.source.description}
+                                      </div>
+                                    )}
+                                  </div>
                                 ) : (
-                                  <span>Source information</span>
+                                  <div className="text-sm text-green-700 dark:text-green-300">
+                                    📚 Source information provided by AI
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -153,41 +184,87 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false }: {
                         case 'file':
                           return (
                             <div key={partIndex} className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3 my-2">
-                              <div className="text-xs font-semibold text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-2">
+                              <div className="text-xs font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
                                 <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                File Attachment
+                                📎 File Attachment
+                                {part.mimeType && (
+                                  <span className="ml-auto bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-1 rounded text-xs">
+                                    {part.mimeType.split('/')[0]}
+                                  </span>
+                                )}
                               </div>
                               
                               {part.mimeType?.startsWith('image/') && part.data ? (
-                                <div className="space-y-2">
-                                  <img 
-                                    src={`data:${part.mimeType};base64,${part.data}`}
-                                    alt="AI generated file"
-                                    className="max-w-full h-auto rounded border border-purple-200 dark:border-purple-800 shadow-sm"
-                                    loading="lazy"
-                                  />
-                                  <div className="text-xs text-purple-600 dark:text-purple-400">
-                                    {part.mimeType} • {part.data ? `${Math.round(part.data.length / 1024)}KB` : 'Unknown size'}
+                                <div className="space-y-3">
+                                  <div className="relative group">
+                                    <img 
+                                      src={`data:${part.mimeType};base64,${part.data}`}
+                                      alt="AI generated file"
+                                      className="max-w-full h-auto rounded border border-purple-200 dark:border-purple-800 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                      loading="lazy"
+                                      onClick={() => {
+                                        const newWindow = window.open();
+                                        if (newWindow) {
+                                          newWindow.document.write(`<img src="data:${part.mimeType};base64,${part.data}" style="max-width:100%;height:auto;" />`);
+                                        }
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                      <span className="text-white text-sm bg-black/50 px-3 py-1 rounded">Click to view full size</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs text-purple-600 dark:text-purple-400 bg-purple-100/50 dark:bg-purple-900/30 rounded px-2 py-1">
+                                    <span>{part.mimeType}</span>
+                                    <span>{part.data ? `${Math.round(part.data.length / 1024)}KB` : 'Unknown size'}</span>
                                   </div>
                                 </div>
                               ) : part.mimeType?.startsWith('text/') && part.data ? (
-                                <div className="space-y-2">
-                                  <pre className="text-xs bg-white dark:bg-gray-900 p-2 rounded border border-purple-200 dark:border-purple-800 overflow-x-auto max-h-40">
-                                    {atob(part.data)}
-                                  </pre>
-                                  <div className="text-xs text-purple-600 dark:text-purple-400">
-                                    {part.mimeType} • {part.data ? `${Math.round(part.data.length / 1024)}KB` : 'Unknown size'}
+                                <div className="space-y-3">
+                                  <div className="relative">
+                                    <pre className="text-xs bg-white dark:bg-gray-900 p-3 rounded border border-purple-200 dark:border-purple-800 overflow-x-auto max-h-40 font-mono">
+                                      {part.data ? atob(part.data) : 'No content available'}
+                                    </pre>
+                                    {part.data && (
+                                      <button
+                                        onClick={() => navigator.clipboard.writeText(atob(part.data!))}
+                                        className="absolute top-2 right-2 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 p-1 rounded text-xs hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors"
+                                        title="Copy to clipboard"
+                                      >
+                                        📋
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs text-purple-600 dark:text-purple-400 bg-purple-100/50 dark:bg-purple-900/30 rounded px-2 py-1">
+                                    <span>{part.mimeType}</span>
+                                    <span>{part.data ? `${Math.round(part.data.length / 1024)}KB` : 'Unknown size'}</span>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="space-y-2">
-                                  <div className="text-sm text-purple-700 dark:text-purple-300 bg-white dark:bg-gray-900 p-2 rounded border border-purple-200 dark:border-purple-800">
-                                    File type: {part.mimeType || 'Unknown'}
+                                <div className="space-y-3">
+                                  <div className="text-sm text-purple-700 dark:text-purple-300 bg-white dark:bg-gray-900 p-3 rounded border border-purple-200 dark:border-purple-800 text-center">
+                                    <div className="text-4xl mb-2">📄</div>
+                                    <div>File type: {part.mimeType || 'Unknown'}</div>
                                     {part.data && (
-                                      <span className="block text-xs text-purple-600 dark:text-purple-400 mt-1">
+                                      <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
                                         Size: {Math.round(part.data.length / 1024)}KB
-                                      </span>
+                                      </div>
                                     )}
+                                    <button
+                                      onClick={() => {
+                                        if (part.data) {
+                                          const blob = new Blob([atob(part.data)], { type: part.mimeType || 'application/octet-stream' });
+                                          const url = URL.createObjectURL(blob);
+                                          const a = document.createElement('a');
+                                          a.href = url;
+                                          a.download = `attachment.${part.mimeType?.split('/')[1] || 'bin'}`;
+                                          a.click();
+                                          URL.revokeObjectURL(url);
+                                        }
+                                      }}
+                                      className="mt-2 bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 transition-colors"
+                                    >
+                                      Download
+                                    </button>
                                   </div>
                                 </div>
                               )}

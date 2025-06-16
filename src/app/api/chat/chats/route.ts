@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, title } = await request.json()
+    const { userId, title, visibility = 'private' } = await request.json()
 
     if (!userId) {
       return NextResponse.json(
@@ -40,7 +40,14 @@ export async function POST(request: NextRequest) {
     // Create new chat using simplified persistence service
     const newChat = await chatPersistence.createChat(userId, title || 'New Chat')
     
-    return NextResponse.json(newChat)
+    // Add visibility support (Phase 2 enhancement)
+    const chatWithVisibility = {
+      ...newChat,
+      visibility,
+      shared: false
+    }
+    
+    return NextResponse.json(chatWithVisibility)
   } catch (error) {
     console.error('Failed to create chat:', error)
     return NextResponse.json(

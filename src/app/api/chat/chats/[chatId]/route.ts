@@ -9,21 +9,23 @@ export async function PATCH(
     const { title } = await request.json()
     const chatId = params.chatId
 
-    if (!chatId || !title) {
+    if (!chatId) {
       return NextResponse.json(
-        { error: 'Chat ID and title are required' },
+        { error: 'Chat ID is required' },
         { status: 400 }
       )
     }
 
-    // Update chat title using simplified persistence service
-    await chatPersistence.updateChatTitle(chatId, title)
-
+    if (title !== undefined) {
+      // Update chat title using simplified persistence service
+      await chatPersistence.updateChatTitle(chatId, title)
+    }
+    
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Failed to update chat title:', error)
+    console.error('Failed to update chat:', error)
     return NextResponse.json(
-      { error: 'Failed to update chat title' },
+      { error: 'Failed to update chat' },
       { status: 500 }
     )
   }

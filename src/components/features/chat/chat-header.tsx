@@ -12,7 +12,6 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { MCPStatus } from "@/components/shared/mcp-status"
-
 interface User {
   name: string
   email: string
@@ -29,7 +28,16 @@ interface ChatHeaderProps {
   onToggleView?: () => void
 }
 
-export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, artifactCount, isMobile, showArtifacts, onToggleView }: ChatHeaderProps) {
+export function ChatHeader({ 
+  user, 
+  onLogout, 
+  onNavigateHome, 
+  connectionStatus, 
+  artifactCount, 
+  isMobile, 
+  showArtifacts, 
+  onToggleView
+}: ChatHeaderProps) {
   const { theme, setTheme } = useTheme()
 
   // Get user initials (first character of first name)

@@ -271,14 +271,14 @@ export function useChats(user?: { id: string; email: string; name: string }) {
       if (!currentUser) return;
       
       try {
-        const response = await fetch('/api/chat/sessions/clear', {
+        const response = await fetch('/api/chat/chats/clear', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: currentUser.id })
         });
         
         if (!response.ok) {
-          throw new Error('Failed to clear sessions');
+          throw new Error('Failed to clear chats');
         }
         
         setChats([]);
