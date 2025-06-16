@@ -1,4 +1,3 @@
-export { useMessageArtifacts } from './use-message-artifacts';
 export { useGroupedChatSessions } from './use-grouped-sessions';
 
 // Export the new Chat SDK aligned hooks

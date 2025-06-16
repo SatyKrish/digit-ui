@@ -29,11 +29,14 @@ export type {
 // - Artifacts are automatically streamed through the official Vercel AI SDK
 export { ArtifactWorkspace } from "./artifact-workspace-vercel"
 
-// Enhanced Artifact System
-export { EnhancedArtifactProvider, useEnhancedArtifacts } from "./enhanced-artifact-provider"
+// Simple Artifact Component (Vercel AI SDK Pattern)
+export { SimpleArtifact } from "./simple-artifact"
 
 // Demo Components
 export { DemoArtifactWorkspace } from "./demo-workspace"
+
+// Data Stream Handler
+export { DataStreamHandler } from "./data-stream-handler"
 
 // Server Actions (RSC) - commented out temporarily for build fix
 // export { 
