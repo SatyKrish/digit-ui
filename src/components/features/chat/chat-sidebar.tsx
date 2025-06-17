@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Plus, MessageSquare, ChevronDown, ChevronRight } from "lucide-react"
+import { Plus, MessageSquare, ChevronDown, ChevronRight, MoreHorizontal, Trash2 } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -9,12 +9,23 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuAction,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useSidebar } from "@/components/ui/sidebar"
 import { MCPToolsPanel } from "@/components/shared/mcp-tools-panel"
 import { useChats, useGroupedChatSessions } from "@/hooks/chat"
@@ -25,10 +36,12 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
   const { setOpen, open } = useSidebar()
   const [isClosing, setIsClosing] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<TimePeriod>>(new Set())
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   // Use updated chat management (aligned with Chat SDK patterns)
-  const { chats, createChat, isLoading } = useChats(user)
+  const { chats, createChat, deleteChat, isLoading } = useChats(user)
   const { groupedSessions: groupedChats, groupOrder, getGroupLabel } = useGroupedChatSessions(chats)
 
   const handleNewChat = async () => {
@@ -61,6 +74,26 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
       setOpen(false)
       setIsClosing(false)
     }, 150)
+  }
+
+  const handleDeleteChat = (chatId: string) => {
+    setChatToDelete(chatId)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDeleteChat = async () => {
+    if (!chatToDelete) return
+    
+    const success = await deleteChat(chatToDelete)
+    if (success) {
+      // If the deleted chat was the current one, we might want to navigate away
+      if (currentChatId === chatToDelete) {
+        onChatSelect('')
+      }
+    }
+    
+    setDeleteDialogOpen(false)
+    setChatToDelete(null)
   }
 
   const toggleGroupCollapse = (period: TimePeriod) => {
@@ -176,31 +209,45 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
                                 transitionDelay: open ? `${index * 30}ms` : "0ms",
                               }}
                             >
-                              <SidebarMenuButton
-                                onClick={() => handleChatSelect(chat.id)}
-                                isActive={currentChatId === chat.id}
-                                className="
-                                  w-full justify-start gap-3 p-3 h-auto rounded-md
-                                  transition-all duration-200 ease-out
-                                  hover:scale-[1.02] hover:shadow-soft hover:bg-sidebar-accent/50
-                                  active:scale-[0.98]
-                                  data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground
-                                  data-[active=true]:border-l-2 data-[active=true]:border-sidebar-primary
-                                  data-[active=true]:shadow-soft
-                                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2
-                                "
-                              >
-                                <MessageSquare className="h-4 w-4 shrink-0 transition-colors duration-200" />
-                                <div className="flex flex-col items-start gap-1 overflow-hidden">
-                                  <span className="text-sm font-medium truncate w-full text-left transition-colors duration-200">
-                                    {chat.title}
-                                  </span>
-                                  <span className="text-xs text-sidebar-foreground/60 transition-colors duration-200">
-                                    {formatRelativeTime(chat.updatedAt || new Date())}
-                                    {chat.messageCount !== undefined && ` • ${chat.messageCount} messages`}
-                                  </span>
-                                </div>
-                              </SidebarMenuButton>
+                              <div className="flex items-center w-full group">
+                                <SidebarMenuButton
+                                  onClick={() => handleChatSelect(chat.id)}
+                                  isActive={currentChatId === chat.id}
+                                  className="
+                                    flex-1 justify-start gap-3 p-3 h-auto rounded-md mr-2
+                                    transition-all duration-200 ease-out
+                                    hover:scale-[1.02] hover:shadow-soft hover:bg-sidebar-accent/50
+                                    active:scale-[0.98]
+                                    data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground
+                                    data-[active=true]:border-l-2 data-[active=true]:border-sidebar-primary
+                                    data-[active=true]:shadow-soft
+                                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2
+                                  "
+                                >
+                                  <MessageSquare className="h-4 w-4 shrink-0 transition-colors duration-200" />
+                                  <div className="flex flex-col items-start gap-1 overflow-hidden min-w-0 flex-1">
+                                    <span className="text-sm font-medium truncate w-full text-left transition-colors duration-200">
+                                      {chat.title}
+                                    </span>
+                                    <span className="text-xs text-sidebar-foreground/60 transition-colors duration-200 truncate w-full">
+                                      {formatRelativeTime(chat.updatedAt || new Date())}
+                                      {chat.messageCount !== undefined && ` • ${chat.messageCount} messages`}
+                                    </span>
+                                  </div>
+                                </SidebarMenuButton>
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteChat(chat.id)
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-sm shrink-0"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </SidebarMenuItem>
                           ))}
                         </SidebarMenu>
@@ -213,6 +260,27 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
           )}
         </ScrollArea>
       </SidebarContent>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your
+              chat and remove all messages from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteChat}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
   )
 }
