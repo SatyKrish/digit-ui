@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ChatSidebar } from "@/components/features/chat/chat-sidebar"
-import { MainChatArea } from "@/components/features/chat/main-chat-area"
+import { ChatArea } from "@/components/features/chat/chat-area"
 import { AuthScreen } from "@/components/features/auth/auth-screen"
 import { ClientOnly } from "@/components/shared/client-only"
 import { SidebarProvider } from "@/components/ui/sidebar"
@@ -76,7 +76,7 @@ export default function DigitChat() {
               onNewChat={handleNewChat}
               user={{ id: effectiveUser.email, email: effectiveUser.email, name: effectiveUser.name }}
             />
-            <MainChatArea 
+            <ChatArea 
               user={effectiveUser} 
               currentChatId={currentChatId} 
               onLogout={signOut} 

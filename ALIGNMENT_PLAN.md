@@ -28,7 +28,7 @@ This document outlines the strategy to align DigitChat with Vercel's Chat SDK pa
 - ✅ Integrated artifacts with AI SDK's streaming data using `data` property from `useChat`
 - ✅ Created `SimpleArtifact` component following official Vercel AI SDK pattern
 - ✅ Removed complex custom state management
-- ✅ Updated `main-chat-area.tsx` to use official Vercel pattern
+- ✅ Updated `chat-area.tsx` to use official Vercel pattern
 
 ### ✅ Key Changes Made:
 
@@ -88,7 +88,7 @@ This document outlines the strategy to align DigitChat with Vercel's Chat SDK pa
 ### ✅ COMPLETED - Phase 1: Core AI SDK Alignment
 
 **State Management Simplification:**
-- ✅ Refactored `MainChatArea` to remove redundant state management
+- ✅ Refactored `ChatArea` to remove redundant state management
 - ✅ Eliminated duplicate message loading logic in favor of AI SDK patterns
 - ✅ Implemented proper `useChat` hook integration with `sendExtraMessageFields`
 - ✅ Simplified artifact state management using context patterns

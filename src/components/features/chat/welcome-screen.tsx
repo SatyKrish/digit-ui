@@ -15,7 +15,7 @@ interface User {
   email: string
 }
 
-interface InitialWelcomeScreenProps {
+interface WelcomeScreenProps {
   user: User
   onSendMessage?: (message: string, selectedHints?: string[]) => void
   onStartChat?: (message: string) => void
@@ -24,7 +24,7 @@ interface InitialWelcomeScreenProps {
 // Updated to use Domains as requested
 const domainHints = ["Account", "Party", "Holdings", "Transaction", "Customer"]
 
-export function InitialWelcomeScreen({ user, onSendMessage, onStartChat }: InitialWelcomeScreenProps) {
+export function WelcomeScreen({ user, onSendMessage, onStartChat }: WelcomeScreenProps) {
   const [message, setMessage] = useState("")
   const [selectedHints, setSelectedHints] = useState<string[]>([])
 

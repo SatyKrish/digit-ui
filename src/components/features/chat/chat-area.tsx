@@ -4,27 +4,27 @@ import { useState, useEffect, useCallback } from "react"
 import { ChatHeader } from "./chat-header"
 import { ChatMessages } from "./chat-messages"
 import { ChatInput } from "./chat-input"
-import { InitialWelcomeScreen } from "./initial-welcome-screen"
+import { WelcomeScreen } from "./welcome-screen"
 import { useChat } from "@ai-sdk/react"
 import { toast } from "sonner"
-import type { MainChatAreaProps } from "@/types"
+import type { ChatAreaProps } from "@/types"
 import type { Message } from "ai"
 
 /**
- * Main Chat Area using official Vercel AI SDK patterns
+ * Chat Area using official Vercel AI SDK patterns
  * 
  * Key features:
  * - Uses full screen width without artifacts
  * - Integrates with chat persistence
  * - Full compatibility with official Vercel AI SDK
  */
-export function MainChatArea({ 
+export function ChatArea({ 
   user, 
   currentChatId, 
   onLogout, 
   onNewChat,
   onChatCreated
-}: MainChatAreaProps) {
+}: ChatAreaProps) {
   
   // Initialize user in chat service
   useEffect(() => {
@@ -225,7 +225,7 @@ export function MainChatArea({
       {/* Main Content Area - Full width and height */}
       <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 overflow-hidden">
         {isInitialScreen ? (
-          <InitialWelcomeScreen 
+          <WelcomeScreen 
             user={user}
             onStartChat={handleStartChat}
           />

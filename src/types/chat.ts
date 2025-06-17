@@ -73,7 +73,7 @@ export interface ChatInputProps {
   placeholder?: string
 }
 
-export interface MainChatAreaProps {
+export interface ChatAreaProps {
   user: {
     id: string
     name: string
