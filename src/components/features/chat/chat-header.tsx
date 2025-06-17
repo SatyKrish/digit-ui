@@ -1,6 +1,6 @@
 "use client"
 
-import { Moon, Sun, LogOut, Monitor } from "lucide-react"
+import { Moon, Sun, LogOut, Monitor, Menu } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 import { MCPStatus } from "@/components/shared/mcp-status"
 interface User {
   name: string
@@ -48,6 +49,9 @@ export function ChatHeader({
   return (
     <header className="flex h-18 shrink-0 items-center gap-6 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-elegant">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">
+        {/* Sidebar Toggle */}
+        <SidebarTrigger className="h-10 w-10" />
+        
         <div className="flex-1 flex items-center gap-4">
         {/* Company Logo with theme-aware styling - clickable to navigate home */}
         <button
