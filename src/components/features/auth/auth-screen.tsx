@@ -37,7 +37,7 @@ export function AuthScreen() {
               </svg>
             </div>
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary tracking-tight animate-slide-in-left">
-              D<span className="text-red-500">i</span>GIT
+              DIGIT
             </h1>
           </div>
           
