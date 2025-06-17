@@ -355,7 +355,7 @@ export const ChatMessages = memo(({ messages, isLoading = false, user }: ChatMes
       ref={scrollRef}
       className={`h-full w-full chat-scroll-area ${optimizedLoading ? 'streaming' : ''}`}
     >
-      <div className={`p-6 space-y-8 min-h-full max-w-6xl mx-auto chat-container overflow-x-hidden ${optimizedLoading ? 'streaming-container' : ''}`}>
+      <div className={`p-6 space-y-8 min-h-full w-full chat-container overflow-x-hidden ${optimizedLoading ? 'streaming-container' : ''}`}>
         {messages.map((message, index) => {
           // Check if this is a streaming message (last assistant message while loading)
           const isStreamingMessage = optimizedLoading && 

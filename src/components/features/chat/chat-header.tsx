@@ -48,7 +48,7 @@ export function ChatHeader({
 
   return (
     <header className="flex h-18 shrink-0 items-center gap-6 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-elegant">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">
+      <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center gap-4">
         {/* Sidebar Toggle */}
         <SidebarTrigger className="h-10 w-10" />
         

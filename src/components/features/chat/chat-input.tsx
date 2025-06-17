@@ -64,7 +64,7 @@ export function ChatInput({
 
   return (
     <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 lg:p-6 space-y-3 lg:space-y-4 shadow-elegant chat-input-container">
-      <div className="max-w-4xl mx-auto w-full">
+      <div className="w-full">
         {/* Selected Hints */}
         {selectedHints.length > 0 && (
           <div className="flex justify-center selected-hints-container mb-4">

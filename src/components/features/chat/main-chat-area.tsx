@@ -223,7 +223,7 @@ export function MainChatArea({
       </div>
       
       {/* Main Content Area - Full width and height */}
-      <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 overflow-hidden">
         {isInitialScreen ? (
           <InitialWelcomeScreen 
             user={user}

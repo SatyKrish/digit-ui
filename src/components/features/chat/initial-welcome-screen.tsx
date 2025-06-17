@@ -83,7 +83,7 @@ export function InitialWelcomeScreen({ user, onSendMessage, onStartChat }: Initi
 
         {/* Centered Input */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="relative max-w-2xl mx-auto">
+          <div className="relative w-full max-w-4xl mx-auto px-4">
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -114,7 +114,7 @@ export function InitialWelcomeScreen({ user, onSendMessage, onStartChat }: Initi
           </div>
 
           {/* Domain Hints - positioned below the chat text bar */}
-          <div className="space-y-2 max-w-2xl mx-auto">
+          <div className="space-y-2 w-full max-w-4xl mx-auto px-4">
             <h3 className="text-sm font-medium text-muted-foreground">Domains</h3>
             <div className="flex flex-wrap gap-2">
               {domainHints.map((hint, index) => (
