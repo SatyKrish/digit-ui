@@ -26,6 +26,8 @@ interface ChatHeaderProps {
   isMobile?: boolean
   showArtifacts?: boolean
   onToggleView?: () => void
+  currentChatId?: string | null
+  messageCount?: number
 }
 
 export function ChatHeader({ 

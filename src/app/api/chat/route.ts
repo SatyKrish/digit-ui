@@ -3,7 +3,6 @@ import { mcpClient } from "@/client/mcp-client"
 import { getAzureOpenAIModel } from "@/config/azure-openai"
 import { chatRequestSchema, ValidationError } from "./lib/types"
 import { prepareMcpTools } from "./lib/mcp-tools"
-import { createDocumentTool, createUpdateDocumentTool } from "./lib/artifact-tools"
 import { categorizeStreamError, createErrorResponse, validateUserId } from "./lib/error-utils"
 import { ensureUserExists, getOrCreateChat, saveChatCompletion } from "./lib/chat-utils"
 
@@ -75,19 +74,14 @@ export async function POST(req: Request) {
     try {
       const mcpResult = await prepareMcpTools()
       tools = {
-        ...mcpResult.tools,
-        createDocument: createDocumentTool(),
-        updateDocument: createUpdateDocumentTool()
+        ...mcpResult.tools
       }
       serverCount = mcpResult.connectedServers.length
       console.log(`[TOOLS] Prepared ${Object.keys(tools).length} tools`)
     } catch (toolError) {
       console.error(`[TOOLS] Preparation failed:`, toolError)
-      // Add just artifact tools
-      tools = {
-        createDocument: createDocumentTool(),
-        updateDocument: createUpdateDocumentTool()
-      }
+      // Continue without tools
+      tools = {}
     }
 
     // Validate Azure OpenAI

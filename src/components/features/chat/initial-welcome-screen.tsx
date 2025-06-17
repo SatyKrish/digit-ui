@@ -17,13 +17,14 @@ interface User {
 
 interface InitialWelcomeScreenProps {
   user: User
-  onSendMessage: (message: string, selectedHints?: string[]) => void
+  onSendMessage?: (message: string, selectedHints?: string[]) => void
+  onStartChat?: (message: string) => void
 }
 
 // Updated to use Domains as requested
 const domainHints = ["Account", "Party", "Holdings", "Transaction", "Customer", "Product", "Order", "Payment"]
 
-export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScreenProps) {
+export function InitialWelcomeScreen({ user, onSendMessage, onStartChat }: InitialWelcomeScreenProps) {
   const [message, setMessage] = useState("")
   const [selectedHints, setSelectedHints] = useState<string[]>([])
 
@@ -34,7 +35,11 @@ export function InitialWelcomeScreen({ user, onSendMessage }: InitialWelcomeScre
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (message.trim()) {
-      onSendMessage(message.trim(), selectedHints)
+      if (onSendMessage) {
+        onSendMessage(message.trim(), selectedHints)
+      } else if (onStartChat) {
+        onStartChat(message.trim())
+      }
       setMessage("")
       setSelectedHints([])
     }

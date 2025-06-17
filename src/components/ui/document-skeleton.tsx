@@ -3,7 +3,8 @@
 import React from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import type { ArtifactKind } from '@/lib/artifacts/types'
+
+type ArtifactKind = "text" | "code" | "chart" | "visualization" | "document" | "image" | "sheet"
 
 interface DocumentSkeletonProps {
   artifactKind: ArtifactKind

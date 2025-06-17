@@ -4,7 +4,6 @@ import { memo, useMemo, useCallback } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "next-themes"
-import { hasArtifacts, countArtifacts } from "@/services/artifacts/artifact-extractor"
 import { generateInitials } from "@/utils/format"
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer"
 import { useScrollToBottom } from "@/hooks/shared/use-scroll-to-bottom"
@@ -12,10 +11,11 @@ import { useStreamingOptimization } from "@/hooks/shared/use-streaming-optimizat
 import { getSlideInStaggerClass } from "@/utils/animations"
 import type { ChatMessage } from "@/types/chat"
 import type { ChatMessagesProps } from "@/types/chat"
+import type { Message } from "ai"
 
 // Memoized individual message component for better performance
 const ChatMessageItem = memo(({ message, user, index, isStreaming = false }: { 
-  message: ChatMessage; 
+  message: any; // Use any temporarily to avoid complex type conflicts
   user?: { name: string }; 
   index: number;
   isStreaming?: boolean;
@@ -65,7 +65,7 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false }: {
                 {message.parts && message.parts.length > 0 ? (
                   // Render AI SDK v4+ message parts
                   <div className="space-y-2">
-                    {message.parts.map((part, partIndex) => {
+                    {message.parts.map((part: any, partIndex: any) => {
                       switch (part.type) {
                         case 'text':
                           return (
@@ -302,21 +302,6 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false }: {
             )}
           </div>
         </div>
-
-        {/* Show artifact indicators for assistant messages */}
-        {message.role === "assistant" && hasArtifacts(message.content) && (
-          <div className="flex items-center gap-2 text-xs bg-gradient-to-r from-primary/10 to-primary/5 text-primary border border-primary/20 rounded-lg px-3 py-2 animate-fade-in shadow-soft">
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-              <span className="font-medium">
-                {countArtifacts(message.content)} interactive artifact{countArtifacts(message.content) > 1 ? "s" : ""} generated
-              </span>
-            </div>
-            <svg className="w-4 h-4 text-primary/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-        )}
       </div>
 
       {message.role === "user" && (

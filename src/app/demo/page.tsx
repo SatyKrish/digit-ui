@@ -3,10 +3,9 @@
 import React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { DemoArtifactWorkspace } from "@/components/features/artifacts"
 
 // Development-only protection
-export default function ArtifactsDemo() {
+export default function Demo() {
   // Only show in development environment
   if (process.env.NODE_ENV === 'production') {
     return (
@@ -44,7 +43,9 @@ export default function ArtifactsDemo() {
           </p>
         </CardHeader>
         <CardContent>
-          <DemoArtifactWorkspace />
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Demo content will be available soon.</p>
+          </div>
         </CardContent>
       </Card>
     </div>

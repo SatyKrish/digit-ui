@@ -7,7 +7,16 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Bold, Italic, Underline, List, ListOrdered, Quote, Code, Heading1, Heading2, Heading3 } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
-import type { Suggestion } from '@/lib/artifacts/types'
+
+interface Suggestion {
+  id: string
+  text: string
+  type: 'improvement' | 'correction' | 'addition'
+  position?: number
+  description?: string
+  originalText?: string
+  suggestedText?: string
+}
 
 interface TextEditorProps {
   content: string

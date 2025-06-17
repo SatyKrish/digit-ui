@@ -11,21 +11,43 @@ import { DOMAIN_HINTS } from "@/constants/chat"
 import { getSlideInStaggerClass } from "@/utils/animations"
 
 export interface ChatInputProps {
-  onSendMessage: (content: string, selectedHints?: string[]) => void
+  onSendMessage?: (content: string, selectedHints?: string[]) => void
+  input?: string
+  setInput?: (value: string) => void
+  onSubmit?: (event: React.FormEvent) => void
+  onStop?: () => void
   isLoading?: boolean
+  disabled?: boolean
   placeholder?: string
 }
 
-export function ChatInput({ onSendMessage, isLoading, placeholder }: ChatInputProps) {
+export function ChatInput({ 
+  onSendMessage, 
+  input, 
+  setInput, 
+  onSubmit, 
+  onStop,
+  isLoading, 
+  disabled,
+  placeholder 
+}: ChatInputProps) {
   const [message, setMessage] = useState("")
   const [selectedHints, setSelectedHints] = useState<string[]>([])
 
+  // Use either controlled or uncontrolled input
+  const currentMessage = input !== undefined ? input : message
+  const setCurrentMessage = setInput || setMessage
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (message.trim() && !isLoading) {
-      onSendMessage(message.trim(), selectedHints)
-      setMessage("")
-      setSelectedHints([])
+    if (currentMessage.trim() && !isLoading && !disabled) {
+      if (onSubmit) {
+        onSubmit(e)
+      } else if (onSendMessage) {
+        onSendMessage(currentMessage.trim(), selectedHints)
+        setCurrentMessage("")
+        setSelectedHints([])
+      }
     }
   }
 
@@ -99,11 +121,11 @@ export function ChatInput({ onSendMessage, isLoading, placeholder }: ChatInputPr
       <form onSubmit={handleSubmit} className="flex gap-2 justify-center chat-input-form">
         <div className="w-full max-w-full relative px-1 lg:px-2">
           <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            value={currentMessage}
+            onChange={(e) => setCurrentMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder || "Ask me anything about your data..."}
-            disabled={isLoading}
+            disabled={isLoading || disabled}
             className="
               min-h-[48px] lg:min-h-[52px] max-h-32 resize-none pr-16 w-full
               border-border/50 bg-background/50 shadow-soft
@@ -128,9 +150,9 @@ export function ChatInput({ onSendMessage, isLoading, placeholder }: ChatInputPr
         </div>
         <Button
           type="submit"
-          disabled={!message.trim() || isLoading}
+          disabled={!currentMessage.trim() || isLoading || disabled}
           className={`h-10 lg:h-12 px-4 lg:px-6 shadow-soft hover:shadow-medium transition-all duration-200 font-medium ${
-            !message.trim() || isLoading 
+            !currentMessage.trim() || isLoading || disabled 
               ? "opacity-50 cursor-not-allowed scale-100" 
               : "hover:scale-105 hover:-translate-y-0.5 active:scale-95"
           }`}
