@@ -2,9 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import streaming optimizations */
-@import '../styles/streaming-optimizations.css';
-
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -262,7 +259,6 @@
   .animate-stagger-2 { animation-delay: 0.2s; }
   .animate-stagger-3 { animation-delay: 0.3s; }
   .animate-stagger-4 { animation-delay: 0.4s; }
-  .animate-stagger-5 { animation-delay: 0.5s; }
 
   /* Semantic color utilities */
   .text-status-success { @apply text-success; }
@@ -447,15 +443,40 @@
     word-wrap: break-word;
   }
   
-  /* Chat-specific responsive utilities */
+  /* Chat-specific responsive utilities - Updated to give 50-70% space to artifacts */
   .chat-responsive-width {
-    min-width: 280px;
-    max-width: 100%;
+    min-width: 350px;
+    max-width: 50vw; /* Limit chat to max 50% of viewport */
   }
   
   .artifact-responsive-width {
-    min-width: 320px;
-    max-width: 45vw;
+    min-width: 500px;
+    max-width: 70vw; /* Allow artifacts up to 70% of viewport */
+  }
+  
+  /* Layout classes are now handled by the responsive hook */
+  
+  /* Layout classes using CSS variables for precise space allocation */
+  .chat-area {
+    width: var(--chat-width, 35%);
+    min-width: 350px;
+    max-width: 50vw;
+    flex-shrink: 0;
+  }
+  
+  .artifact-panel {
+    width: var(--artifact-width, 65%);
+    min-width: 500px;
+    max-width: 70vw;
+    flex-shrink: 0;
+  }
+  
+  /* Ensure the container properly distributes space */
+  .chat-flex-container.has-artifacts {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
   }
   
   /* Horizontal scrolling utilities */
@@ -485,11 +506,6 @@
     max-width: none !important;
     max-height: none !important;
     overflow: auto;
-  }
-
-  /* Ensure fullscreen content uses full space */
-  .artifact-panel.fixed .artifact-renderer {
-    min-height: calc(100vh - 120px);
   }
 
   /* Remove any container constraints in fullscreen mode */

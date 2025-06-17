@@ -1,33 +1,55 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChatSidebar } from "@/components/features/chat/chat-sidebar"
-import { MainChatArea } from "@/components/features/chat/main-chat-area"
+import { ChatArea } from "@/components/features/chat/chat-area"
 import { AuthScreen } from "@/components/features/auth/auth-screen"
 import { ClientOnly } from "@/components/shared/client-only"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/auth/use-auth"
-import { env, isDevelopment } from "@/config/env"
 
 export default function DigitChat() {
   const { isAuthenticated, user, signOut, isLoading } = useAuth()
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  const [isDevelopment, setIsDevelopment] = useState<boolean | null>(null)
 
-  // Create a mock user for development mode when SSO is disabled
+  // Fetch environment info from server
+  useEffect(() => {
+    const fetchEnvironment = async () => {
+      try {
+        const response = await fetch('/api/auth/config')
+        const config = await response.json()
+        setIsDevelopment(config.environment?.isDevelopment || false)
+        console.log('Environment:', config.environment?.nodeEnv, 'isDevelopment:', config.environment?.isDevelopment)
+      } catch (error) {
+        console.error('Failed to fetch environment config:', error)
+        // Default to production mode (require authentication) if fetch fails
+        setIsDevelopment(false)
+      }
+    }
+
+    fetchEnvironment()
+  }, [])
+
+  // Mock user for development mode
   const mockUser = {
     id: "dev-user",
     name: "Dev User", 
     email: "dev@localhost"
   }
 
-  // Override auth state if we're in development mode with SSO disabled
-  const shouldBypassAuth = isDevelopment
+  // Simple logic: bypass auth only in development, enforce SSO in production
+  const shouldBypassAuth = isDevelopment === true
   const effectiveIsAuthenticated = shouldBypassAuth || isAuthenticated
   const effectiveUser = shouldBypassAuth ? mockUser : user
-  const effectiveIsLoading = shouldBypassAuth ? false : isLoading
+  const effectiveIsLoading = isDevelopment === null || (shouldBypassAuth ? false : isLoading)
 
   const handleNewChat = () => {
     setCurrentChatId(null)
+  }
+
+  const handleChatCreated = (newChatId: string) => {
+    setCurrentChatId(newChatId)
   }
 
   return (
@@ -54,7 +76,13 @@ export default function DigitChat() {
               onNewChat={handleNewChat}
               user={{ id: effectiveUser.email, email: effectiveUser.email, name: effectiveUser.name }}
             />
-            <MainChatArea user={effectiveUser} currentChatId={currentChatId} onLogout={signOut} onNewChat={handleNewChat} />
+            <ChatArea 
+              user={effectiveUser} 
+              currentChatId={currentChatId} 
+              onLogout={signOut} 
+              onNewChat={handleNewChat}
+              onChatCreated={handleChatCreated}
+            />
           </div>
         </SidebarProvider>
       )}

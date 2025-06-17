@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Database, BarChart3, FileText, RefreshCw } from "lucide-react"
+import { Database, BarChart3, FileText, RefreshCw, ChevronDown, ChevronRight } from "lucide-react"
+import { getSlideInStaggerClass } from "@/utils/animations"
 
 interface MCPServer {
   id: string
@@ -35,6 +36,7 @@ export function MCPToolsPanel() {
   const [tools, setTools] = useState<MCPTool[]>([])
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [collapsedServers, setCollapsedServers] = useState<Record<string, boolean>>({})
 
   const loadMCPData = async () => {
     try {
@@ -47,14 +49,33 @@ export function MCPToolsPanel() {
       }
       const data = await response.json()
 
-      setServers(data.servers || [])
+      const updatedServers = data.servers || []
+      setServers(updatedServers)
       setTools(data.tools || [])
       setLastUpdate(Date.now())
+
+      // Initialize all servers as collapsed by default
+      const initialCollapsedState: Record<string, boolean> = {}
+      updatedServers.forEach((server: MCPServer) => {
+        if (!(server.id in collapsedServers)) {
+          initialCollapsedState[server.id] = true // Collapsed by default
+        }
+      })
+      if (Object.keys(initialCollapsedState).length > 0) {
+        setCollapsedServers(prev => ({ ...prev, ...initialCollapsedState }))
+      }
     } catch (error) {
       console.error('Failed to load MCP data:', error)
     } finally {
       setIsRefreshing(false)
     }
+  }
+
+  const toggleServerCollapse = (serverId: string) => {
+    setCollapsedServers(prev => ({
+      ...prev,
+      [serverId]: !prev[serverId]
+    }))
   }
 
   const handleManualRefresh = async () => {
@@ -146,155 +167,130 @@ export function MCPToolsPanel() {
   }
 
   return (
-    <Card className="w-full shadow-elegant hover:shadow-elegant-lg transition-all duration-200">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Database className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">MCP Tools</CardTitle>
-              <CardDescription>Available Model Context Protocol tools and servers</CardDescription>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-sm font-medium text-foreground">
-                {servers.filter(s => s.status === "connected").length} / {servers.length} Connected
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {tools.length} tools available
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              {servers.map((server) => (
-                <span 
-                  key={server.id}
-                  className={`h-2 w-2 rounded-full ${getStatusIndicator(server.status)}`} 
-                  title={`${server.name}: ${server.status}`}
-                />
-              ))}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleManualRefresh}
-              disabled={isRefreshing}
-              className="h-8 w-8 p-0"
-              title="Refresh MCP status"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
+    <div className="space-y-4">
+      {servers.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No MCP servers configured</p>
+          <p className="text-xs">Configure MCP servers to see available tools</p>
         </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <Tabs defaultValue={servers[0]?.id || "database-server"}>
-          <TabsList className="w-full bg-muted/50 p-1 shadow-inner-soft">
-            {servers.map((server, index) => (
-              <TabsTrigger 
-                key={server.id} 
-                value={server.id} 
-                className={`flex items-center gap-2 transition-all duration-200 hover:scale-105 animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
-              >
-                {getServerIcon(server.id)}
-                <span>{server.name}</span>
-                <span className={`h-2 w-2 rounded-full ${getStatusIndicator(server.status)}`} />
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {servers.map((server) => (
-            <TabsContent key={server.id} value={server.id} className="mt-6">
-              {/* Server Status Header */}
-              <div className="mb-4 p-4 bg-muted/20 rounded-lg border border-border/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {getServerIcon(server.id)}
-                    <div>
-                      <h3 className="font-semibold text-foreground">{server.name}</h3>
-                      <p className="text-sm text-muted-foreground">{server.description}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Status:</span>
-                      <Badge 
-                        variant={getStatusColor(server.status)} 
-                        className="capitalize text-xs"
-                      >
-                        {server.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Tools:</span>
-                      <Badge variant="outline" className="text-xs">
-                        {getToolsByServer(server.id).length}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                {server.error && (
-                  <div className="mt-3 p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
-                    <strong>Error:</strong> {server.error}
-                  </div>
-                )}
-                {server.url && (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    <strong>URL:</strong> {server.url}
-                  </div>
-                )}
-              </div>
-
-              <ScrollArea className="h-[300px] pr-4">
-                <div className="space-y-4">
-                  {getToolsByServer(server.id).length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No tools available</p>
-                      <p className="text-xs">
-                        {server.status === "disconnected" ? "Server is disconnected" : 
-                         server.status === "error" ? "Server connection failed" :
-                         server.status === "connecting" ? "Connecting..." : "No tools found"}
-                      </p>
-                    </div>
-                  ) : (
-                    getToolsByServer(server.id).map((tool, index) => (
-                      <div 
-                        key={tool.name} 
-                        className={`border border-border/50 rounded-lg p-4 shadow-soft hover:shadow-medium hover:border-border transition-all duration-200 hover:scale-[1.02] animate-slide-in-up animate-stagger-${Math.min(index + 1, 4)}`}
-                      >
-                        <h4 className="font-semibold text-foreground">{tool.name}</h4>
-                        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{tool.description}</p>
-
-                        {tool.inputSchema.properties && (
-                          <div className="mt-4">
-                            <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Parameters:</h5>
-                            <div className="grid grid-cols-1 gap-2">
-                              {Object.entries(tool.inputSchema.properties).map(([key, schema]: [string, any]) => (
-                                <div key={key} className="flex items-center justify-between text-xs bg-muted/30 rounded-md px-3 py-2">
-                                  <span className="font-mono bg-background px-2 py-1 rounded text-foreground shadow-inner-soft">{key}</span>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-muted-foreground">({schema.type})</span>
-                                    {tool.inputSchema.required?.includes(key) && (
-                                      <span className="text-destructive font-semibold">*</span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+      ) : (
+        servers.map((server, index) => (
+              <Card key={server.id} className={`border border-border/50 shadow-soft hover:shadow-medium transition-all duration-200 ${getSlideInStaggerClass(index)}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        {getServerIcon(server.id)}
+                        <div>
+                          <h3 className="font-semibold text-foreground">{server.name}</h3>
+                          <p className="text-sm text-muted-foreground">{server.description}</p>
+                        </div>
                       </div>
-                    ))
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {/* Connection Status */}
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${getStatusIndicator(server.status)}`} />
+                        <Badge 
+                          variant={getStatusColor(server.status)} 
+                          className="capitalize text-xs"
+                        >
+                          {server.status}
+                        </Badge>
+                      </div>
+                      
+                      {/* Tools Count */}
+                      <Badge variant="outline" className="text-xs">
+                        {getToolsByServer(server.id).length} tools
+                      </Badge>
+                      
+                      {/* Collapse Toggle */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleServerCollapse(server.id)}
+                        className="h-8 w-8 p-0 transition-all duration-200 hover:bg-muted/50"
+                        aria-label={collapsedServers[server.id] ? `Expand ${server.name}` : `Collapse ${server.name}`}
+                      >
+                        {collapsedServers[server.id] ? (
+                          <ChevronRight className="h-4 w-4 transition-transform duration-200" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Error Message */}
+                  {server.error && (
+                    <div className="mt-3 p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
+                      <strong>Error:</strong> {server.error}
+                    </div>
                   )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </CardContent>
-    </Card>
+                  
+                  {/* Server URL */}
+                  {server.url && !collapsedServers[server.id] && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      <strong>URL:</strong> {server.url}
+                    </div>
+                  )}
+                </CardHeader>
+
+                {/* Collapsible Content */}
+                {!collapsedServers[server.id] && (
+                  <div className="animate-in slide-in-from-top-2 duration-200">
+                    <CardContent className="pt-0">
+                      <ScrollArea className="max-h-[500px] pr-4">
+                        <div className="space-y-3">
+                          {getToolsByServer(server.id).length === 0 ? (
+                            <div className="text-center py-6 text-muted-foreground">
+                              <Database className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No tools available</p>
+                              <p className="text-xs">
+                                {server.status === "disconnected" ? "Server is disconnected" : 
+                                 server.status === "error" ? "Server connection failed" :
+                                 server.status === "connecting" ? "Connecting..." : "No tools found"}
+                              </p>
+                            </div>
+                          ) : (
+                            getToolsByServer(server.id).map((tool, toolIndex) => (
+                              <div 
+                                key={tool.name} 
+                                className={`border border-border/30 rounded-lg p-3 bg-muted/20 hover:bg-muted/30 transition-all duration-200 ${getSlideInStaggerClass(toolIndex)}`}
+                              >
+                                <h4 className="font-semibold text-foreground text-sm">{tool.name}</h4>
+                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{tool.description}</p>
+
+                                {tool.inputSchema.properties && (
+                                  <div className="mt-3">
+                                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Parameters:</h5>
+                                    <div className="grid grid-cols-1 gap-1">
+                                      {Object.entries(tool.inputSchema.properties).map(([key, schema]: [string, any]) => (
+                                        <div key={key} className="flex items-center justify-between text-xs bg-background/50 rounded px-2 py-1">
+                                          <span className="font-mono text-foreground">{key}</span>
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-muted-foreground">({schema.type})</span>
+                                            {tool.inputSchema.required?.includes(key) && (
+                                              <span className="text-destructive font-semibold">*</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </div>
+                )}
+              </Card>
+            ))
+          )}
+    </div>
   )
 }

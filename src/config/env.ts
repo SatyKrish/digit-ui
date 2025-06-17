@@ -43,8 +43,6 @@ export const env = {
 
   // MCP Server Configuration
   MCP_DATABASE_SERVER_URL: getOptionalEnvVar('MCP_DATABASE_SERVER_URL'),
-  MCP_ANALYTICS_SERVER_URL: getOptionalEnvVar('MCP_ANALYTICS_SERVER_URL'),
-  MCP_FILE_SERVER_URL: getOptionalEnvVar('MCP_FILE_SERVER_URL'),
 
   // Feature Flags
   ENABLE_MCP: getEnvVar('ENABLE_MCP', 'true') === 'true',
@@ -54,3 +52,14 @@ export const env = {
 export const isDevelopment = env.NODE_ENV === 'development'
 export const isProduction = env.NODE_ENV === 'production'
 export const isTest = env.NODE_ENV === 'test'
+
+/**
+ * Determines if Azure AD configuration is complete and valid
+ */
+export const hasValidAzureConfig = () => {
+  return !!(
+    env.AZURE_CLIENT_ID &&
+    env.AZURE_TENANT_ID &&
+    env.AZURE_REDIRECT_URI
+  )
+}

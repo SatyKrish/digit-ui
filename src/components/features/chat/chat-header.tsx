@@ -1,6 +1,6 @@
 "use client"
 
-import { Moon, Sun, LogOut, Monitor } from "lucide-react"
+import { Moon, Sun, LogOut, Monitor, Menu } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { MCPStatus } from "@/components/shared/mcp-status"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 interface User {
   name: string
@@ -27,17 +27,32 @@ interface ChatHeaderProps {
   isMobile?: boolean
   showArtifacts?: boolean
   onToggleView?: () => void
+  currentChatId?: string | null
+  messageCount?: number
 }
 
-export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, artifactCount, isMobile, showArtifacts, onToggleView }: ChatHeaderProps) {
+export function ChatHeader({ 
+  user, 
+  onLogout, 
+  onNavigateHome, 
+  connectionStatus, 
+  artifactCount, 
+  isMobile, 
+  showArtifacts, 
+  onToggleView
+}: ChatHeaderProps) {
   const { theme, setTheme } = useTheme()
 
   // Get user initials (first character of first name)
   const userInitials = user.name.charAt(0).toUpperCase()
 
   return (
-    <header className="flex h-18 shrink-0 items-center gap-6 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 shadow-elegant">
-      <div className="flex-1 flex items-center gap-4">
+    <header className="flex h-18 shrink-0 items-center gap-6 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-elegant">
+      <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center gap-4">
+        {/* Sidebar Toggle */}
+        <SidebarTrigger className="h-10 w-10" />
+        
+        <div className="flex-1 flex items-center gap-4">
         {/* Company Logo with theme-aware styling - clickable to navigate home */}
         <button
           onClick={onNavigateHome}
@@ -52,11 +67,8 @@ export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, a
           <h1 className="text-2xl font-bold text-primary tracking-tight group-hover:text-primary/80 transition-colors duration-200">DIGIT</h1>
         </button>
         
-        {/* MCP Status Display */}
+        {/* Connection Status */}
         <div className="ml-8 flex items-center gap-4">
-          <MCPStatus />
-          
-          {/* Connection Status */}
           {connectionStatus && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-full text-sm text-muted-foreground">
               <div className={`w-2 h-2 rounded-full ${
@@ -164,6 +176,7 @@ export function ChatHeader({ user, onLogout, onNavigateHome, connectionStatus, a
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
       </div>
     </header>
   )

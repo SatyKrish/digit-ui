@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { hasValidAzureConfig, isDevelopment, isProduction } from '@/config/env';
 
 // Server-side authentication configuration
 // This keeps all Azure AD configuration server-side for security
@@ -13,7 +14,15 @@ export async function GET() {
     if (!clientId || !tenantId) {
       console.error('Missing required Azure AD configuration');
       return NextResponse.json(
-        { error: 'Authentication configuration not available' },
+        { 
+          error: 'Authentication configuration not available',
+          environment: {
+            nodeEnv: process.env.NODE_ENV,
+            isDevelopment,
+            isProduction,
+            hasAzureConfig: hasValidAzureConfig()
+          }
+        },
         { status: 500 }
       );
     }
@@ -41,7 +50,13 @@ export async function GET() {
     // Return configuration with proper caching headers
     const response = NextResponse.json({ 
       msalConfig,
-      environment: process.env.NODE_ENV 
+      environment: {
+        nodeEnv: process.env.NODE_ENV,
+        isDevelopment,
+        isProduction,
+        hasAzureConfig: hasValidAzureConfig()
+      },
+      timestamp: new Date().toISOString()
     });
 
     // Cache for 5 minutes in production, no cache in development

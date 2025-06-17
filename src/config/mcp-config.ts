@@ -58,8 +58,8 @@ export const getActiveMCPServers = (): MCPServerConfig[] => {
 export const mcpTransportConfig = {
   retryAttempts: 3,
   retryDelay: 1000,
-  connectionTimeout: 10000,
-  requestTimeout: 30000,
+  connectionTimeout: 15000,    // Increased from 10s to 15s
+  requestTimeout: 150000,      // Increased from 30s to 150s (2.5 minutes) to handle longer queries
   keepAliveInterval: 30000,
   preferredTransport: 'http' as const // Use Streamable HTTP only
 } as const

@@ -1,325 +1,173 @@
-import { streamText, convertToCoreMessages } from "ai"
+import { streamText, type CoreMessage } from "ai"
 import { mcpClient } from "@/client/mcp-client"
-import { chatPersistence } from "@/services/chat/chat-persistence"
-import { env } from "@/config/env"
-import { getAzureOpenAIModel, azureOpenAIConfig } from "@/config/azure-openai"
-import { z } from "zod"
+import { getAzureOpenAIModel } from "@/config/azure-openai"
+import { chatRequestSchema, ValidationError } from "./lib/types"
+import { prepareMcpTools } from "./lib/mcp-tools"
+import { categorizeStreamError, createErrorResponse, validateUserId } from "./lib/error-utils"
+import { ensureUserExists, getOrCreateChat, saveChatCompletion } from "./lib/chat-utils"
 
 /**
- * Convert JSON Schema to Zod schema for Vercel AI SDK compatibility
+ * Enhanced system prompt with user request context
  */
-function jsonSchemaToZod(schema: any): z.ZodType<any> {
-  if (!schema || typeof schema !== 'object') {
-    return z.any()
-  }
+function createSystemPrompt(serverCount: number, toolCount: number, userRequest: string = ""): string {
+  return `You are DiGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI.
 
-  switch (schema.type) {
-    case 'string':
-      let stringSchema = z.string()
-      if (schema.description) {
-        stringSchema = stringSchema.describe(schema.description)
-      }
-      return stringSchema
+**System Status:** ${serverCount} servers connected, ${toolCount} tools available
 
-    case 'number':
-      let numberSchema = z.number()
-      if (schema.description) {
-        numberSchema = numberSchema.describe(schema.description)
-      }
-      return numberSchema
+**Capabilities:**
+- Query and analyze data using connected MCP servers
+- Create interactive charts, documents, and visualizations
+- Generate code and provide data insights
 
-    case 'integer':
-      let intSchema = z.number().int()
-      if (schema.description) {
-        intSchema = intSchema.describe(schema.description)
-      }
-      return intSchema
+Always provide clear, professional responses suitable for enterprise use.
 
-    case 'boolean':
-      let boolSchema = z.boolean()
-      if (schema.description) {
-        boolSchema = boolSchema.describe(schema.description)
-      }
-      return boolSchema
+**CURRENT USER REQUEST:** "${userRequest}"
 
-    case 'array':
-      const itemSchema = schema.items ? jsonSchemaToZod(schema.items) : z.any()
-      let arraySchema = z.array(itemSchema)
-      if (schema.description) {
-        arraySchema = arraySchema.describe(schema.description)
-      }
-      return arraySchema
-
-    case 'object':
-      if (!schema.properties) {
-        let objectSchema = z.record(z.any())
-        if (schema.description) {
-          objectSchema = objectSchema.describe(schema.description)
-        }
-        return objectSchema
-      }
-
-      const shape: Record<string, z.ZodType<any>> = {}
-      for (const [key, prop] of Object.entries(schema.properties)) {
-        shape[key] = jsonSchemaToZod(prop)
-      }
-
-      let objectSchema = z.object(shape)
-      
-      // Handle required fields
-      if (schema.required && Array.isArray(schema.required)) {
-        // Zod objects are required by default, so we need to make non-required fields optional
-        const requiredFields = new Set(schema.required)
-        const optionalShape: Record<string, z.ZodType<any>> = {}
-        
-        for (const [key, zodSchema] of Object.entries(shape)) {
-          if (requiredFields.has(key)) {
-            optionalShape[key] = zodSchema
-          } else {
-            optionalShape[key] = zodSchema.optional()
-          }
-        }
-        
-        objectSchema = z.object(optionalShape)
-      } else {
-        // If no required array, make all fields optional
-        const optionalShape: Record<string, z.ZodType<any>> = {}
-        for (const [key, zodSchema] of Object.entries(shape)) {
-          optionalShape[key] = zodSchema.optional()
-        }
-        objectSchema = z.object(optionalShape)
-      }
-
-      if (schema.description) {
-        objectSchema = objectSchema.describe(schema.description)
-      }
-      return objectSchema
-
-    default:
-      return z.any()
-  }
-}
-
-/**
- * Dynamically prepare MCP tools from connected servers
- * Only includes tools from servers that are actually connected and available
- * 
- * This fixes the issue where the chat route was hardcoding tool definitions
- * instead of dynamically retrieving them from MCP servers
- */
-async function prepareMcpTools() {
-  const servers = mcpClient.getAvailableServers()
-  const connectedServers = mcpClient.getConnectedServers()
-  const availableTools = mcpClient.getAllTools()
-
-    console.log(`MCP Status: ${connectedServers.length}/${servers.length} servers connected, ${availableTools.length} tools available`)
-  
-    const tools: Record<string, any> = {}
-
-    // Only create tools for connected servers and their available tools
-    for (const tool of availableTools) {
-      // Check if the server is connected
-      const server = servers.find(s => s.id === tool.serverId)
-      if (!server || server.status !== 'connected') {
-        continue
-      }
-
-      tools[tool.name] = {
-        description: tool.description,
-        parameters: jsonSchemaToZod(tool.inputSchema),
-        execute: async (args: any) => {
-          try {
-            const result = await mcpClient.callTool(tool.serverId, tool.name, args)
-            if (!result.success) {
-              console.error(`Tool execution failed for ${tool.name}:`, result.error)
-              return { error: result.error }
-            }
-            return result.data
-          } catch (error) {
-            console.error(`Error executing tool ${tool.name}:`, error)
-            return { error: error instanceof Error ? error.message : 'Unknown error' }
-          }
-        },
-      }
-    }
-
-    if (Object.keys(tools).length === 0 && connectedServers.length === 0) {
-      console.warn('No connected MCP servers found - no tools will be available to the AI model')
-    }
-
-  return { tools, servers, connectedServers, availableTools }
+When making tool calls, always consider the full context of this user request, especially any visualization requirements (chart types, format preferences) that should be preserved throughout your workflow.`
 }
 
 export async function POST(req: Request) {
+  const startTime = Date.now()
+  let chatId: string | undefined
+  
   try {
-    const { messages, id, userId } = await req.json()
-
-    // Ensure MCP client is properly initialized before processing the request
-    if (!mcpClient.isReady()) {
-      await mcpClient.initialize()
-    }
-
-    const { tools, servers, connectedServers, availableTools } = await prepareMcpTools()
-
-    // Validate Azure OpenAI configuration before proceeding
-    try {
-      getAzureOpenAIModel()
-    } catch (llmError) {
-      console.error('Azure OpenAI configuration error:', llmError)
-      const errorMessage = llmError instanceof Error ? llmError.message : 'Unknown Azure OpenAI configuration error'
-      return new Response(
-        JSON.stringify({ 
-          error: 'Azure OpenAI configuration error', 
-          details: errorMessage,
-          provider: 'azure'
-        }), 
-        { 
-          status: 500, 
-          headers: { 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-  const systemPrompt = `You are DIGIT, an enterprise data intelligence assistant powered by MCP (Model Context Protocol) and Azure OpenAI. You help data analysts and product owners discover insights from their data.
-
-You have access to MCP servers that provide real data access:
-
-**Available MCP Servers:**
-${connectedServers.length > 0 
-  ? connectedServers.map((server) => `- ${server.name}: ${server.description} (${server.tools.length} tools available)`).join("\n")
-  : "No MCP servers are currently connected. Please check server configuration and connectivity."
-}
-
-**Available Tools by Server:**
-${connectedServers.length > 0
-  ? connectedServers.map(
-      (server) => `${server.name}:
-${server.tools.length > 0 
-  ? server.tools.map((tool) => `  - ${tool}`).join("\n")
-  : "  No tools available"
-}`,
-    ).join("\n\n")
-  : "No tools available - no servers connected"
-}
-
-**Connected Servers Status:**
-- Total configured servers: ${servers.length}
-- Connected servers: ${connectedServers.length}
-- Available tools: ${Object.keys(tools).length}
-
-**Instructions:**
-${connectedServers.length > 0 
-  ? `1. When users ask about data, use the appropriate MCP tools to fetch real information
-2. Available tool categories:
-   ${connectedServers.map(server => {
-     const serverTools = availableTools.filter(t => t.serverId === server.id)
-     return `   - ${server.name}: ${serverTools.map(t => t.name).join(', ')}`
-   }).join('\n   ')}
-3. Always explain what data you're fetching and present results clearly
-4. Create appropriate artifacts (charts, tables, etc.) from the tool results`
-  : `1. Currently no MCP servers are connected, so I cannot access external data sources
-2. Please ensure MCP servers are properly configured and running
-3. Check server URLs in environment variables and server connectivity`
-}
-
-When generating artifacts, use these formats:
-
-1. **Code blocks**: Use \`\`\`language\ncode\n\`\`\` format
-2. **Mermaid diagrams**: Use \`\`\`mermaid\ndiagram\n\`\`\` format
-3. **Interactive charts**: Use \`\`\`json:chart:type\n{"data": [...], "title": "Chart Title"}\n\`\`\`
-   - Supported chart types: bar, line, pie
-   - Data format: [{"name": "Category", "value": 123}, ...]
-4. **Data tables**: Use \`\`\`json:table\n{"data": [...], "title": "Table Title"}\n\`\`\`
-   - Data format: [{"column1": "value1", "column2": 123}, ...]
-5. **KPI visualizations**: Use \`\`\`json:visualization:kpi\n{"data": [...], "title": "KPI Dashboard"}\n\`\`\`
-   - Data format: [{"title": "Metric", "value": 123, "change": 5.2, "trend": "up"}, ...]
-6. **Heatmaps**: Use \`\`\`json:heatmap\n{"data": [...], "title": "Heatmap Title"}\n\`\`\`
-   - Data format: [{"x": "Category1", "y": "Category2", "value": 75}, ...]
-7. **Treemaps**: Use \`\`\`json:treemap\n{"name": "Root", "children": [...], "title": "Treemap Title"}\n\`\`\`
-   - Data format: {"name": "Root", "children": [{"name": "Category", "value": 123, "children": [...]}]}
-
-Always provide clear, professional responses suitable for enterprise use.
-${connectedServers.length > 0 
-  ? `Available domains: ${connectedServers.map(s => s.name).join(', ')}`
-  : 'No data domains available - servers disconnected'
-}`
-
-    console.log('Chat API: Starting streamText with Azure OpenAI...')
+    // Parse and validate request
+    const body = await req.json()
+    console.log(`[REQUEST] Body received:`, JSON.stringify({
+      hasMessages: !!body.messages,
+      messagesLength: body.messages?.length,
+      bodyKeys: Object.keys(body)
+    }))
     
-    let result;
+    const parsed = chatRequestSchema.safeParse(body)
+    
+    if (!parsed.success) {
+      console.error(`[REQUEST] Invalid schema:`, parsed.error.flatten())
+      console.error(`[REQUEST] Body was:`, JSON.stringify(body, null, 2))
+      return createErrorResponse('Invalid request format', undefined, 400)
+    }
+
+    const { id: requestChatId, messages, userId } = parsed.data
+    
+    // Validate user
+    const effectiveUserId = validateUserId(userId || body.userId)
+    await ensureUserExists(effectiveUserId)
+
+    // Get or create chat
+    chatId = await getOrCreateChat(requestChatId || body.id, effectiveUserId)
+
+    // Initialize MCP if needed
+    if (!mcpClient.isReady()) {
+      try {
+        await mcpClient.initialize()
+        console.log(`[MCP] Client initialized`)
+      } catch (mcpError) {
+        console.error(`[MCP] Initialization failed:`, mcpError)
+        // Continue without MCP
+      }
+    }
+
+    // Prepare tools
+    let tools: Record<string, any> = {}
+    let serverCount = 0
+    
     try {
-      result = await streamText({
+      const mcpResult = await prepareMcpTools()
+      tools = {
+        ...mcpResult.tools
+      }
+      serverCount = mcpResult.connectedServers.length
+      console.log(`[TOOLS] Prepared ${Object.keys(tools).length} tools`)
+    } catch (toolError) {
+      console.error(`[TOOLS] Preparation failed:`, toolError)
+      // Continue without tools
+      tools = {}
+    }
+
+    // Validate Azure OpenAI
+    console.log(`[AZURE] Checking Azure OpenAI configuration...`)
+    try {
+      const model = getAzureOpenAIModel()
+      console.log(`[AZURE] Model created successfully`)
+    } catch (llmError) {
+      console.error(`[AZURE] Configuration error:`, llmError)
+      return createErrorResponse('Azure OpenAI configuration error: ' + (llmError instanceof Error ? llmError.message : String(llmError)), undefined, 500)
+    }
+
+    // Process messages and extract current user request
+    const coreMessages = messages.map(msg => {
+      // Truncate very long messages
+      if (msg.content?.length > 50000) {
+        msg.content = msg.content.substring(0, 50000) + '... [truncated]'
+      }
+      
+      return {
+        role: msg.role === 'tool' ? 'assistant' : msg.role,
+        content: msg.content,
+        name: msg.name,
+        toolInvocations: msg.toolInvocations
+      } as CoreMessage
+    })
+
+    // Extract the latest user message as the current request
+    const latestUserMessage = [...messages].reverse().find(msg => msg.role === 'user')
+    const currentUserRequest = latestUserMessage?.content
+
+    const systemPrompt = createSystemPrompt(serverCount, Object.keys(tools).length, currentUserRequest)
+    const setupTime = Date.now() - startTime
+    console.log(`[REQUEST] Setup completed in ${setupTime}ms`)
+    
+    // Stream response
+    console.log(`[STREAM] Starting stream with model...`)
+    console.log(`[STREAM] System prompt length: ${systemPrompt.length}`)
+    console.log(`[STREAM] Messages count: ${coreMessages.length}`)
+    console.log(`[STREAM] Tools count: ${Object.keys(tools).length}`)
+    try {
+      const result = await streamText({
         model: getAzureOpenAIModel(),
         system: systemPrompt,
-        messages: convertToCoreMessages(messages),
+        messages: coreMessages,
         tools,
         maxSteps: 5,
-        onFinish: async ({ response, finishReason, usage, text }) => {
-          // AI SDK now handles message persistence automatically via the useChat hook
-          // No need for manual persistence here as it's handled client-side
-          console.log('Message completed:', { finishReason, usage: usage?.totalTokens })
+        onFinish: async ({ text }) => {
+          const totalTime = Date.now() - startTime
+          console.log(`[STREAM] Completed in ${totalTime}ms`)
+          
+          // Save chat completion
+          await saveChatCompletion(messages, chatId!, text)
         }
       })
-      
-      return result.toDataStreamResponse()
-      
+
+      console.log(`[STREAM] Stream created successfully, converting to response...`)
+      const response = result.toDataStreamResponse()
+      console.log(`[STREAM] Response created successfully`)
+      return response
     } catch (streamError) {
-      console.error('StreamText error:', streamError)
-      
-      // Analyze the error type for better user feedback
-      const errorMessage = streamError instanceof Error ? streamError.message : 'Unknown streaming error'
-      let statusCode = 500
-      let userFriendlyMessage = 'An error occurred while processing your request'
-      
-      if (errorMessage.toLowerCase().includes('azure')) {
-        if (errorMessage.toLowerCase().includes('quota')) {
-          userFriendlyMessage = 'Azure OpenAI quota exceeded. Please try again later.'
-          statusCode = 429
-        } else if (errorMessage.toLowerCase().includes('authentication') || errorMessage.toLowerCase().includes('unauthorized')) {
-          userFriendlyMessage = 'Azure OpenAI authentication failed. Please check your configuration.'
-          statusCode = 401
-        } else if (errorMessage.toLowerCase().includes('deployment')) {
-          userFriendlyMessage = 'Azure OpenAI deployment not found. Please verify your deployment name.'
-          statusCode = 404
-        } else {
-          userFriendlyMessage = 'Azure OpenAI service error. Please try again.'
-        }
-      } else if (errorMessage.toLowerCase().includes('network') || errorMessage.toLowerCase().includes('fetch')) {
-        userFriendlyMessage = 'Network error connecting to Azure OpenAI. Please check your connection.'
-        statusCode = 503
-      } else if (errorMessage.toLowerCase().includes('timeout')) {
-        userFriendlyMessage = 'Request timed out. Please try again with a shorter message.'
-        statusCode = 408
-      }
-      
-      return new Response(
-        JSON.stringify({ 
-          error: userFriendlyMessage,
-          details: errorMessage,
-          provider: 'azure',
-          timestamp: new Date().toISOString()
-        }), 
-        { 
-          status: statusCode, 
-          headers: { 'Content-Type': 'application/json' } 
-        }
-      )
+      console.error(`[STREAM] Error during streaming:`, streamError)
+      console.error(`[STREAM] Stream error details:`, {
+        name: streamError instanceof Error ? streamError.name : 'Unknown',
+        message: streamError instanceof Error ? streamError.message : String(streamError),
+        stack: streamError instanceof Error ? streamError.stack : undefined
+      })
+      throw streamError
     }
     
-  } catch (outerError) {
-    console.error('Chat API error:', outerError)
-    const errorMessage = outerError instanceof Error ? outerError.message : 'Unknown error'
+  } catch (error) {
+    const totalTime = Date.now() - startTime
+    console.error(`[REQUEST] Error after ${totalTime}ms:`, error)
+    console.error(`[REQUEST] Error details:`, {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    })
     
-    return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error',
-        details: errorMessage,
-        timestamp: new Date().toISOString()
-      }), 
-      { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
-      }
-    )
+    if (error instanceof ValidationError) {
+      return createErrorResponse(error.message, undefined, 400)
+    }
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const { statusCode, userMessage } = categorizeStreamError(errorMessage)
+    
+    return createErrorResponse(userMessage, errorMessage, statusCode)
   }
 }

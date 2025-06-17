@@ -30,6 +30,7 @@ export interface Chat {
   createdAt?: Date
   messageCount?: number
   lastMessageAt?: Date
+  userId?: string
 }
 
 // Backward compatibility alias - gradually migrate away from this
@@ -59,12 +60,11 @@ export interface ChatSidebarProps {
 }
 
 export interface ChatMessagesProps {
-  messages: ChatMessage[]
+  messages: any[] // Use any[] temporarily to avoid complex type conflicts
   isLoading?: boolean
   user?: {
     name: string
   }
-  onReopenArtifacts?: (messageContent: string) => void
 }
 
 export interface ChatInputProps {
@@ -73,7 +73,7 @@ export interface ChatInputProps {
   placeholder?: string
 }
 
-export interface MainChatAreaProps {
+export interface ChatAreaProps {
   user: {
     id: string
     name: string
@@ -82,4 +82,5 @@ export interface MainChatAreaProps {
   currentChatId: string | null
   onLogout: () => void
   onNewChat?: () => void
+  onChatCreated?: (chatId: string) => void
 }

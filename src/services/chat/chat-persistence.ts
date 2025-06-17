@@ -1,5 +1,6 @@
 import { Message } from 'ai';
 import { ChatRepository } from '@/database/repositories/chat-repository';
+import { UserRepository } from '@/database/repositories/user-repository';
 import { Chat, convertMessageToDb, convertDbToMessage } from '@/database/types-ai-sdk';
 
 /**
@@ -8,9 +9,11 @@ import { Chat, convertMessageToDb, convertDbToMessage } from '@/database/types-a
  */
 export class ChatPersistence {
   private chatRepository: ChatRepository;
+  private userRepository: UserRepository;
 
   constructor() {
     this.chatRepository = new ChatRepository();
+    this.userRepository = new UserRepository();
   }
 
   // === Core Chat Operations ===
@@ -19,6 +22,8 @@ export class ChatPersistence {
    * Create a new chat
    */
   async createChat(userId: string, title?: string): Promise<Chat> {
+    // Ensure user exists before creating chat
+    await this.ensureUserExists(userId);
     return this.chatRepository.createChat(userId, title);
   }
 
@@ -50,6 +55,43 @@ export class ChatPersistence {
     await this.chatRepository.deleteChat(chatId);
   }
 
+  // === User Management ===
+
+  /**
+   * Ensure user exists in database before creating chat
+   * This prevents foreign key constraint violations
+   */
+  private async ensureUserExists(userId: string): Promise<void> {
+    // Check if user already exists
+    const existingUser = this.userRepository.getUserById(userId);
+    if (existingUser) {
+      return; // User already exists
+    }
+
+    // Create user with basic info derived from userId (email)
+    const email = userId;
+    const name = this.extractNameFromEmail(email);
+    
+    this.userRepository.upsertUser({
+      id: userId,
+      email: email,
+      name: name
+    });
+  }
+
+  /**
+   * Extract a basic name from email address
+   */
+  private extractNameFromEmail(email: string): string {
+    const localPart = email.split('@')[0];
+    // Convert dots and underscores to spaces and capitalize words
+    return localPart
+      .replace(/[._]/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   // === AI SDK Integration ===
 
   /**
@@ -62,12 +104,26 @@ export class ChatPersistence {
   }
 
   /**
+   * Get messages for a chat (alias for backward compatibility)
+   */
+  async getMessages(chatId: string): Promise<Message[]> {
+    return this.loadInitialMessages(chatId);
+  }
+
+  /**
    * Save messages from AI SDK conversation
    * Call this periodically or on conversation end
    */
   async saveMessages(chatId: string, messages: Message[]): Promise<void> {
     const dbMessages = messages.map(convertMessageToDb);
     await this.chatRepository.saveMessages(chatId, dbMessages);
+  }
+
+  /**
+   * Save a single message (alias for backward compatibility)
+   */
+  async saveMessage(chatId: string, message: Message): Promise<void> {
+    return this.persistMessage(chatId, message);
   }
 
   /**

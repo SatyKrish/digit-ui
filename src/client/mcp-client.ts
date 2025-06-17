@@ -363,10 +363,20 @@ class MCPClientImpl {
     }
 
     try {
-      const result = await connectedClient.client.callTool({
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Tool execution timeout after ${mcpTransportConfig.requestTimeout}ms`))
+        }, mcpTransportConfig.requestTimeout)
+      })
+      
+      // Race between the tool call and timeout
+      const toolCallPromise = connectedClient.client.callTool({
         name: toolName,
         arguments: args
       })
+      
+      const result = await Promise.race([toolCallPromise, timeoutPromise])
       
       return {
         success: true,
