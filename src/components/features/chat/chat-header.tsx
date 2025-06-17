@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { MCPStatus } from "@/components/shared/mcp-status"
+
 interface User {
   name: string
   email: string
@@ -67,11 +67,8 @@ export function ChatHeader({
           <h1 className="text-2xl font-bold text-primary tracking-tight group-hover:text-primary/80 transition-colors duration-200">DIGIT</h1>
         </button>
         
-        {/* MCP Status Display */}
+        {/* Connection Status */}
         <div className="ml-8 flex items-center gap-4">
-          <MCPStatus />
-          
-          {/* Connection Status */}
           {connectionStatus && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-full text-sm text-muted-foreground">
               <div className={`w-2 h-2 rounded-full ${

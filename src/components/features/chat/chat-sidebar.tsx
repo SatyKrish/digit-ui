@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Plus, MessageSquare, ChevronDown, ChevronRight, MoreHorizontal, Trash2 } from "lucide-react"
+import { Plus, MessageSquare, ChevronDown, ChevronRight, MoreHorizontal, Trash2, Settings } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
+  SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -27,10 +28,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useSidebar } from "@/components/ui/sidebar"
-import { MCPToolsPanel } from "@/components/shared/mcp-tools-panel"
 import { useChats, useGroupedChatSessions } from "@/hooks/chat"
 import { formatRelativeTime } from "@/utils/format"
 import type { ChatSidebarProps, Chat, TimePeriod } from "@/types/chat"
+import { useRouter } from "next/navigation"
 
 export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: ChatSidebarProps & { user?: { id: string; email: string; name: string } }) {
   const { setOpen, open } = useSidebar()
@@ -39,6 +40,7 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [chatToDelete, setChatToDelete] = useState<string | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const router = useRouter()
   
   // Use updated chat management (aligned with Chat SDK patterns)
   const { chats, createChat, deleteChat, isLoading } = useChats(user)
@@ -260,6 +262,23 @@ export function ChatSidebar({ currentChatId, onChatSelect, onNewChat, user }: Ch
           )}
         </ScrollArea>
       </SidebarContent>
+
+      <SidebarFooter className="p-4 border-t border-sidebar-border/50">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              onClick={() => {
+                setOpen(false)
+                router.push('/settings')
+              }}
+              className="w-full justify-start gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] hover:bg-sidebar-accent text-sidebar-foreground hover:text-sidebar-accent-foreground"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
