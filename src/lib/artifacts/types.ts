@@ -36,6 +36,8 @@ export interface StreamPart {
     | "sheet-delta"
     | "image-delta"
     | "chart-delta"
+    | "document-delta"
+    | "visualization-delta"
     | "title"
     | "id"
     | "suggestion"

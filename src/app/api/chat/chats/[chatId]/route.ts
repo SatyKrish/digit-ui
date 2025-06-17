@@ -3,11 +3,11 @@ import { chatPersistence } from '@/services/chat/chat-persistence'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { chatId: string } }
+  { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
     const { title } = await request.json()
-    const chatId = params.chatId
+    const { chatId } = await params
 
     if (!chatId) {
       return NextResponse.json(
@@ -33,10 +33,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { chatId: string } }
+  { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
-    const chatId = params.chatId
+    const { chatId } = await params
 
     if (!chatId) {
       return NextResponse.json(

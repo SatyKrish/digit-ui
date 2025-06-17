@@ -6,7 +6,7 @@ import {
   getDocumentHandler, 
   type DataStream,
   type DocumentHandler 
-} from "@/lib/artifacts/server"
+} from "@/artifacts"
 import type { 
   ArtifactKind, 
   ArtifactDocument, 

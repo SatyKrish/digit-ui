@@ -17,6 +17,8 @@ import { codeArtifact } from '@/artifacts/code/client';
 import { imageArtifact } from '@/artifacts/image/client';
 import { sheetArtifact } from '@/artifacts/sheet/client';
 import { chartArtifact } from '@/artifacts/chart/client';
+import { visualizationArtifact } from '@/artifacts/visualization/client';
+import { documentArtifact } from '@/artifacts/document/client';
 
 export const artifactDefinitions = [
   textArtifact,
@@ -24,6 +26,8 @@ export const artifactDefinitions = [
   imageArtifact,
   sheetArtifact,
   chartArtifact,
+  visualizationArtifact,
+  documentArtifact,
 ];
 
 export type ArtifactDefinition = typeof artifactDefinitions[number];

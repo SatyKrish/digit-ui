@@ -2,7 +2,7 @@
 import { tool } from "ai"
 import { z } from "zod"
 import { generateUUID } from "@/lib/utils"
-import { getDocumentHandler, artifactKinds } from "@/lib/artifacts/server"
+import { getDocumentHandler, artifactKinds } from "@/artifacts"
 import type { ArtifactKind } from "@/lib/artifacts/types"
 import { ArtifactError } from "./types"
 
@@ -13,7 +13,7 @@ export function createDocumentTool() {
   return tool({
     description: 'Create a new document, code file, chart, or other content with real-time streaming.',
     parameters: z.object({
-      kind: z.enum(artifactKinds as readonly [ArtifactKind, ...ArtifactKind[]]),
+      kind: z.enum(artifactKinds),
       title: z.string().min(1).max(200),
       content: z.string().max(100000).optional(),
       language: z.string().optional()

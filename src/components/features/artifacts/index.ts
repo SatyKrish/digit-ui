@@ -1,11 +1,12 @@
-// Simplified Artifacts System - Aligned with Vercel AI SDK
+// Modular Artifacts System - Pure Modular Architecture
 // 
-// This module provides a simplified artifact system following official Vercel AI SDK patterns:
-// - Uses useChat hook's `data` property for artifact streaming (official pattern)
-// - Simple artifact display component
-// - No complex custom providers or state management
+// This module provides a modular artifact system with:
+// - Individual artifact types in separate modules
+// - Server-side handlers for each artifact type
+// - Client-side components for each artifact type
+// - Central registry for dynamic access
 
-// Core Types (keep these for compatibility)
+// Core Types (from types file)
 export type { 
   ArtifactKind,
   ArtifactMetadata,
@@ -17,8 +18,16 @@ export type {
   StreamPart
 } from "@/lib/artifacts/types"
 
-// All artifact components have been removed as System B has been eliminated
-// The application now uses the official Vercel AI SDK pattern exclusively
+// Re-export from modular system
+export {
+  artifactRegistry,
+  serverHandlerRegistry,
+  getDocumentHandler,
+  artifactKinds,
+  type ArtifactType,
+  type DataStream,
+  type DocumentHandler
+} from "@/artifacts"
 
 // Note: System B (Simple Streaming Pattern) has been completely removed
 // All artifacts now use the official Vercel AI SDK pattern through ArtifactWorkspace

@@ -3,10 +3,10 @@ import { chatPersistence } from '@/services/chat/chat-persistence'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { chatId: string } }
+  { params }: { params: Promise<{ chatId: string }> }
 ) {
   try {
-    const chatId = params.chatId
+    const { chatId } = await params
 
     if (!chatId) {
       return NextResponse.json(
