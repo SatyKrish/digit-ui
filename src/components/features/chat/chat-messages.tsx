@@ -1,17 +1,91 @@
 "use client"
 
-import { memo, useMemo, useCallback } from "react"
+import { memo, useMemo, useCallback, useState } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
 import { generateInitials } from "@/utils/format"
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer"
 import { useScrollToBottom } from "@/hooks/shared/use-scroll-to-bottom"
 import { useStreamingOptimization } from "@/hooks/shared/use-streaming-optimization"
 import { getSlideInStaggerClass } from "@/utils/animations"
+import { ChevronDown, ChevronRight, Settings } from "lucide-react"
 import type { ChatMessage } from "@/types/chat"
 import type { ChatMessagesProps } from "@/types/chat"
 import type { Message } from "ai"
+
+// Tool Call Component with toggle functionality
+const ToolCallSection = memo(({ part, partIndex }: { part: any, partIndex: number }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  return (
+    <div key={partIndex} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg my-2">
+      {/* Tool Call Header with Toggle */}
+      <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="flex items-center gap-2">
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          )}
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <Settings className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+            <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+              Tool: {part.toolInvocation?.toolName || 'Unknown'}
+            </span>
+            {part.toolInvocation?.state && (
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                part.toolInvocation.state === 'call' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' :
+                part.toolInvocation.state === 'result' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200' :
+                'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200'
+              }`}>
+                {part.toolInvocation.state}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Collapsible Tool Call Details */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Tool Arguments */}
+          {part.toolInvocation?.args && (
+            <div>
+              <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2">
+                <span>📝 Arguments:</span>
+              </div>
+              <pre className="text-xs bg-white dark:bg-gray-900 p-3 rounded border border-blue-200 dark:border-blue-800 overflow-x-auto">
+                {JSON.stringify(part.toolInvocation.args, null, 2)}
+              </pre>
+            </div>
+          )}
+          
+          {/* Tool Result */}
+          {part.toolInvocation?.result && (
+            <div>
+              <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2">
+                <span>✅ Result:</span>
+              </div>
+              <div className="bg-white dark:bg-gray-900 p-3 rounded border border-blue-200 dark:border-blue-800">
+                <pre className="text-xs whitespace-pre-wrap text-gray-800 dark:text-gray-200">
+                  {typeof part.toolInvocation.result === 'string' 
+                    ? part.toolInvocation.result 
+                    : JSON.stringify(part.toolInvocation.result, null, 2)
+                  }
+                </pre>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
+
+ToolCallSection.displayName = 'ToolCallSection';
 
 // Memoized individual message component for better performance
 const ChatMessageItem = memo(({ message, user, index, isStreaming = false }: { 
@@ -76,50 +150,7 @@ const ChatMessageItem = memo(({ message, user, index, isStreaming = false }: {
                             />
                           )
                         case 'tool-invocation':
-                          return (
-                            <div key={partIndex} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 my-2">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                  Tool: {part.toolInvocation?.toolName || 'Unknown'}
-                                  {part.toolInvocation?.state && (
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                      part.toolInvocation.state === 'call' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' :
-                                      part.toolInvocation.state === 'result' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200' :
-                                      'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-200'
-                                    }`}>
-                                      {part.toolInvocation.state}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              {/* Tool Arguments */}
-                              {part.toolInvocation?.args && (
-                                <details className="mb-2">
-                                  <summary className="text-xs cursor-pointer text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200">
-                                    View Arguments
-                                  </summary>
-                                  <pre className="text-xs bg-white dark:bg-gray-900 p-2 rounded mt-1 overflow-x-auto border border-blue-200 dark:border-blue-800">
-                                    {JSON.stringify(part.toolInvocation.args, null, 2)}
-                                  </pre>
-                                </details>
-                              )}
-                              
-                              {/* Tool Result */}
-                              {part.toolInvocation?.result && (
-                                <div className="bg-white dark:bg-gray-900 p-2 rounded border border-blue-200 dark:border-blue-800">
-                                  <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Result:</div>
-                                  <pre className="text-xs whitespace-pre-wrap text-gray-800 dark:text-gray-200">
-                                    {typeof part.toolInvocation.result === 'string' 
-                                      ? part.toolInvocation.result 
-                                      : JSON.stringify(part.toolInvocation.result, null, 2)
-                                    }
-                                  </pre>
-                                </div>
-                              )}
-                            </div>
-                          )
+                          return <ToolCallSection part={part} partIndex={partIndex} />
                         case 'reasoning':
                           return (
                             <details key={partIndex} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 my-2 group">
