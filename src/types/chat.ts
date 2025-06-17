@@ -82,4 +82,5 @@ export interface MainChatAreaProps {
   currentChatId: string | null
   onLogout: () => void
   onNewChat?: () => void
+  onChatCreated?: (chatId: string) => void
 }

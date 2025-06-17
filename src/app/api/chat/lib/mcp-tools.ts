@@ -109,13 +109,39 @@ export async function prepareMcpTools() {
         description: mcpTool.description,
         parameters: simpleJsonSchemaToZod(mcpTool.inputSchema),
         execute: async (args: any) => {
-          console.log(`[MCP] Calling ${mcpTool.name}`)
-          const result = await mcpClient.callTool(mcpTool.serverId, mcpTool.name, args)
-          
-          if (!result.success) {
-            throw new MCPError(result.error || 'Tool execution failed', mcpTool.serverId)
+          console.log(`[MCP] Calling ${mcpTool.name} with args:`, args)
+          try {
+            const result = await mcpClient.callTool(mcpTool.serverId, mcpTool.name, args)
+            console.log(`[MCP] Tool ${mcpTool.name} result:`, result)
+            
+            if (!result.success) {
+              const error = new MCPError(result.error || 'Tool execution failed', mcpTool.serverId)
+              console.error(`[MCP] Tool execution failed:`, error)
+              throw error
+            }
+            
+            // Extract the actual content from the result
+            if (result.data && result.data.content && Array.isArray(result.data.content)) {
+              // If result has content array, return the text from the first text content
+              const textContent = result.data.content.find((c: any) => c.type === 'text')
+              if (textContent) {
+                console.log(`[MCP] Returning text content:`, textContent.text)
+                return textContent.text
+              }
+            }
+            
+            console.log(`[MCP] Returning raw result data:`, result.data)
+            return result.data
+          } catch (error) {
+            console.error(`[MCP] Tool ${mcpTool.name} execution error:`, error)
+            if (error instanceof MCPError) {
+              throw error
+            }
+            throw new MCPError(
+              error instanceof Error ? error.message : 'Unknown error',
+              mcpTool.serverId
+            )
           }
-          return result.data
         },
       })
     } catch (error) {

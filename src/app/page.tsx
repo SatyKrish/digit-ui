@@ -30,6 +30,10 @@ export default function DigitChat() {
     setCurrentChatId(null)
   }
 
+  const handleChatCreated = (newChatId: string) => {
+    setCurrentChatId(newChatId)
+  }
+
   return (
     <ClientOnly fallback={
       <div className="flex h-screen w-full bg-background text-foreground items-center justify-center">
@@ -54,7 +58,13 @@ export default function DigitChat() {
               onNewChat={handleNewChat}
               user={{ id: effectiveUser.email, email: effectiveUser.email, name: effectiveUser.name }}
             />
-            <MainChatArea user={effectiveUser} currentChatId={currentChatId} onLogout={signOut} onNewChat={handleNewChat} />
+            <MainChatArea 
+              user={effectiveUser} 
+              currentChatId={currentChatId} 
+              onLogout={signOut} 
+              onNewChat={handleNewChat}
+              onChatCreated={handleChatCreated}
+            />
           </div>
         </SidebarProvider>
       )}

@@ -2,7 +2,7 @@
 import { z } from "zod"
 
 export const chatRequestSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().optional(), // Allow any string format for chat ID
   messages: z.array(z.object({
     id: z.string(),
     role: z.enum(['user', 'assistant', 'system', 'tool']),
