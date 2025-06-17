@@ -3,7 +3,8 @@ export const DOMAIN_HINTS = [
   "Account",
   "Party", 
   "Holdings",
-  "Transaction"
+  "Transaction",
+  "Customer"
 ] as const
 
 // Default chat messages

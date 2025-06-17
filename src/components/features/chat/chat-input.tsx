@@ -86,10 +86,10 @@ export function ChatInput({
         {/* Quick Domain Hints */}
         <div className="flex justify-center domain-hints-container mb-4">
           <div className="w-full max-w-full px-1 lg:px-2">
-            <div className="text-xs text-muted-foreground mb-2 text-center font-medium">
-              Quick domain contexts:
+            <div className="text-xs text-muted-foreground mb-2 text-left font-medium">
+              Domain
             </div>
-            <div className="flex flex-wrap gap-1.5 lg:gap-2 justify-center domain-hints-grid">
+            <div className="flex flex-wrap gap-1.5 lg:gap-2 justify-start domain-hints-grid">
             {DOMAIN_HINTS.map((hint, index) => (
               <Badge
                 key={hint}
@@ -128,7 +128,7 @@ export function ChatInput({
               placeholder={placeholder || "Ask me anything about your data..."}
               disabled={isLoading || disabled}
               className="
-                min-h-[48px] lg:min-h-[52px] max-h-32 resize-none pr-16 w-full
+                min-h-[36px] lg:min-h-[40px] max-h-32 resize-none pr-16 w-full
                 border-border/50 bg-background/50 shadow-soft
                 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:shadow-medium
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0
@@ -152,7 +152,7 @@ export function ChatInput({
           <Button
             type="submit"
             disabled={!currentMessage.trim() || isLoading || disabled}
-            className={`h-10 lg:h-12 px-4 lg:px-6 shadow-soft hover:shadow-medium transition-all duration-200 font-medium ${
+            className={`h-9 lg:h-10 px-4 lg:px-6 shadow-soft hover:shadow-medium transition-all duration-200 font-medium ${
               !currentMessage.trim() || isLoading || disabled 
                 ? "opacity-50 cursor-not-allowed scale-100" 
                 : "hover:scale-105 hover:-translate-y-0.5 active:scale-95"

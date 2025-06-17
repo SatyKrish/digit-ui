@@ -22,7 +22,7 @@ interface InitialWelcomeScreenProps {
 }
 
 // Updated to use Domains as requested
-const domainHints = ["Account", "Party", "Holdings", "Transaction", "Customer", "Product", "Order", "Payment"]
+const domainHints = ["Account", "Party", "Holdings", "Transaction", "Customer"]
 
 export function InitialWelcomeScreen({ user, onSendMessage, onStartChat }: InitialWelcomeScreenProps) {
   const [message, setMessage] = useState("")
@@ -57,8 +57,8 @@ export function InitialWelcomeScreen({ user, onSendMessage, onStartChat }: Initi
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-background to-muted/20">
-      <div className="w-full max-w-4xl space-y-8">
+    <div className="flex-1 flex flex-col justify-center p-8 bg-gradient-to-br from-background to-muted/20 size-full">
+      <div className="w-full max-w-4xl mx-auto space-y-8">
         {/* Welcome Message */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">
@@ -90,14 +90,14 @@ export function InitialWelcomeScreen({ user, onSendMessage, onStartChat }: Initi
               onKeyDown={handleKeyDown}
               placeholder="Ask me anything about your data..."
               className="
-                min-h-[60px] text-lg resize-none pr-12 w-full
+                min-h-[48px] text-lg resize-none pr-12 w-full
                 border-2 border-border/50 bg-background/50 
                 focus:border-primary focus:ring-2 focus:ring-primary/20
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0
                 transition-all duration-200 shadow-sm hover:shadow-md
                 placeholder:text-muted-foreground/60
               "
-              rows={2}
+              rows={1}
             />
             <Button
               type="submit"
