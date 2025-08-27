@@ -1,4 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+// Full file with focused improvements: auto-scroll, aria-live, Ctrl/Cmd+Enter send,
+// isSending state, optimistic pin toggle, aria-current on chat buttons, small accessibility tweaks.
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -85,11 +87,6 @@ export interface DiscoveryAgentDataProvider {
 /***********************************
  * PROVIDER GUARD & SAFE DEFAULTS
  ***********************************/
-/**
- * No-op provider used when none is passed. It prevents runtime crashes
- * (like "Cannot read properties of undefined") while showing empty UI.
- * It also logs warnings so developers notice immediately.
- */
 export const NoopProvider: DiscoveryAgentDataProvider = {
   async listChats() {
     if (typeof window !== "undefined") console.warn("[DiscoveryAgentUI] No provider supplied: listChats() returning []");
@@ -155,7 +152,7 @@ function EmptyState({ title, subtitle, action }: { title: string; subtitle?: str
 
 function InlineWarning({ message }: { message: string }) {
   return (
-    <div className="mx-4 my-2 flex items-center gap-2 rounded-md border border-yellow-500/40 bg-yellow-500/10 p-2 text-yellow-600 dark:text-yellow-400">
+    <div role="status" aria-live="polite" className="mx-4 my-2 flex items-center gap-2 rounded-md border border-yellow-500/40 bg-yellow-500/10 p-2 text-yellow-600 dark:text-yellow-400">
       <AlertTriangle className="h-4 w-4" />
       <span className="text-xs">{message}</span>
     </div>
@@ -193,7 +190,7 @@ function ChatList({
           <>
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search chats…" className="h-8 placeholder:text-muted-foreground" />
+              <Input placeholder="Search chats…" className="h-8 placeholder:text-muted-foreground" aria-label="Search chats" />
             </div>
             <div className="mt-3 flex gap-2">
               <Badge variant="secondary" className="bg-muted text-foreground">All</Badge>
@@ -223,6 +220,8 @@ function ChatList({
                 "group"
               )}
               title={collapsed ? t.title : undefined}
+              aria-current={selectedId === t.id ? "true" : undefined}
+              aria-label={`Open chat ${t.title}`}
             >
               <div className={cn("flex items-center justify-between", collapsed && "justify-center")}>
                 <div className={cn("font-medium truncate text-foreground", collapsed && "truncate text-sm text-center")}>
@@ -320,13 +319,13 @@ function ArtifactPreview({ artifact, onExpand, onPin }: { artifact: Artifact; on
           <CardTitle className="text-sm font-semibold truncate text-foreground">{artifact.title}</CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" aria-label="Artifact menu">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Artifact</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => onPin(artifact.id)}>
+              <DropdownMenuItem onClick={() => onPin(artifact.id)} aria-pressed={artifact.pinned ? "true" : "false"}>
                 <PinIcon className="h-4 w-4 mr-2" /> {artifact.pinned ? "Unpin" : "Pin"}
               </DropdownMenuItem>
               {artifact.uri && (
@@ -356,6 +355,9 @@ function ArtifactPreview({ artifact, onExpand, onPin }: { artifact: Artifact; on
                 <FileDown className="h-3 w-3 mr-1" /> File
               </Badge>
             )}
+            {artifact.pinned && (
+              <Badge variant="secondary" className="bg-muted text-foreground">Pinned</Badge>
+            )}
           </div>
         </CardDescription>
       </CardHeader>
@@ -366,7 +368,7 @@ function ArtifactPreview({ artifact, onExpand, onPin }: { artifact: Artifact; on
         <Button size="sm" variant="outline" onClick={() => onExpand(artifact)}>
           Expand
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => onPin(artifact.id)} className="text-muted-foreground">
+        <Button size="sm" variant="ghost" onClick={() => onPin(artifact.id)} className="text-muted-foreground" aria-pressed={artifact.pinned ? "true" : "false"}>
           <PinIcon className="h-4 w-4 mr-1" /> {artifact.pinned ? "Unpin" : "Pin"}
         </Button>
       </CardFooter>
@@ -555,6 +557,10 @@ export default function DiscoveryAgentUI({ provider, initialDark = true }: { pro
   const [loadingChats, setLoadingChats] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [providerWarning, setProviderWarning] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // show a one-time warning if provider is missing/invalid
   useEffect(() => {
@@ -602,11 +608,25 @@ export default function DiscoveryAgentUI({ provider, initialDark = true }: { pro
     return () => ac.abort();
   }, [selectedChatId, safeProvider]);
 
+  // auto-scroll to bottom when messages change or when not loading
+  useEffect(() => {
+    if (messagesRef.current) {
+      // small timeout to wait for rendering/height calculations
+      const t = setTimeout(() => {
+        try {
+          messagesRef.current!.scrollTop = messagesRef.current!.scrollHeight;
+        } catch {}
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, [messages, loadingMessages]);
+
   const selectedChat = useMemo(() => chats.find((c) => c.id === selectedChatId), [chats, selectedChatId]);
 
   const onSend = async () => {
-    if (!composer.trim() || !selectedChatId) return;
+    if (!composer.trim() || !selectedChatId || isSending) return;
     const text = composer.trim();
+    setIsSending(true);
     setComposer("");
     try {
       await safeProvider.sendMessage({
@@ -621,19 +641,46 @@ export default function DiscoveryAgentUI({ provider, initialDark = true }: { pro
         .listMessages(selectedChatId, ac.signal)
         .then((list) => setMessages(list))
         .finally(() => setLoadingMessages(false));
+      // re-focus textarea
+      try { textareaRef.current?.focus(); } catch {}
     } catch (err: any) {
       console.error("[DiscoveryAgentUI] sendMessage failed:", err);
       setProviderWarning("Provider.sendMessage failed: " + (err?.message || String(err)));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // keyboard shortcut: Ctrl/Cmd + Enter to send
+  const onComposerKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      onSend();
     }
   };
 
   const onPin = async (artifactId: string) => {
     if (!selectedChatId) return;
+    // optimistic update: flip pinned flag locally
+    setMessages((prev) =>
+      prev.map((m) => ({
+        ...m,
+        artifacts: m.artifacts?.map((a) => (a.id === artifactId ? { ...a, pinned: !a.pinned } : a)),
+      }))
+    );
     try {
       await safeProvider.togglePin({ chatId: selectedChatId, artifactId });
+      // try to refresh messages to get authoritative data but do not block UI
       const ac = new AbortController();
-      safeProvider.listMessages(selectedChatId, ac.signal).then(setMessages);
+      safeProvider.listMessages(selectedChatId, ac.signal).then(setMessages).catch(() => {});
     } catch (err: any) {
+      // revert on error
+      setMessages((prev) =>
+        prev.map((m) => ({
+          ...m,
+          artifacts: m.artifacts?.map((a) => (a.id === artifactId ? { ...a, pinned: !a.pinned } : a)),
+        }))
+      );
       console.error("[DiscoveryAgentUI] togglePin failed:", err);
       setProviderWarning("Provider.togglePin failed: " + (err?.message || String(err)));
     }
@@ -652,7 +699,7 @@ export default function DiscoveryAgentUI({ provider, initialDark = true }: { pro
         {/* Left rail: chats */}
         <div className="border-r bg-background flex flex-col">
           <div className={cn("p-4 flex items-center justify-between", sidebarCollapsed && "p-2")}>
-            <div className={cn("min-w-0", sidebarCollapsed && "hidden")}> 
+            <div className={cn("min-w-0", sidebarCollapsed && "hidden")}>
               <div className="text-lg font-semibold">Chats</div>
             </div>
             <div className="flex items-center gap-2">
@@ -741,7 +788,11 @@ export default function DiscoveryAgentUI({ provider, initialDark = true }: { pro
 
           {/* Messages */}
           <ScrollArea className="flex-1 p-4">
-            <div className="mx-auto w-full max-w-[980px] space-y-6">
+            <div className="mx-auto w-full max-w-[980px] space-y-6" ref={messagesRef}>
+              {/* aria-live for assistive tech to announce new messages */}
+              <div className="sr-only" aria-live="polite" aria-atomic>
+                {messages.length ? messages[messages.length - 1].text : ""}
+              </div>
               {loadingMessages && <LoadingRows rows={6} />}
               {!loadingMessages && messages.length === 0 && (
                 <EmptyState title="Start the conversation." />
@@ -761,6 +812,9 @@ export default function DiscoveryAgentUI({ provider, initialDark = true }: { pro
                   value={composer}
                   onChange={(e) => setComposer(e.target.value)}
                   className="min-h-[72px] resize-none border-0 focus-visible:ring-0 placeholder:text-muted-foreground text-foreground"
+                  onKeyDown={onComposerKeyDown}
+                  ref={textareaRef as any}
+                  aria-label="Message composer"
                 />
                 <div className="flex items-center justify-between px-2 pb-2">
                   <div className="flex items-center gap-2">
@@ -774,7 +828,9 @@ export default function DiscoveryAgentUI({ provider, initialDark = true }: { pro
                   <div className="flex items-center gap-2">
                     <Checkbox id="pin-next" />
                     <label htmlFor="pin-next" className="text-xs text-muted-foreground">Pin next artifact</label>
-                    <Button size="sm" onClick={onSend}><Send className="h-4 w-4 mr-1" /> Send</Button>
+                    <Button size="sm" onClick={onSend} disabled={!composer.trim() || isSending}>
+                      {isSending ? <span className="opacity-60">Sending…</span> : <><Send className="h-4 w-4 mr-1" /> Send</>}
+                    </Button>
                   </div>
                 </div>
               </div>
